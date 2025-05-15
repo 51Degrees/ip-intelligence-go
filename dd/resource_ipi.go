@@ -32,7 +32,7 @@ import (
 
 // InitFromFile initializes a resource manager based on a given data file path.
 // The input properties is a comma separated string list. This matches the C API
-// fiftyoneDegreesHashInitManagerFromFile.
+// fiftyoneDegreesIpiInitManagerFromFile.
 func InitManagerFromFile(manager *ResourceManager, config ConfigIpi, properties string, filePath string) error {
 	exp := NewException()
 
@@ -67,7 +67,7 @@ func InitManagerFromFile(manager *ResourceManager, config ConfigIpi, properties 
 
 // ReloadFromFile reloads the data set being used by the resource manager using
 // the specified data file location. This is corresponding to the C API
-// fiftyoneDegreesHashReloadManagerFromFile.
+// fiftyoneDegreesIpiReloadManagerFromFile.
 func (manager *ResourceManager) ReloadFromFile(config ConfigIpi, properties string, filePath string) error {
 	exp := NewException()
 

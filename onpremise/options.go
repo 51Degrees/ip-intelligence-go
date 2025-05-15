@@ -25,14 +25,14 @@ func WithDataFile(path string) EngineOptions {
 	}
 }
 
-// WithConfigHash allows to configure the Hash matching algorithm.
-// See dd.ConfigHash type for all available settings:
+// WithConfigIpi allows to configure the Ipi matching algorithm.
+// See dd.ConfigIpi type for all available settings:
 // PerformanceProfile, Drift, Difference, Concurrency
 // By default initialized with dd.Balanced performance profile
-// dd.NewConfigHash(dd.Balanced)
-func WithConfigHash(configHash *dd.ConfigIpi) EngineOptions {
+// dd.NewConfigIpi(dd.Balanced)
+func WithConfigIpi(configIpi *dd.ConfigIpi) EngineOptions {
 	return func(cfg *Engine) error {
-		cfg.config = configHash
+		cfg.config = configIpi
 		return nil
 	}
 }

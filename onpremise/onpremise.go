@@ -285,7 +285,7 @@ func (e *Engine) reloadManager(filePath string) error {
 }
 
 // Process detects the device from the provided evidence list
-// returns the dd.ResultsHash object from which various device properties
+// returns the dd.ResultsIpi object from which various device properties
 // are retrieved
 func (e *Engine) Process(ipAddress string) (*dd.ResultsIpi, error) {
 	results := dd.NewResultsIpi(e.manager)
