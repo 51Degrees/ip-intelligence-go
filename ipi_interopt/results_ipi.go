@@ -1,4 +1,4 @@
-package dd
+package ipi_interopt
 
 //#include <string.h>
 //#include "ip-intelligence-cxx.h"

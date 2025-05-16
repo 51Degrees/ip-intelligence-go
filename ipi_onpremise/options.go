@@ -1,8 +1,8 @@
-package onpremise
+package ipi_onpremise
 
 import (
 	"fmt"
-	"github.com/51Degrees/ip-intelligence-go/dd"
+	"github.com/51Degrees/ip-intelligence-go/ipi_interopt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -26,11 +26,11 @@ func WithDataFile(path string) EngineOptions {
 }
 
 // WithConfigIpi allows to configure the Ipi matching algorithm.
-// See dd.ConfigIpi type for all available settings:
+// See ipi_interopt.ConfigIpi type for all available settings:
 // PerformanceProfile, Drift, Difference, Concurrency
-// By default initialized with dd.Balanced performance profile
-// dd.NewConfigIpi(dd.Balanced)
-func WithConfigIpi(configIpi *dd.ConfigIpi) EngineOptions {
+// By default initialized with ipi_interopt.Balanced performance profile
+// ipi_interopt.NewConfigIpi(ipi_interopt.Balanced)
+func WithConfigIpi(configIpi *ipi_interopt.ConfigIpi) EngineOptions {
 	return func(cfg *Engine) error {
 		cfg.config = configIpi
 		return nil

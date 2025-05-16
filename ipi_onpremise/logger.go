@@ -1,4 +1,4 @@
-package onpremise
+package ipi_onpremise
 
 import (
 	"log"

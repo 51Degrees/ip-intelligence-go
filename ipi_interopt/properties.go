@@ -1,4 +1,4 @@
-package dd
+package ipi_interopt
 
 //#cgo CFLAGS: -DFIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT=1
 //#include <string.h>

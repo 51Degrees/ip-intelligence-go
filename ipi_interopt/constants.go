@@ -20,35 +20,10 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
-package dd
+package ipi_interopt
 
-//#include <string.h>
-//#include "ip-intelligence-cxx.h"
-import "C"
-
-// Exception wraps around a pointer to a value of C Exception structure
-type Exception struct {
-	CPtr *C.Exception
-}
-
-// NewException creates a new Exception object
-func NewException() *Exception {
-	ce := new(C.Exception)
-	e := &Exception{ce}
-	e.Clear()
-	return e
-}
-
-// Clear resets the Exception object
-func (e *Exception) Clear() {
-	e.CPtr.file = nil
-	e.CPtr._func = nil
-	e.CPtr.line = C.int(-1)
-	e.CPtr.status = C.FIFTYONE_DEGREES_STATUS_NOT_SET
-}
-
-// IsOkay check if an exception has been thrown.
-func (e *Exception) IsOkay() bool {
-	return (e.CPtr == nil ||
-		e.CPtr.status == C.FIFTYONE_DEGREES_STATUS_NOT_SET)
-}
+// Error messages
+const (
+	ErrSHPropertyIncorrectFormat = "'SetHeader' property name is not in correct format."
+	ErrNoMatch                   = "No match found."
+)

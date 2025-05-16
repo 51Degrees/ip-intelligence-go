@@ -20,10 +20,17 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
-package dd
+package ipi_interopt
 
-// Error messages
-const (
-	ErrSHPropertyIncorrectFormat = "'SetHeader' property name is not in correct format."
-	ErrNoMatch                   = "No match found."
-)
+/*
+* Cgo concatenate all C linker and compiler directives so create this file to
+* centralize the specifications of these flags.
+ */
+
+/*
+#cgo CFLAGS: -DFIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT=1
+#cgo CFLAGS: -fcommon
+#cgo LDFLAGS: -lm
+#cgo !darwin LDFLAGS: -latomic
+*/
+import "C"

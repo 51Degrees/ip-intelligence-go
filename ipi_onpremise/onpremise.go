@@ -1,4 +1,4 @@
-package onpremise
+package ipi_onpremise
 
 import (
 	"errors"
@@ -33,8 +33,8 @@ type Engine struct {
 	dataFilePullEveryMs int
 	isAutoUpdateEnabled bool
 	loggerEnabled       bool
-	manager             *dd.ResourceManager
-	config              *dd.ConfigIpi
+	manager             *ipi_interopt.ResourceManager
+	config              *ipi_interopt.ConfigIpi
 	//totalFilePulls              int
 	stopCh     chan *sync.WaitGroup
 	fileSynced bool
@@ -246,14 +246,14 @@ func (e *Engine) reloadManager(filePath string) error {
 	}()
 
 	if e.manager == nil {
-		e.manager = dd.NewResourceManager()
+		e.manager = ipi_interopt.NewResourceManager()
 		// init manager from file
 		if e.config == nil {
-			e.config = dd.NewConfigIpi(dd.Balanced)
+			e.config = ipi_interopt.NewConfigIpi(ipi_interopt.Balanced)
 		}
-		e.config = dd.NewConfigIpi(dd.InMemory) // TODO: Remove this line when other config types will be implemented
+		e.config = ipi_interopt.NewConfigIpi(ipi_interopt.InMemory) // TODO: Remove this line when other config types will be implemented
 
-		err := dd.InitManagerFromFile(e.manager, *e.config, e.managerProperties, filePath)
+		err := ipi_interopt.InitManagerFromFile(e.manager, *e.config, e.managerProperties, filePath)
 
 		if err != nil {
 			return fmt.Errorf("failed to init manager from file: %w", err)
@@ -287,8 +287,8 @@ func (e *Engine) reloadManager(filePath string) error {
 // Process detects the device from the provided evidence list
 // returns the dd.ResultsIpi object from which various device properties
 // are retrieved
-func (e *Engine) Process(ipAddress string) (*dd.ResultsIpi, error) {
-	results := dd.NewResultsIpi(e.manager)
+func (e *Engine) Process(ipAddress string) (*ipi_interopt.ResultsIpi, error) {
+	results := ipi_interopt.NewResultsIpi(e.manager)
 
 	if err := results.ResultsIpiFromIpAddress(ipAddress); err != nil {
 		return nil, err

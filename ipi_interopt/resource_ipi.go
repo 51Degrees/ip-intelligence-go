@@ -20,7 +20,7 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
-package dd
+package ipi_interopt
 
 //#include <string.h>
 //#include "ip-intelligence-cxx.h"
