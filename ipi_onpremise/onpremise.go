@@ -251,7 +251,6 @@ func (e *Engine) reloadManager(filePath string) error {
 		if e.config == nil {
 			e.config = ipi_interopt.NewConfigIpi(ipi_interopt.Balanced)
 		}
-		e.config = ipi_interopt.NewConfigIpi(ipi_interopt.InMemory) // TODO: Remove this line when other config types will be implemented
 
 		err := ipi_interopt.InitManagerFromFile(e.manager, *e.config, e.managerProperties, filePath)
 
