@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/51Degrees/ip-intelligence-go/dd"
+	"github.com/51Degrees/ip-intelligence-go/ipi_interopt"
 )
 
 var (
