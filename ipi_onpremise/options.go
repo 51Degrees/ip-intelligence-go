@@ -2,7 +2,7 @@ package ipi_onpremise
 
 import (
 	"fmt"
-	"github.com/51Degrees/ip-intelligence-go/ipi_interopt"
+	"github.com/51Degrees/ip-intelligence-go/ipi_interop"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -30,7 +30,7 @@ func WithDataFile(path string) EngineOptions {
 // PerformanceProfile, Drift, Difference, Concurrency
 // By default initialized with ipi_interopt.Balanced performance profile
 // ipi_interopt.NewConfigIpi(ipi_interopt.Balanced)
-func WithConfigIpi(configIpi *ipi_interopt.ConfigIpi) EngineOptions {
+func WithConfigIpi(configIpi *ipi_interop.ConfigIpi) EngineOptions {
 	return func(cfg *Engine) error {
 		cfg.config = configIpi
 		return nil

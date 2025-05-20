@@ -1,4 +1,4 @@
-package ipi_interopt
+package ipi_interop
 
 //#include <string.h>
 //#include "ip-intelligence-cxx.h"
@@ -6,7 +6,10 @@ import "C"
 import (
 	"fmt"
 	"math"
+	"regexp"
 	"runtime"
+	"strconv"
+	"strings"
 	"unsafe"
 )
 
@@ -17,6 +20,7 @@ type ResultsIpi struct {
 
 const defaultSize = 4096
 const separator = "|"
+const regexPatter = "^\"([^\"]+)\":(([0-9]*[.])?[0-9]+)$"
 
 func NewResultsIpi(manager *ResourceManager) *ResultsIpi {
 	r := C.ResultsIpiCreate(manager.CPtr)
@@ -69,7 +73,7 @@ func resultsFinalizer(res *ResultsIpi) {
 	}
 }
 
-func GetPropertyValueAsString(result *C.ResultsIpi, property string) (string, error) {
+func GetPropertyValueAsRaw(result *C.ResultsIpi, property string) (string, error) {
 	var buffer []C.char
 
 	buffer = make([]C.char, defaultSize)
@@ -95,4 +99,44 @@ func GetPropertyValueAsString(result *C.ResultsIpi, property string) (string, er
 	}
 
 	return C.GoString(&buffer[0]), nil
+}
+
+func GetPropertyValueAsStringWeightValue(result *C.ResultsIpi, property string) (string, float64, error) {
+	var buffer []C.char
+
+	buffer = make([]C.char, defaultSize)
+
+	propertyName := C.CString(property)
+	defer C.free(unsafe.Pointer(propertyName))
+
+	cSeparator := C.CString(separator)
+	defer C.free(unsafe.Pointer(cSeparator))
+
+	exception := NewException()
+
+	actualSize := uint64(C.ResultsIpiGetValuesString(result, propertyName, &buffer[0], C.size_t(defaultSize), cSeparator, exception.CPtr))
+	if !exception.IsOkay() {
+		return "", 0, fmt.Errorf(C.GoString(C.ExceptionGetMessage(exception.CPtr)))
+	}
+
+	var ds uint64 = defaultSize
+
+	if actualSize > ds {
+		// Add 1 for the null terminator
+		ds = actualSize + 1
+	}
+
+	r, err := regexp.Compile(regexPatter)
+	if err != nil {
+		return "", 0, err
+	}
+
+	match := r.FindStringSubmatch(C.GoString(&buffer[0]))
+
+	wv, err := strconv.ParseFloat(strings.TrimSpace(match[2]), 64)
+	if err != nil {
+		return "", 0, err
+	}
+
+	return match[1], wv, nil
 }

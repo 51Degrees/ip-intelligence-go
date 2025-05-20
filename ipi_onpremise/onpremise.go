@@ -3,12 +3,11 @@ package ipi_onpremise
 import (
 	"errors"
 	"fmt"
+	"github.com/51Degrees/ip-intelligence-go/ipi_interop"
 	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
-
-	"github.com/51Degrees/ip-intelligence-go/ipi_interopt"
 )
 
 var (
@@ -33,8 +32,8 @@ type Engine struct {
 	dataFilePullEveryMs int
 	isAutoUpdateEnabled bool
 	loggerEnabled       bool
-	manager             *ipi_interopt.ResourceManager
-	config              *ipi_interopt.ConfigIpi
+	manager             *ipi_interop.ResourceManager
+	config              *ipi_interop.ConfigIpi
 	//totalFilePulls              int
 	stopCh     chan *sync.WaitGroup
 	fileSynced bool
@@ -246,13 +245,13 @@ func (e *Engine) reloadManager(filePath string) error {
 	}()
 
 	if e.manager == nil {
-		e.manager = ipi_interopt.NewResourceManager()
+		e.manager = ipi_interop.NewResourceManager()
 		// init manager from file
 		if e.config == nil {
-			e.config = ipi_interopt.NewConfigIpi(ipi_interopt.Balanced)
+			e.config = ipi_interop.NewConfigIpi(ipi_interop.Balanced)
 		}
 
-		err := ipi_interopt.InitManagerFromFile(e.manager, *e.config, e.managerProperties, filePath)
+		err := ipi_interop.InitManagerFromFile(e.manager, *e.config, e.managerProperties, filePath)
 
 		if err != nil {
 			return fmt.Errorf("failed to init manager from file: %w", err)
@@ -286,8 +285,8 @@ func (e *Engine) reloadManager(filePath string) error {
 // Process detects the device from the provided evidence list
 // returns the dd.ResultsIpi object from which various device properties
 // are retrieved
-func (e *Engine) Process(ipAddress string) (*ipi_interopt.ResultsIpi, error) {
-	results := ipi_interopt.NewResultsIpi(e.manager)
+func (e *Engine) Process(ipAddress string) (*ipi_interop.ResultsIpi, error) {
+	results := ipi_interop.NewResultsIpi(e.manager)
 
 	if err := results.ResultsIpiFromIpAddress(ipAddress); err != nil {
 		return nil, err

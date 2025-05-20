@@ -20,7 +20,7 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
-package ipi_interopt
+package ipi_interop
 
 // Error messages
 const (

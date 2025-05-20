@@ -20,35 +20,17 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
-package ipi_interopt
+package ipi_interop
 
-//#include <string.h>
-//#include "ip-intelligence-cxx.h"
+/*
+* Cgo concatenate all C linker and compiler directives so create this file to
+* centralize the specifications of these flags.
+ */
+
+/*
+#cgo CFLAGS: -DFIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT=1
+#cgo CFLAGS: -fcommon
+#cgo LDFLAGS: -lm
+#cgo !darwin LDFLAGS: -latomic
+*/
 import "C"
-
-// Exception wraps around a pointer to a value of C Exception structure
-type Exception struct {
-	CPtr *C.Exception
-}
-
-// NewException creates a new Exception object
-func NewException() *Exception {
-	ce := new(C.Exception)
-	e := &Exception{ce}
-	e.Clear()
-	return e
-}
-
-// Clear resets the Exception object
-func (e *Exception) Clear() {
-	e.CPtr.file = nil
-	e.CPtr._func = nil
-	e.CPtr.line = C.int(-1)
-	e.CPtr.status = C.FIFTYONE_DEGREES_STATUS_NOT_SET
-}
-
-// IsOkay check if an exception has been thrown.
-func (e *Exception) IsOkay() bool {
-	return (e.CPtr == nil ||
-		e.CPtr.status == C.FIFTYONE_DEGREES_STATUS_NOT_SET)
-}

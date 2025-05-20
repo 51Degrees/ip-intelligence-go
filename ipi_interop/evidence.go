@@ -20,17 +20,28 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
-package ipi_interopt
+package ipi_interop
 
-/*
-* Cgo concatenate all C linker and compiler directives so create this file to
-* centralize the specifications of these flags.
- */
-
-/*
-#cgo CFLAGS: -DFIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT=1
-#cgo CFLAGS: -fcommon
-#cgo LDFLAGS: -lm
-#cgo !darwin LDFLAGS: -latomic
-*/
+//#include <string.h>
+//#include "ip-intelligence-cxx.h"
 import "C"
+
+type EvidencePrefix C.fiftyoneDegreesEvidencePrefix
+
+// Header Key required by engine
+type EvidenceKey struct {
+	Prefix EvidencePrefix
+	Key    string
+}
+
+// C type Evidence
+type CEvidence struct {
+	key   *C.char
+	value *C.char
+}
+
+// Evidence structure
+type Evidence struct {
+	cEvidence []CEvidence
+	CPtr      *C.EvidenceKeyValuePairArray
+}
