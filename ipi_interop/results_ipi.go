@@ -4,6 +4,7 @@ package ipi_interop
 //#include "ip-intelligence-cxx.h"
 import "C"
 import (
+	"errors"
 	"fmt"
 	"math"
 	"regexp"
@@ -133,10 +134,14 @@ func GetPropertyValueAsStringWeightValue(result *C.ResultsIpi, property string) 
 
 	match := r.FindStringSubmatch(C.GoString(&buffer[0]))
 
-	wv, err := strconv.ParseFloat(strings.TrimSpace(match[2]), 64)
+	if len(match) < 3 {
+		return "", 0, errors.New("Invalid regex pattern")
+	}
+
+	weight, err := strconv.ParseFloat(strings.TrimSpace(match[2]), 64)
 	if err != nil {
 		return "", 0, err
 	}
 
-	return match[1], wv, nil
+	return match[1], weight, nil
 }
