@@ -132,7 +132,9 @@ func GetPropertyValueAsStringWeightValue(result *C.ResultsIpi, property string) 
 		return "", 0, err
 	}
 
-	match := r.FindStringSubmatch(C.GoString(&buffer[0]))
+	str := C.GoString(&buffer[0])
+
+	match := r.FindStringSubmatch(str)
 
 	if len(match) < 3 {
 		return "", 0, errors.New("Invalid regex pattern")
