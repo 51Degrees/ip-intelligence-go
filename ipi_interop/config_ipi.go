@@ -52,3 +52,45 @@ func NewConfigIpi(perf PerformanceProfile) *ConfigIpi {
 	}
 	return &ConfigIpi{&config, profile}
 }
+
+// SetConcurrency sets the expected concurrent requests.
+func (config *ConfigIpi) SetConcurrency(concurrency uint16) {
+	config.CPtr.strings.concurrency = C.ushort(concurrency)
+	config.CPtr.properties.concurrency = C.ushort(concurrency)
+	config.CPtr.values.concurrency = C.ushort(concurrency)
+	config.CPtr.profiles.concurrency = C.ushort(concurrency)
+	config.CPtr.nodes.concurrency = C.ushort(concurrency)
+	config.CPtr.profileOffsets.concurrency = C.ushort(concurrency)
+	config.CPtr.maps.concurrency = C.ushort(concurrency)
+	config.CPtr.components.concurrency = C.ushort(concurrency)
+}
+
+// SetUsePredictiveGraph sets whether predictive optimized graph should be
+// used for processing.
+func (config *ConfigIpi) SetUsePredictiveGraph(use bool) {
+	if use {
+		config.CPtr.usePredictiveGraph = C.IntToBool(1)
+	} else {
+		config.CPtr.usePredictiveGraph = C.IntToBool(0)
+	}
+}
+
+// SetUsePerformanceGraph sets whether performance optimized graph should be
+// used for processing.
+func (config *ConfigIpi) SetUsePerformanceGraph(use bool) {
+	if use {
+		config.CPtr.usePerformanceGraph = C.IntToBool(1)
+	} else {
+		config.CPtr.usePerformanceGraph = C.IntToBool(0)
+	}
+}
+
+// SetUseUpperPrefixHeaders set whether or not the HTTP header might be
+// prefixed with 'HTTP_'
+func (config *ConfigIpi) SetUseUpperPrefixHeaders(use bool) {
+	if use {
+		config.CPtr.b.b.usesUpperPrefixedHeaders = C.IntToBool(1)
+	} else {
+		config.CPtr.b.b.usesUpperPrefixedHeaders = C.IntToBool(0)
+	}
+}

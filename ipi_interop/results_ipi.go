@@ -134,6 +134,10 @@ func GetPropertyValueAsStringWeightValue(result *C.ResultsIpi, property string) 
 
 	str := C.GoString(&buffer[0])
 
+	if len(str) == 0 {
+		return "", 0, errors.New("Ipi returned empty value")
+	}
+
 	match := r.FindStringSubmatch(str)
 
 	if len(match) < 3 {
