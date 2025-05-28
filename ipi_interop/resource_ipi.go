@@ -99,3 +99,19 @@ func (manager *ResourceManager) ReloadFromFile(config ConfigIpi, properties stri
 
 	return nil
 }
+
+// ReloadFromOriginalFile reloads the data set being used by the resource
+// manager using the data file location which was used when the manager was
+// created. This is corresponding to the C API
+// fiftyoneDegreesIpiReloadManagerFromOriginalFile
+func (manager *ResourceManager) ReloadFromOriginalFile() error {
+	exp := NewException()
+	C.IpiReloadManagerFromOriginalFile(
+		manager.CPtr,
+		exp.CPtr,
+	)
+	if !exp.IsOkay() {
+		return fmt.Errorf(C.GoString(C.ExceptionGetMessage(exp.CPtr)))
+	}
+	return nil
+}

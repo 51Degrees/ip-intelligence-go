@@ -7,7 +7,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -24,22 +26,22 @@ var (
 // The 51degrees distributor service can also be used with a licenseKey
 // For more information see With... options and examples
 type Engine struct {
-	logger logWrapper
-	//fileWatcher                 fileWatcher
-	dataFile            string
-	licenseKey          string
-	dataFileUrl         string
-	dataFilePullEveryMs int
-	isAutoUpdateEnabled bool
-	loggerEnabled       bool
-	manager             *ipi_interop.ResourceManager
-	config              *ipi_interop.ConfigIpi
-	//totalFilePulls              int
-	stopCh     chan *sync.WaitGroup
-	fileSynced bool
-	//product                     string
-	maxRetries int
-	//lastModificationTimestamp   *time.Time
+	logger                      logWrapper
+	fileWatcher                 fileWatcher
+	dataFile                    string
+	licenseKey                  string
+	dataFileUrl                 string
+	dataFilePullEveryMs         int
+	isAutoUpdateEnabled         bool
+	loggerEnabled               bool
+	manager                     *ipi_interop.ResourceManager
+	config                      *ipi_interop.ConfigIpi
+	totalFilePulls              int
+	stopCh                      chan *sync.WaitGroup
+	fileSynced                  bool
+	product                     string
+	maxRetries                  int
+	lastModificationTimestamp   *time.Time
 	isFileWatcherEnabled        bool
 	isUpdateOnStartEnabled      bool
 	isCreateTempDataCopyEnabled bool
@@ -55,6 +57,14 @@ type Engine struct {
 	managerProperties           string
 }
 
+const (
+	defaultDataFileUrl = "" // TODO: Fix url for update
+)
+
+var (
+	defaultProperties = []string{"IpRangeStart", "IpRangeEnd", "AccuracyRadius", "RegisteredCountry", "RegisteredName", "Longitude", "Latitude", "Areas"}
+)
+
 // New creates an instance of the on-premise device detection engine.  WithDataFile must be provided
 // to specify the path to the data file, otherwise initialization will fail
 func New(opts ...EngineOptions) (*Engine, error) {
@@ -63,10 +73,10 @@ func New(opts ...EngineOptions) (*Engine, error) {
 			logger:  DefaultLogger,
 			enabled: true,
 		},
-		config:     nil,
-		stopCh:     make(chan *sync.WaitGroup),
-		fileSynced: false,
-		//dataFileUrl:                 defaultDataFileUrl,
+		config:                      nil,
+		stopCh:                      make(chan *sync.WaitGroup),
+		fileSynced:                  false,
+		dataFileUrl:                 defaultDataFileUrl,
 		dataFilePullEveryMs:         30 * 60 * 1000, // default 30 minutes
 		isFileWatcherEnabled:        true,
 		isUpdateOnStartEnabled:      false,
@@ -74,7 +84,7 @@ func New(opts ...EngineOptions) (*Engine, error) {
 		isCreateTempDataCopyEnabled: true,
 		tempDataDir:                 "",
 		randomization:               10 * 60 * 1000, // default 10 minutes
-		managerProperties:           "IpRangeStart,IpRangeEnd,AccuracyRadius,RegisteredCountry,RegisteredName,Longitude,Latitude,Areas",
+		managerProperties:           strings.Join(defaultProperties, ","),
 	}
 
 	for _, opt := range opts {
@@ -105,21 +115,28 @@ func New(opts ...EngineOptions) (*Engine, error) {
 
 	// if file watcher is enabled, start the watcher
 	if engine.isFileWatcherEnabled {
-		// TODO: check and uncomment
-		//engine.fileWatcher, err = newFileWatcher(engine.logger, engine.dataFile, engine.stopCh)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//// this will watch the data file, if it changes, it will reload the data file in the manager
-		//err = engine.fileWatcher.watch(engine.handleFileExternallyChanged)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//engine.fileWatcherStarted = true
-		//go engine.fileWatcher.run()
+		engine.fileWatcher, err = newFileWatcher(engine.logger, engine.dataFile, engine.stopCh)
+		if err != nil {
+			return nil, err
+		}
+		// this will watch the data file, if it changes, it will reload the data file in the manager
+		err = engine.fileWatcher.watch(engine.handleFileExternallyChanged)
+		if err != nil {
+			return nil, err
+		}
+		engine.fileWatcherStarted = true
+		go engine.fileWatcher.run()
 	}
 
 	return engine, nil
+}
+
+func (e *Engine) handleFileExternallyChanged() {
+	err := e.processFileExternallyChanged()
+	if err != nil {
+		e.logger.Printf("failed to handle file externally changed: %v", err)
+	}
+	e.fileExternallyChangedCount++
 }
 
 // run starts the engine
@@ -129,14 +146,14 @@ func (e *Engine) run() error {
 		return err
 	}
 
-	//err = e.validateAndAppendUrlParams()
-	//if err != nil {
-	//	return err
-	//}
+	err = e.validateAndAppendUrlParams()
+	if err != nil {
+		return err
+	}
 
 	if e.isAutoUpdateEnabled {
 		e.filePullerStarted = true
-		//go e.scheduleFilePulling()
+		go e.scheduleFilePulling()
 	}
 
 	return nil
@@ -176,6 +193,45 @@ func (e *Engine) Stop() {
 		dir := filepath.Dir(e.dataFileLastUsedByManager)
 		os.RemoveAll(dir)
 	}
+}
+
+func (e *Engine) validateAndAppendUrlParams() error {
+	if e.isDefaultDataFileUrl() && !e.hasDefaultDistributorParams() && e.isAutoUpdateEnabled {
+		return ErrLicenseKeyRequired
+	} else if e.isDefaultDataFileUrl() && e.isAutoUpdateEnabled {
+		err := e.appendLicenceKey()
+		if err != nil {
+			return err
+		}
+		err = e.appendProduct()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (e *Engine) appendProduct() error {
+	urlParsed, err := url.Parse(e.dataFileUrl)
+	if err != nil {
+		return fmt.Errorf("failed to parse data file url: %w", err)
+	}
+	query := urlParsed.Query()
+	query.Set("Product", e.product)
+	urlParsed.RawQuery = query.Encode()
+
+	e.dataFileUrl = urlParsed.String()
+
+	return nil
+}
+
+func (e *Engine) isDefaultDataFileUrl() bool {
+	return e.dataFileUrl == defaultDataFileUrl
+}
+
+func (e *Engine) hasDefaultDistributorParams() bool {
+	return len(e.licenseKey) > 0
 }
 
 func (e *Engine) copyFileAndReloadManager() error {
@@ -240,8 +296,8 @@ func (e *Engine) reloadManager(filePath string) error {
 	}
 	// if manager is nil, create a new one
 	defer func() {
-		//year, month, day := e.getPublishedDate().Date()
-		//e.logger.Printf("data file loaded from " + filePath + " published on: " + fmt.Sprintf("%d-%d-%d", year, month, day))
+		year, month, day := e.getPublishedDate().Date()
+		e.logger.Printf("data file loaded from " + filePath + " published on: " + fmt.Sprintf("%d-%d-%d", year, month, day))
 	}()
 
 	if e.manager == nil {
@@ -251,19 +307,17 @@ func (e *Engine) reloadManager(filePath string) error {
 			e.config = ipi_interop.NewConfigIpi(ipi_interop.Balanced)
 		}
 
-		err := ipi_interop.InitManagerFromFile(e.manager, *e.config, e.managerProperties, filePath)
-
-		if err != nil {
+		if err := ipi_interop.InitManagerFromFile(e.manager, *e.config, e.managerProperties, filePath); err != nil {
 			return fmt.Errorf("failed to init manager from file: %w", err)
 		}
 		e.dataFileLastUsedByManager = filePath
 		// return nil is created for the first time
 		return nil
 	} else if !e.isCreateTempDataCopyEnabled {
-		//err := e.manager.ReloadFromOriginalFile()
-		//if err != nil {
-		//	return fmt.Errorf("failed to reload manager from original file: %w", err)
-		//}
+		err := e.manager.ReloadFromOriginalFile()
+		if err != nil {
+			return fmt.Errorf("failed to reload manager from original file: %w", err)
+		}
 		return nil
 	}
 
@@ -307,4 +361,17 @@ func (e *Engine) appendLicenceKey() error {
 	e.dataFileUrl = urlParsed.String()
 
 	return nil
+}
+
+func (e *Engine) getFilePath() string {
+	if e.isCreateTempDataCopyEnabled {
+		return filepath.Join(e.tempDataDir, e.tempDataFile)
+	}
+
+	return e.dataFile
+}
+
+func (e *Engine) getPublishedDate() time.Time {
+	//return dd.GetPublishedDate(e.manager) // TODO: fix this
+	return time.Time{}
 }
