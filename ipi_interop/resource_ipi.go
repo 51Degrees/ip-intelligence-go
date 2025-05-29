@@ -27,6 +27,7 @@ package ipi_interop
 import "C"
 import (
 	"fmt"
+	"time"
 	"unsafe"
 )
 
@@ -114,4 +115,12 @@ func (manager *ResourceManager) ReloadFromOriginalFile() error {
 		return fmt.Errorf(C.GoString(C.ExceptionGetMessage(exp.CPtr)))
 	}
 	return nil
+}
+
+func GetPublishedDate(manager *ResourceManager) time.Time {
+	cDataSet := (*C.DataSetIpi)(unsafe.Pointer(C.DataSetGet(manager.CPtr)))
+	// Release the dataset
+	defer C.DataSetRelease((*C.DataSetBase)(unsafe.Pointer(cDataSet)))
+	published := cDataSet.header.published
+	return time.Date(int(published.year), time.Month(published.month), int(published.day), 0, 0, 0, 0, time.UTC)
 }

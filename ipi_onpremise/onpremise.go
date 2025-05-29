@@ -372,6 +372,5 @@ func (e *Engine) getFilePath() string {
 }
 
 func (e *Engine) getPublishedDate() time.Time {
-	//return dd.GetPublishedDate(e.manager) // TODO: fix this
-	return time.Time{}
+	return ipi_interop.GetPublishedDate(e.manager)
 }
