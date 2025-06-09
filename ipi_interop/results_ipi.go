@@ -87,7 +87,7 @@ func GetPropertyValueAsRaw(result *C.ResultsIpi, property string) (string, error
 
 	exception := NewException()
 
-	actualSize := uint64(C.ResultsIpiGetValues(result, propertyName, &buffer[0], C.size_t(defaultSize), cSeparator, exception.CPtr))
+	actualSize := uint64(C.ResultsIpiGetValuesString(result, propertyName, &buffer[0], C.size_t(defaultSize), cSeparator, exception.CPtr))
 	if !exception.IsOkay() {
 		return "", fmt.Errorf(C.GoString(C.ExceptionGetMessage(exception.CPtr)))
 	}
