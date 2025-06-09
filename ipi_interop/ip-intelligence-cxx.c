@@ -3831,7 +3831,7 @@ typedef fiftyoneDegreesFloatInternal fiftyoneDegreesFloat;
 /**
  * Enum indicating the type of IP address.
  */
-typedef enum e_fiftyone_degrees_ip_evidence_type {
+typedef enum e_fiftyone_degrees_ip_type {
 	FIFTYONE_DEGREES_IP_TYPE_INVALID = 0, /**< Invalid IP address */
 	FIFTYONE_DEGREES_IP_TYPE_IPV4 = 4, /**< An IPv4 address */
 	FIFTYONE_DEGREES_IP_TYPE_IPV6 = 6, /**< An IPv6 address */
@@ -17448,6 +17448,116 @@ bool fiftyoneDegreesStoredBinaryValueToBoolOrDefault(
 
 #include <inttypes.h>
 
+static uint32_t getFinalStringSize(void *initial) {
+	return (uint32_t)(sizeof(int16_t) + (*(int16_t*)initial));
+}
+
+#ifndef FIFTYONE_DEGREES_MEMORY_ONLY
+
+void* fiftyoneDegreesStringRead(
+	const fiftyoneDegreesCollectionFile *file,
+	uint32_t offset,
+	fiftyoneDegreesData *data,
+	fiftyoneDegreesException *exception) {
+	int16_t length;
+	return CollectionReadFileVariable(
+		file,
+		data,
+		offset,
+		&length,
+		sizeof(int16_t),
+		getFinalStringSize,
+		exception);
+}
+
+#endif
+
+fiftyoneDegreesString* fiftyoneDegreesStringGet(
+	fiftyoneDegreesCollection *strings,
+	uint32_t offset,
+	fiftyoneDegreesCollectionItem *item,
+	fiftyoneDegreesException *exception) {
+	return (String*)strings->get(
+		strings,
+		offset,
+		item,
+		exception);
+}
+
+int fiftyoneDegreesStringCompare(const char *a, const char *b) {
+	for (; *a != '\0' && *b != '\0'; a++, b++) {
+		int d = tolower(*a) - tolower(*b);
+		if (d != 0) {
+			return d;
+		}
+	}
+	if (*a == '\0' && *b != '\0') return -1;
+	if (*a != '\0' && *b == '\0') return 1;
+	assert(*a == '\0' && *b == '\0');
+	return 0;
+}
+
+int fiftyoneDegreesStringCompareLength(
+	char const *a, 
+	char const *b, 
+	size_t length) {
+	size_t i;
+	for (i = 0; i < length; a++, b++, i++) {
+		int d = tolower(*a) - tolower(*b);
+		if (d != 0) {
+			return d;
+		}
+	}
+	return 0;
+}
+
+const char *fiftyoneDegreesStringSubString(const char *a, const char *b) {
+	int d;
+	const char *a1, *b1;
+	for (; *a != '\0' && *b != '\0'; a++) {
+		d = tolower(*a) - tolower(*b);
+		if (d == 0) {
+			a1 = a + 1;
+			b1 = b + 1;
+			for (; *a1 != '\0' && *b1 != '\0'; a1++, b1++) {
+				d = tolower(*a1) - tolower(*b1);
+				if (d != 0) {
+					break;
+				}
+			}
+			if (d == 0 && *b1 == '\0') {
+				return (char *)a;
+			}
+		}
+	}
+	return NULL;
+}
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2023 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+#define __STDC_FORMAT_MACROS
+
+#include <inttypes.h>
+
 /**
  * Add IPv4 address (raw bytes) to string builder (as text)
  * @param ipAddress raw bytes of IPv4
@@ -17761,116 +17871,6 @@ fiftyoneDegreesStringBuilder* fiftyoneDegreesStringBuilderComplete(
 		builder->full = true;
 	}
 	return builder;
-}
-/* *********************************************************************
- * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
- * Copyright 2023 51 Degrees Mobile Experts Limited, Davidson House,
- * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
- *
- * This Original Work is licensed under the European Union Public Licence
- * (EUPL) v.1.2 and is subject to its terms as set out below.
- *
- * If a copy of the EUPL was not distributed with this file, You can obtain
- * one at https://opensource.org/licenses/EUPL-1.2.
- *
- * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
- * amended by the European Commission) shall be deemed incompatible for
- * the purposes of the Work and the provisions of the compatibility
- * clause in Article 5 of the EUPL shall not apply.
- *
- * If using the Work as, or as part of, a network application, by
- * including the attribution notice(s) required under Article 5 of the EUPL
- * in the end user terms of the application under an appropriate heading,
- * such notice(s) shall fulfill the requirements of that article.
- * ********************************************************************* */
-
-#define __STDC_FORMAT_MACROS
-
-#include <inttypes.h>
-
-static uint32_t getFinalStringSize(void *initial) {
-	return (uint32_t)(sizeof(int16_t) + (*(int16_t*)initial));
-}
-
-#ifndef FIFTYONE_DEGREES_MEMORY_ONLY
-
-void* fiftyoneDegreesStringRead(
-	const fiftyoneDegreesCollectionFile *file,
-	uint32_t offset,
-	fiftyoneDegreesData *data,
-	fiftyoneDegreesException *exception) {
-	int16_t length;
-	return CollectionReadFileVariable(
-		file,
-		data,
-		offset,
-		&length,
-		sizeof(int16_t),
-		getFinalStringSize,
-		exception);
-}
-
-#endif
-
-fiftyoneDegreesString* fiftyoneDegreesStringGet(
-	fiftyoneDegreesCollection *strings,
-	uint32_t offset,
-	fiftyoneDegreesCollectionItem *item,
-	fiftyoneDegreesException *exception) {
-	return (String*)strings->get(
-		strings,
-		offset,
-		item,
-		exception);
-}
-
-int fiftyoneDegreesStringCompare(const char *a, const char *b) {
-	for (; *a != '\0' && *b != '\0'; a++, b++) {
-		int d = tolower(*a) - tolower(*b);
-		if (d != 0) {
-			return d;
-		}
-	}
-	if (*a == '\0' && *b != '\0') return -1;
-	if (*a != '\0' && *b == '\0') return 1;
-	assert(*a == '\0' && *b == '\0');
-	return 0;
-}
-
-int fiftyoneDegreesStringCompareLength(
-	char const *a, 
-	char const *b, 
-	size_t length) {
-	size_t i;
-	for (i = 0; i < length; a++, b++, i++) {
-		int d = tolower(*a) - tolower(*b);
-		if (d != 0) {
-			return d;
-		}
-	}
-	return 0;
-}
-
-const char *fiftyoneDegreesStringSubString(const char *a, const char *b) {
-	int d;
-	const char *a1, *b1;
-	for (; *a != '\0' && *b != '\0'; a++) {
-		d = tolower(*a) - tolower(*b);
-		if (d == 0) {
-			a1 = a + 1;
-			b1 = b + 1;
-			for (; *a1 != '\0' && *b1 != '\0'; a1++, b1++) {
-				d = tolower(*a1) - tolower(*b1);
-				if (d != 0) {
-					break;
-				}
-			}
-			if (d == 0 && *b1 == '\0') {
-				return (char *)a;
-			}
-		}
-	}
-	return NULL;
 }
 /* *********************************************************************
  * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
@@ -20067,7 +20067,7 @@ EXTERNAL fiftyoneDegreesIpiCgArray* fiftyoneDegreesIpiGraphCreateFromFile(
  * @return the index of the profile (or group) associated with the IP address.
  */
 EXTERNAL fiftyoneDegreesIpiCgResult fiftyoneDegreesIpiGraphEvaluate(
-	fiftyoneDegreesIpiCgArray* graphs,
+	const fiftyoneDegreesIpiCgArray* graphs,
 	byte componentId,
 	fiftyoneDegreesIpAddress address,
 	fiftyoneDegreesException* exception);
@@ -20157,7 +20157,7 @@ typedef struct cluster_t {
 
 // Cursor used to traverse the graph for each of the bits in the IP address.
 typedef struct cursor_t {
-	IpiCg* const graph; // Graph the cursor is working with
+	const IpiCg* const graph; // Graph the cursor is working with
 	IpAddress const ip; // The IP address source
 	byte ipValue[VAR_SIZE]; // The value that should be compared to the span
 	byte bitIndex; // Current bit index from high to low in the IP address 
@@ -20165,9 +20165,11 @@ typedef struct cursor_t {
 	uint64_t nodeBits; // The value of the current item in the graph
 	uint32_t index; // The current index in the graph values collection
 	uint32_t previousHighIndex; // The index of the last high index
-	uint32_t clusterIndex; // The current cluster index
-	Cluster cluster; // The current cluster that relates to the node index
-	byte clusterSet; // True after the first time the cluster is set
+	struct ClusterWrapper {
+		uint32_t index; // The current cluster index
+		const Cluster* ptr; // typed pointer to the memory (for convenience)
+		Item item; // item that owns the memory
+	} cluster; // The current cluster that relates to the node index
 	uint32_t spanIndex; // The current span index
 	Span span; // The current span that relates to the node index
 	byte spanLow[VAR_SIZE]; // Low limit for the span
@@ -20195,7 +20197,7 @@ typedef struct cursor_t {
 
 // Get the bit as a bool for the byte array and bit index from the left. High
 // order bit is index 0.
-#define GET_BIT(b,i) ((b[(i) / 8] & (1 << (7 - ((i) % 8)))) != 0)
+#define GET_BIT(b,i) ((((b)[(i) / 8] >> (7 - ((i) % 8))) & 1))
 
 // Sets the bit in the destination byte array where the bit index is from 
 // left. High order bit is index 0.
@@ -20203,7 +20205,10 @@ typedef struct cursor_t {
 
 // Outputs to the string builder the bits from left to right from the bytes
 // provided.
-static void bytesToBinary(Cursor* cursor, byte* bytes, int length) {
+static void bytesToBinary(
+	const Cursor * const cursor,
+	const byte * const bytes,
+	const int length) {
 	int count = 0;
 	for (int i = 0; i < length; i++)
 	{
@@ -20226,7 +20231,7 @@ static IpType getIpTypeFromVersion(byte version) {
 }
 
 // The IpType for the component graph.
-static IpType getIpTypeFromGraph(IpiCgInfo* info) {
+static IpType getIpTypeFromGraph(const IpiCgInfo* const info) {
 	return getIpTypeFromVersion(info->version);
 }
 
@@ -20236,7 +20241,7 @@ static uint32_t getMemberValue(IpiCgMember member, uint64_t source) {
 }
 
 // Returns the value from the current node value.
-static uint32_t getValue(Cursor* cursor) {
+static uint32_t getValue(const Cursor* const cursor) {
 	uint32_t result = getMemberValue(
 		cursor->graph->info.nodes.value,
 		cursor->nodeBits);
@@ -20244,7 +20249,7 @@ static uint32_t getValue(Cursor* cursor) {
 }
 
 // Returns the cluster span index from the current node value.
-static uint32_t getSpanIndexCluster(Cursor* cursor) {
+static uint32_t getSpanIndexCluster(const Cursor* const cursor) {
 	uint32_t result = getMemberValue(
 		cursor->graph->info.nodes.spanIndex,
 		cursor->nodeBits);
@@ -20252,28 +20257,30 @@ static uint32_t getSpanIndexCluster(Cursor* cursor) {
 }
 
 // Returns the real span index from the cluster span index.
-static uint32_t getSpanIndex(Cursor* cursor, uint32_t clusterSpanIndex) {
-	return cursor->cluster.spanIndexes[clusterSpanIndex];
+static uint32_t getSpanIndex(
+	const Cursor* const cursor,
+	const uint32_t clusterSpanIndex) {
+	return cursor->cluster.ptr->spanIndexes[clusterSpanIndex];
 }
 
 // The larger of the two span limits.
-static int getMaxSpanLimitLength(Cursor* cursor) {
+static int getMaxSpanLimitLength(const Cursor* const cursor) {
 	return cursor->span.lengthLow > cursor->span.lengthHigh ?
 		cursor->span.lengthLow :
 		cursor->span.lengthHigh;
 }
 
 // The total length of the bits in the span limits.
-static int getTotalSpanLimitLength(Cursor* cursor) {
+static int getTotalSpanLimitLength(const Cursor* const cursor) {
 	return cursor->span.lengthLow + cursor->span.lengthHigh;
 }
 
-static void traceNewLine(Cursor* cursor) {
+static void traceNewLine(const Cursor* const cursor) {
 	StringBuilderAddChar(cursor->sb, '\r');
 	StringBuilderAddChar(cursor->sb, '\n');
 }
 
-static void traceLabel(Cursor* cursor, const char* label) {
+static void traceLabel(const Cursor* const cursor, const char* label) {
 	StringBuilderAddChar(cursor->sb, '\t');
 	StringBuilderAddChars(cursor->sb, label, strlen(label));
 	traceNewLine(cursor);
@@ -20281,7 +20288,10 @@ static void traceLabel(Cursor* cursor, const char* label) {
 
 #define TRACE_TRUE "true"
 #define TRACE_FALSE "false"
-static void traceBool(Cursor* cursor, const char* method, bool value) {
+static void traceBool(
+	const Cursor* const cursor,
+	const char* const method,
+	const bool value) {
 	StringBuilderAddChar(cursor->sb, '\t');
 	StringBuilderAddChars(cursor->sb, method, strlen(method));
 	StringBuilderAddChar(cursor->sb, '=');
@@ -20297,7 +20307,10 @@ static void traceBool(Cursor* cursor, const char* method, bool value) {
 	traceNewLine(cursor);
 }
 
-static void traceInt(Cursor* cursor, const char* method, int64_t value) {
+static void traceInt(
+	const Cursor* const cursor,
+	const char* const method,
+	const int64_t value) {
 	StringBuilderAddChar(cursor->sb, '\t');
 	StringBuilderAddChars(cursor->sb, method, strlen(method));
 	StringBuilderAddChar(cursor->sb, '=');
@@ -20317,7 +20330,7 @@ static void traceInt(Cursor* cursor, const char* method, int64_t value) {
 #define CLI "CLI:" // Cluster Index
 #define SI "SI:" // Span Index
 #define CI "CI:" // Cursor Index
-static void traceCompare(Cursor* cursor) {
+static void traceCompare(const Cursor* const cursor) {
 	StringBuilderAddChar(cursor->sb, '[');
 	StringBuilderAddInteger(cursor->sb, cursor->bitIndex);
 	StringBuilderAddChar(cursor->sb, ']');
@@ -20354,7 +20367,7 @@ static void traceCompare(Cursor* cursor) {
 	bytesToBinary(cursor, cursor->spanHigh, cursor->span.lengthHigh);
 	StringBuilderAddChar(cursor->sb, ' ');
 	StringBuilderAddChars(cursor->sb, CLI, sizeof(CLI) - 1);
-	StringBuilderAddInteger(cursor->sb, cursor->clusterIndex);
+	StringBuilderAddInteger(cursor->sb, cursor->cluster.index);
 	StringBuilderAddChar(cursor->sb, ' ');
 	StringBuilderAddChars(cursor->sb, SI, sizeof(SI) - 1);
 	StringBuilderAddInteger(cursor->sb, cursor->spanIndex);
@@ -20377,17 +20390,27 @@ static void traceMove(Cursor* cursor, const char* method) {
 }
 
 #define RESULT "result"
-static void traceResult(Cursor* cursor, uint32_t result) {
+#define RAWRESULT "raw result"
+#define ISGROUP "is group"
+static void traceResult(const Cursor* const cursor, const fiftyoneDegreesIpiCgResult result) {
 	traceNewLine(cursor);
 	StringBuilderAddChars(cursor->sb, RESULT, sizeof(RESULT) - 1);
 	StringBuilderAddChar(cursor->sb, '=');
-	StringBuilderAddInteger(cursor->sb, (int)result);
+	StringBuilderAddInteger(cursor->sb, (int)result.offset);
+	traceNewLine(cursor);
+	StringBuilderAddChars(cursor->sb, RAWRESULT, sizeof(RAWRESULT) - 1);
+	StringBuilderAddChar(cursor->sb, '=');
+	StringBuilderAddInteger(cursor->sb, (int)result.rawOffset);
+	traceNewLine(cursor);
+	StringBuilderAddChars(cursor->sb, ISGROUP, sizeof(ISGROUP) - 1);
+	StringBuilderAddChar(cursor->sb, '=');
+	StringBuilderAddInteger(cursor->sb, (int)result.isGroupOffset);
 	traceNewLine(cursor);
 }
 
 // The index of the profile associated with the value if this is a leaf value.
 // getIsProfileIndex must be called before getting the profile index.
-static uint32_t getProfileIndex(Cursor* cursor) {
+static uint32_t getProfileIndex(const Cursor* const cursor) {
 	uint32_t result = (uint32_t)(
 		getValue(cursor) - cursor->graph->info.nodes.collection.count);
 	return result;
@@ -20395,7 +20418,7 @@ static uint32_t getProfileIndex(Cursor* cursor) {
 
 // True if the cursor is currently positioned on a leaf and therefore profile 
 // index.
-static bool getIsProfileIndex(Cursor* cursor) {
+static bool getIsProfileIndex(const Cursor* const cursor) {
 	bool result = getValue(cursor) >=
 		cursor->graph->info.nodes.collection.count;
 	TRACE_BOOL(cursor, "getIsProfileIndex", result);
@@ -20403,14 +20426,14 @@ static bool getIsProfileIndex(Cursor* cursor) {
 }
 
 // True if the cursor value is leaf, otherwise false.
-static bool isLeaf(Cursor* cursor) {
+static bool isLeaf(const Cursor* const cursor) {
 	bool result = getIsProfileIndex(cursor);
 	TRACE_BOOL(cursor, "isLeaf", result);
 	return result;
 }
 
 // True if the cursor value has the low flag set, otherwise false.
-static bool isLowFlag(Cursor* cursor) {
+static bool isLowFlag(const Cursor* const cursor) {
 	bool result = getMemberValue(
 		cursor->graph->info.nodes.lowFlag,
 		cursor->nodeBits) != 0;
@@ -20425,7 +20448,10 @@ static void bytesReset(byte* bytes) {
 
 // If the bits of first and second that are needed to cover the bits are equal
 // returns 0, otherwise -1 or 1 depending on whether they are higher or lower.
-static int bitsCompare(byte* first, byte* second, int bits) {
+static int bitsCompare(
+	const byte* const first,
+	const byte* const second,
+	const int bits) {
 	for (int i = 0; i < bits; i++) {
 		int firstBit = GET_BIT(first, i);
 		int secondBit = GET_BIT(second, i);
@@ -20467,7 +20493,7 @@ static void setIpValue(Cursor* cursor) {
 }
 
 // True if all the bytes of the address have been consumed.
-static bool isExhausted(Cursor* cursor) {
+static bool isExhausted(const Cursor* const cursor) {
 	byte byteIndex = cursor->bitIndex / 8;
 	return byteIndex >= sizeof(cursor->ip.value);
 }
@@ -20476,42 +20502,34 @@ static bool isExhausted(Cursor* cursor) {
 // the target.
 static int setClusterComparer(
 	Cursor* cursor,
-	Item* item,
-	long curIndex,
-	Exception* exception) {
-#	ifdef _MSC_VER
-	UNREFERENCED_PARAMETER(curIndex);
-#	endif
-
-	// Copy the data to the cursor checking for an exception.
-	if (&cursor->cluster != memcpy(
-		&cursor->cluster,
-		item->data.ptr,
-		item->collection->elementSize)) {
-		EXCEPTION_SET(CORRUPT_DATA);
-		return 0;
+	Item* item) {
+	// Swap the ownership, so that Cursor now owns this item
+	{
+		const Item t = cursor->cluster.item;
+		cursor->cluster.item = *item;
+		cursor->cluster.ptr = (const Cluster*)item->data.ptr;
+		*item = t;
 	}
 
 	// If this cluster is within the require range then its the correct one
 	// to return.
-	if (cursor->index >= cursor->cluster.startIndex &&
-		cursor->index <= cursor->cluster.endIndex) {
+	if (cursor->index >= cursor->cluster.ptr->startIndex &&
+		cursor->index <= cursor->cluster.ptr->endIndex) {
 		return 0;
 	}
 
-	return cursor->cluster.startIndex - cursor->index;
+	return cursor->cluster.ptr->startIndex - cursor->index;
 }
 
 static uint32_t setClusterSearch(
-	fiftyoneDegreesCollection* collection,
-	uint32_t lowerIndex,
-	uint32_t upperIndex,
-	Cursor* cursor,
+	fiftyoneDegreesCollection* const collection,
+	const uint32_t lowerIndex,
+	const uint32_t upperIndex,
+	Cursor* const cursor,
 	fiftyoneDegreesException* exception) {
 	uint32_t upper = upperIndex,
 		lower = lowerIndex,
 		middle = 0;
-	int comparisonResult;
 	while (lower <= upper) {
 		fiftyoneDegreesCollectionItem item;
 		DataReset(&item.data);
@@ -20527,8 +20545,20 @@ static uint32_t setClusterSearch(
 
 		// Perform the binary search using the comparer provided with the item
 		// just returned.
-		comparisonResult = setClusterComparer(cursor, &item, middle, exception);
-		COLLECTION_RELEASE(collection, &item);
+        
+        // setClusterComparer does a clever hack by moving ownership of the
+        // item's memory into the cursor->cluster, and moving the ownership of
+        // a previously fetched item from cursor->cluster back to item
+        // essentially it's a swap of pointers, ownership means:
+        // who is responsible for freeing that memory, so essentially after a
+        // call to setClusterComparer the item will be owned by this code,
+        // but it will be the one retrieved on a previous iteration of the loop
+		const int comparisonResult = setClusterComparer(cursor, &item);
+        
+        // Item is now the one from previous iteration, so needs to be freed
+		if (item.collection) {
+			COLLECTION_RELEASE(collection, &item);
+		}
 		if (EXCEPTION_OKAY == false) {
 			return 0;
 		}
@@ -20559,16 +20589,16 @@ static void setCluster(Cursor* cursor) {
 
 	// If the cluster is set and already at the correct index position then
 	// don't change.
-	if (cursor->clusterSet &&
-		cursor->index >= cursor->cluster.startIndex &&
-		cursor->index <= cursor->cluster.endIndex) {
+	if (cursor->cluster.ptr &&
+		cursor->index >= cursor->cluster.ptr->startIndex &&
+		cursor->index <= cursor->cluster.ptr->endIndex) {
 		return;
 	}
 
 	// Use binary search to find the index for the cluster. The comparer
 	// records the last cluster checked the cursor will have the correct 
 	// cluster after the search operation.
-	uint32_t index = setClusterSearch(
+	const uint32_t index = setClusterSearch(
 		cursor->graph->clusters,
 		0,
 		cursor->graph->clustersCount - 1,
@@ -20577,11 +20607,11 @@ static void setCluster(Cursor* cursor) {
 
 	// Validate that the cluster set has a start index equal to or greater than
 	// the current cursor position.
-	if (cursor->index < cursor->cluster.startIndex) {
+	if (cursor->index < cursor->cluster.ptr->startIndex) {
 		EXCEPTION_SET(FIFTYONE_DEGREES_STATUS_CORRUPT_DATA);
 		return;
 	}
-	if (cursor->index > cursor->cluster.endIndex) {
+	if (cursor->index > cursor->cluster.ptr->endIndex) {
 		EXCEPTION_SET(FIFTYONE_DEGREES_STATUS_CORRUPT_DATA);
 		return;
 	}
@@ -20595,8 +20625,7 @@ static void setCluster(Cursor* cursor) {
 
 	// Next time the set method is called the check to see if the cluster needs
 	// to be modified can be applied.
-	cursor->clusterSet = true;
-	cursor->clusterIndex = index;
+	cursor->cluster.index = index;
 }
 
 // Set the span low and high limits from the offset.
@@ -20708,45 +20737,75 @@ static void setSpan(Cursor* cursor) {
 	cursor->spanIndex = spanIndex;
 }
 
-// Extract the value as a uint64_t from the bit packed record provided.
+/// Extract `bitCount` bits from `byteValue` starting at `startBit`
+/// @param byteValue raw (full) byte
+/// @param startBit first bit to extract (0 -- MSB, 7 -- LSB)
+/// @param bitCount how many (less significant) bits to extract
+/// @return extracted value
+static uint8_t extractSubValue(
+	uint8_t byteValue,
+	uint8_t startBit,
+	uint8_t bitCount) {
+	const uint8_t mask = (1 << bitCount) - 1;
+	const uint8_t rightOffset = 8 - startBit - bitCount;
+	return (byteValue >> rightOffset) & mask;
+}
+
+/// Extract the value as uint64_t from the bit packed record provided.
+/// @param source pointer to first byte
+/// @param recordSize how many total bits to extract
+/// @param bitIndex first bit to extract (0 -- MSB, 7 -- LSB) from first byte
+/// @return extracted value
 static uint64_t extractValue(
-	const byte* source,
+	const uint8_t* const source,
 	const uint16_t recordSize,
-	unsigned bitIndex) {
-	uint64_t result = 0;
-	for (unsigned i = 0, s = bitIndex; i < recordSize; i++, s++) {
-		if (GET_BIT(source, s)) {
-			result = (result << 1) | 1;
-		}
-		else {
-			result = result << 1;
-		}
+	const uint8_t bitIndex) {
+
+	uint64_t result;
+	{
+		const uint8_t bitsAvailable = 8 - bitIndex;
+		result = extractSubValue(
+			*source,
+			bitIndex,
+			(bitsAvailable < recordSize) ? bitsAvailable : recordSize);
 	}
+	int remainingBits = recordSize + bitIndex - 8;
+
+	const uint8_t *nextByte = source + 1;
+	for (; remainingBits >= 8; remainingBits -= 8, ++nextByte) {
+		result <<= 8;
+		result |= *nextByte;
+	}
+
+	if (remainingBits > 0) {
+		result <<= remainingBits;
+		result |= extractSubValue(*nextByte, 0, remainingBits);
+	}
+
 	return result;
 }
 
 // Moves the cursor to the index in the collection returning the value of the
 // record. Uses CgInfo.recordSize to convert the byte array of the record into
 // a 64 bit positive integer.
-static void cursorMove(Cursor* cursor, uint32_t index) {
-	Exception* exception = cursor->ex;
+static void cursorMove(Cursor* const cursor, const uint32_t index) {
+	Exception* const exception = cursor->ex;
 
 	// Work out the byte index for the record index and the starting bit index
 	// within that byte.
-	uint64_t startBitIndex = (
-		index *
-		cursor->graph->info.nodes.recordSize);
-	uint64_t byteIndex = startBitIndex / 8;
-	byte bitIndex = startBitIndex % 8;
+	uint64_t startBitIndex = index;
+	startBitIndex *= cursor->graph->info.nodes.recordSize;
+	const uint64_t byteIndex = startBitIndex / 8;
+	const byte bitIndex = startBitIndex % 8;
 
 	// Get a pointer to that byte from the collection.
 	Item cursorItem;
 	DataReset(&cursorItem.data);
-	byte* ptr = (byte*)cursor->graph->nodes->get(
+	const byte* const ptr = (byte*)cursor->graph->nodes->get(
 		cursor->graph->nodes,
 		(uint32_t)byteIndex,
 		&cursorItem,
-		cursor->ex);
+		exception);
 	if (EXCEPTION_FAILED) return;
 
 	// Move the bits in the bytes pointed to create the unsigned 64 bit integer
@@ -20780,7 +20839,7 @@ static void cursorMoveNext(Cursor* cursor) {
 
 // Creates a cursor ready for evaluation with the graph and IP address.
 static Cursor cursorCreate(
-	IpiCg* graph,
+	const IpiCg* const graph,
 	IpAddress ip,
 	StringBuilder* sb,
 	Exception* exception) {
@@ -20790,10 +20849,11 @@ static Cursor cursorCreate(
 	cursor.nodeBits = 0;
 	cursor.index = 0;
 	cursor.previousHighIndex = graph->info.graphIndex;
-	cursor.clusterIndex = 0;
-	cursor.cluster.startIndex = 0;
-	cursor.cluster.endIndex = 0;
-	cursor.clusterSet = false;
+	cursor.cluster.index = 0;
+	cursor.cluster.ptr = NULL;
+	DataReset(&cursor.cluster.item.data);
+	cursor.cluster.item.handle = NULL;
+	cursor.cluster.item.collection = NULL;
 	cursor.spanIndex = 0;
 	cursor.span.lengthLow = 0;
 	cursor.span.lengthHigh = 0;
@@ -20803,6 +20863,14 @@ static Cursor cursorCreate(
 	cursor.sb = sb;
 	cursor.ex = exception;
 	return cursor;
+}
+
+static void cursorReleaseData(Cursor* const cursor) {
+	if (cursor->cluster.ptr) {
+		COLLECTION_RELEASE(
+			cursor->cluster.item.collection,
+			&cursor->cluster.item);
+	}
 }
 
 // Moves the cursor for an low entry.
@@ -21013,7 +21081,8 @@ static uint32_t evaluate(Cursor* cursor) {
 // Returns the mapped profile/group offset and type flag.
 static fiftyoneDegreesIpiCgResult toResult(
 	const uint32_t profileIndex,
-	const IpiCg * const graph) {
+	const IpiCg * const graph,
+	Exception *exception) {
 	fiftyoneDegreesIpiCgResult result = {
 		profileIndex,
 		0,
@@ -21028,28 +21097,31 @@ static fiftyoneDegreesIpiCgResult toResult(
 			result.offset = groupIndex + graph->info.firstProfileGroupIndex;
 			result.isGroupOffset = true;
 		}
+		else {
+			EXCEPTION_SET(CORRUPT_DATA);
+		}
 	}
 	return result;
 }
 
 static fiftyoneDegreesIpiCgResult ipiGraphEvaluate(
-	fiftyoneDegreesIpiCgArray* graphs,
+	const fiftyoneDegreesIpiCgArray * const graphs,
 	byte componentId,
 	fiftyoneDegreesIpAddress address,
 	StringBuilder* sb,
 	fiftyoneDegreesException* exception) {
-	uint32_t profileIndex = 0;
 	fiftyoneDegreesIpiCgResult result = FIFTYONE_DEGREES_IPI_CG_RESULT_DEFAULT;
-	IpiCg* graph;
 	for (uint32_t i = 0; i < graphs->count; i++) {
-		graph = &graphs->items[i];
+		const IpiCg* const graph = &graphs->items[i];
 		if (address.type == graph->info.version &&
 			componentId == graph->info.componentId) {
 			Cursor cursor = cursorCreate(graph, address, sb, exception);
-			profileIndex = evaluate(&cursor);
-			if (EXCEPTION_FAILED) return result;
-			TRACE_RESULT(&cursor, profileIndex);
-			result = toResult(profileIndex, graph);
+			const uint32_t profileIndex = evaluate(&cursor);
+			if (EXCEPTION_OKAY) {
+				result = toResult(profileIndex, graph, exception);
+				TRACE_RESULT(&cursor, result);
+			}
+			cursorReleaseData(&cursor);
 			break;
 		}
 	}
@@ -21244,10 +21316,10 @@ fiftyoneDegreesIpiCgArray* fiftyoneDegreesIpiGraphCreateFromFile(
 }
 
 fiftyoneDegreesIpiCgResult fiftyoneDegreesIpiGraphEvaluate(
-	fiftyoneDegreesIpiCgArray* graphs,
-	byte componentId,
-	fiftyoneDegreesIpAddress address,
-	fiftyoneDegreesException* exception) {
+    const fiftyoneDegreesIpiCgArray*  const graphs,
+	const byte componentId,
+	const fiftyoneDegreesIpAddress address,
+	fiftyoneDegreesException* const exception) {
 
 	// String builder is not needed for normal usage without tracing.
 	StringBuilder sb = { NULL, 0 };
@@ -22418,10 +22490,18 @@ if (dataSet->t == NULL) { \
 	return INVALID_COLLECTION_CONFIG; \
 }
 
+/** 
+ * Get min/max values with header guards to prevent redefinition warnings
+ * when amalgamated with system headers (e.g., macOS sys/param.h)
+ */
 /** Get min value */
+#ifndef MIN
 #define MIN(a,b) a < b ? a : b
+#endif /* MIN */
 /** Get max value */
+#ifndef MAX
 #define MAX(a,b) a > b ? a : b
+#endif /* MAX */
 
 /**
  * PRIVATE DATA STRUCTURES
@@ -22613,7 +22693,7 @@ static int compareToIpv4Range(
 		if ((uint32_t)curIndex + 1 < item->collection->count &&
 			item->collection->get(
 				item->collection,
-				++curIndex,
+				(uint32_t)++curIndex,
 				&nextItem,
 				exception) != NULL && EXCEPTION_OKAY) {
 			if (compareIpAddresses(((Ipv4Range*)nextItem.data.ptr)->start, target.value, FIFTYONE_DEGREES_IPV4_LENGTH) <= 0) {
@@ -22646,7 +22726,7 @@ static int compareToIpv6Range(
 		if ((uint32_t)curIndex + 1 < item->collection->count &&
 			item->collection->get(
 				item->collection,
-				++curIndex,
+				(uint32_t)++curIndex,
 				&nextItem,
 				exception) != NULL && EXCEPTION_OKAY) {
 			if (compareIpAddresses(((Ipv6Range*)nextItem.data.ptr)->start, target.value, FIFTYONE_DEGREES_IPV6_LENGTH) <= 0) {
