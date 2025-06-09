@@ -19,38 +19,36 @@
  * in the end user terms of the application under an appropriate heading,
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
-
 package ipi_interop
 
-//#include <string.h>
-//#include "ip-intelligence-cxx.h"
-import "C"
-
-const StatusNotSet = C.FIFTYONE_DEGREES_STATUS_NOT_SET
-
-// Exception wraps around a pointer to a value of C Exception structure
-type Exception struct {
-	CPtr *C.Exception
-}
-
-// NewException creates a new Exception object
-func NewException() *Exception {
-	ce := new(C.Exception)
-	e := &Exception{ce}
-	e.Clear()
-	return e
-}
-
-// Clear resets the Exception object
-func (e *Exception) Clear() {
-	e.CPtr.file = nil
-	e.CPtr._func = nil
-	e.CPtr.line = C.int(-1)
-	e.CPtr.status = C.FIFTYONE_DEGREES_STATUS_NOT_SET
-}
-
-// IsOkay check if an exception has been thrown.
-func (e *Exception) IsOkay() bool {
-	return (e.CPtr == nil ||
-		e.CPtr.status == C.FIFTYONE_DEGREES_STATUS_NOT_SET)
-}
+// TODO: uncomment after the file 51Degrees-LiteIpiV41.ipi will be added to the repository
+// Replace
+//func TestInitManagerFromFile(t *testing.T) {
+//	tests := []struct {
+//		name       string
+//		filePath   string
+//		properties string
+//		config     *ConfigIpi
+//		wantErr    bool
+//	}{
+//		{
+//			name:       "empty file path",
+//			filePath:   "/Users/marinalee/Documents/WORK/Postindustria/51Degrees/ip-intelligence-cxx/ip-intelligence-data/51Degrees-LiteIpiV41.ipi",
+//			properties: "property1,property2",
+//			config:     NewConfigIpi(InMemory),
+//			wantErr:    true,
+//		},
+//	}
+//
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			manager := NewResourceManager()
+//			defer manager.Free()
+//
+//			err := InitManagerFromFile(manager, *tt.config, tt.properties, tt.filePath)
+//			if (err != nil) != tt.wantErr {
+//				t.Errorf("InitManagerFromFile() error = %v, wantErr %v", err, tt.wantErr)
+//			}
+//		})
+//	}
+//}

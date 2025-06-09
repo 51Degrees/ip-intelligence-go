@@ -25,6 +25,7 @@ package ipi_interop
 //#include <string.h>
 //#include "ip-intelligence-cxx.h"
 import "C"
+import "unsafe"
 
 type EvidencePrefix C.fiftyoneDegreesEvidencePrefix
 
@@ -44,4 +45,55 @@ type CEvidence struct {
 type Evidence struct {
 	cEvidence []CEvidence
 	CPtr      *C.EvidenceKeyValuePairArray
+}
+
+func NewEvidence() *Evidence {
+	return &Evidence{
+		cEvidence: make([]CEvidence, 0, 0),
+	}
+}
+
+// Free frees the evidence resources allocated in the C layer. This matches the
+// C API fiftyoneDegreesEvidenceFree
+func (evidence *Evidence) Free() {
+	// Free the tracked C evidence strings
+	if evidence.cEvidence != nil {
+		// Free each cstring in the evidence
+		for _, e := range evidence.cEvidence {
+			C.free(unsafe.Pointer(e.key))
+			C.free(unsafe.Pointer(e.value))
+		}
+		evidence.cEvidence = nil
+	}
+
+	// Free the C resources
+	if evidence.CPtr != nil {
+		C.EvidenceFree(evidence.CPtr)
+		evidence.CPtr = nil
+	}
+}
+
+// Count return number of evidence in Evidence object
+func (evidence *Evidence) Count() int {
+	return int(evidence.CPtr.count)
+}
+
+// Add adds a new evidence to the object. This matches the C API
+// fiftyoneDegreesEvidenceAddString
+func (evidence *Evidence) Add(
+	prefix EvidencePrefix,
+	key string,
+	value string) error {
+	cKey := C.CString(key)
+	cValue := C.CString(value)
+	// Add it to the tracked map
+	evidence.cEvidence = append(evidence.cEvidence, CEvidence{cKey, cValue})
+	C.EvidenceAddString(
+		evidence.CPtr,
+		C.fiftyoneDegreesEvidencePrefix(prefix),
+		cKey,
+		cValue,
+	)
+
+	return nil
 }

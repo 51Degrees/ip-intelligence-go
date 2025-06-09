@@ -19,38 +19,4 @@
  * in the end user terms of the application under an appropriate heading,
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
-
 package ipi_interop
-
-//#include <string.h>
-//#include "ip-intelligence-cxx.h"
-import "C"
-
-const StatusNotSet = C.FIFTYONE_DEGREES_STATUS_NOT_SET
-
-// Exception wraps around a pointer to a value of C Exception structure
-type Exception struct {
-	CPtr *C.Exception
-}
-
-// NewException creates a new Exception object
-func NewException() *Exception {
-	ce := new(C.Exception)
-	e := &Exception{ce}
-	e.Clear()
-	return e
-}
-
-// Clear resets the Exception object
-func (e *Exception) Clear() {
-	e.CPtr.file = nil
-	e.CPtr._func = nil
-	e.CPtr.line = C.int(-1)
-	e.CPtr.status = C.FIFTYONE_DEGREES_STATUS_NOT_SET
-}
-
-// IsOkay check if an exception has been thrown.
-func (e *Exception) IsOkay() bool {
-	return (e.CPtr == nil ||
-		e.CPtr.status == C.FIFTYONE_DEGREES_STATUS_NOT_SET)
-}
