@@ -7043,6 +7043,10 @@ typedef enum e_fiftyone_degrees_results_no_value_reason {
 														   contain a null
 														   profile for the
 														   required component */
+	FIFTYONE_DEGREES_RESULTS_NO_VALUE_REASON_HIGH_RISK, /**< The match is
+	                                                    deemed high risk of
+														containing incorrect or
+														misleading results. */
 	FIFTYONE_DEGREES_RESULTS_NO_VALUE_REASON_UNKNOWN /**< None of the above */
 } fiftyoneDegreesResultsNoValueReason;
 
@@ -7147,6 +7151,7 @@ typedef union fiftyone_degrees_stored_binary_value_t {
  fiftyoneDegreesFloat floatValue; /**< single precision floating point value */
  int32_t intValue; /**< Integer value */
  int16_t shortValue; /**< Short value. Potentially half(-precision float). */
+ byte byteValue; /**< Single byte value. */
 } fiftyoneDegreesStoredBinaryValue;
 #pragma pack(pop)
 
@@ -17139,7 +17144,12 @@ static uint32_t getFinalShortSize(void *initial) {
 #	endif
     return sizeof(int16_t);
 }
-
+static uint32_t getFinalByteSize(void* initial) {
+#	ifdef _MSC_VER
+    UNREFERENCED_PARAMETER(initial);
+#	endif
+    return sizeof(byte);
+}
 #ifndef FIFTYONE_DEGREES_MEMORY_ONLY
 
 /**
@@ -17216,6 +17226,16 @@ void* fiftyoneDegreesStoredBinaryValueRead(
                 &length,
                 sizeof(length),
                 getFinalByteArraySize,
+                exception);
+        }
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_BYTE: {
+            return CollectionReadFileVariable(
+                file,
+                data,
+                offset,
+                &length,
+                0,
+                getFinalByteSize,
                 exception);
         }
         default: {
@@ -17360,6 +17380,9 @@ int fiftyoneDegreesStoredBinaryValueToIntOrDefault(
         case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_DECLINATION: {
             return (int)toDeclination(value);
         }
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_BYTE: {
+            return value->byteValue;
+        }
         default: {
             return defaultValue;
         }
@@ -17386,6 +17409,9 @@ double fiftyoneDegreesStoredBinaryValueToDoubleOrDefault(
         }
         case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_DECLINATION: {
             return toDeclination(value);
+        }
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_BYTE: {
+            return value->byteValue;
         }
         default: {
             return defaultValue;
@@ -17416,6 +17442,9 @@ bool fiftyoneDegreesStoredBinaryValueToBoolOrDefault(
         }
         case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_DECLINATION: {
             return toDeclination(value) ? true : false;
+        }
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_BYTE: {
+            return value->byteValue;
         }
         default: {
             return defaultValue;
@@ -17842,6 +17871,10 @@ StringBuilder* fiftyoneDegreesStringBuilderAddStringValue(
 		}
 		case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_INTEGER: {
 			StringBuilderAddInteger(builder, value->intValue);
+			break;
+		}
+		case FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_BYTE: {
+			StringBuilderAddInteger(builder, value->byteValue);
 			break;
 		}
 		default: {
