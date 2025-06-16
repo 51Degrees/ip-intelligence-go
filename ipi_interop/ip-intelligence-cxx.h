@@ -6034,6 +6034,7 @@ typedef union fiftyone_degrees_stored_binary_value_t {
  fiftyoneDegreesFloat floatValue; /**< single precision floating point value */
  int32_t intValue; /**< Integer value */
  int16_t shortValue; /**< Short value. Potentially half(-precision float). */
+ byte byteValue; /**< Single byte value. */
 } fiftyoneDegreesStoredBinaryValue;
 #pragma pack(pop)
 
@@ -7795,6 +7796,10 @@ typedef enum e_fiftyone_degrees_results_no_value_reason {
 														   contain a null
 														   profile for the
 														   required component */
+	FIFTYONE_DEGREES_RESULTS_NO_VALUE_REASON_HIGH_RISK, /**< The match is
+	                                                    deemed high risk of
+														containing incorrect or
+														misleading results. */
 	FIFTYONE_DEGREES_RESULTS_NO_VALUE_REASON_UNKNOWN /**< None of the above */
 } fiftyoneDegreesResultsNoValueReason;
 
