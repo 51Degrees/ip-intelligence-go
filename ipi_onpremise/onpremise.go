@@ -62,7 +62,9 @@ const (
 )
 
 var (
-	defaultProperties = []string{"IpRangeStart", "IpRangeEnd", "AccuracyRadius", "RegisteredCountry", "RegisteredName", "Longitude", "Latitude", "Areas"}
+	defaultProperties = []string{
+		"IpRangeStart", "IpRangeEnd", "AccuracyRadius", "RegisteredCountry", "RegisteredName", "Longitude", "Latitude", "Areas", "MCC",
+	}
 )
 
 // New creates an instance of the on-premise device detection engine.  WithDataFile must be provided
@@ -308,7 +310,7 @@ func (e *Engine) reloadManager(filePath string) error {
 		}
 
 		if err := ipi_interop.InitManagerFromFile(e.manager, *e.config, e.managerProperties, filePath); err != nil {
-			return fmt.Errorf("failed to init manager from file: %w", err)
+			return fmt.Errorf("failed to init manager from file: %+v", err)
 		}
 		e.dataFileLastUsedByManager = filePath
 		// return nil is created for the first time
@@ -336,19 +338,31 @@ func (e *Engine) reloadManager(filePath string) error {
 	return nil
 }
 
-// Process detects the device from the provided evidence list
-// returns the dd.ResultsIpi object from which various device properties
-// are retrieved
-func (e *Engine) Process(ipAddress string) (*ipi_interop.ResultsIpi, error) {
+// Process processes the given IP address and retrieves associated values using the default properties.
+func (e *Engine) Process(ipAddress string) (ipi_interop.Values, error) {
 	results := ipi_interop.NewResultsIpi(e.manager)
-
 	if err := results.ResultsIpiFromIpAddress(ipAddress); err != nil {
 		return nil, err
 	}
 
-	return results, nil
+	defer results.Free()
+
+	wv := make(ipi_interop.Values, 0)
+
+	if results.HasValues() {
+		for _, property := range defaultProperties {
+			res, err := results.GetValuesByProperty(property)
+			if err != nil {
+				return nil, err
+			}
+			wv[property] = res
+		}
+	}
+
+	return wv, nil
 }
 
+// appendLicenceKey appends the license key as a query parameter to the data file URL in the Engine instance.
 func (e *Engine) appendLicenceKey() error {
 	urlParsed, err := url.Parse(e.dataFileUrl)
 	if err != nil {
@@ -363,6 +377,7 @@ func (e *Engine) appendLicenceKey() error {
 	return nil
 }
 
+// getFilePath returns the file path of the data file or its temporary copy depending on configuration settings.
 func (e *Engine) getFilePath() string {
 	if e.isCreateTempDataCopyEnabled {
 		return filepath.Join(e.tempDataDir, e.tempDataFile)
@@ -371,6 +386,7 @@ func (e *Engine) getFilePath() string {
 	return e.dataFile
 }
 
+// getPublishedDate retrieves the published date of the data file being used by the engine.
 func (e *Engine) getPublishedDate() time.Time {
 	return ipi_interop.GetPublishedDate(e.manager)
 }

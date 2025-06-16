@@ -25,13 +25,10 @@ package ipi_interop
 //#include "ip-intelligence-cxx.h"
 import "C"
 import (
-	"errors"
 	"fmt"
 	"math"
-	"regexp"
 	"runtime"
-	"strconv"
-	"strings"
+	"sort"
 	"unsafe"
 )
 
@@ -41,8 +38,6 @@ type ResultsIpi struct {
 }
 
 const defaultSize = 4096
-const separator = "|"
-const regexPatter = "^\"([^\"]+)\":(([0-9]*[.])?[0-9]+)$"
 
 func NewResultsIpi(manager *ResourceManager) *ResultsIpi {
 	r := C.ResultsIpiCreate(manager.CPtr)
@@ -95,80 +90,102 @@ func resultsFinalizer(res *ResultsIpi) {
 	}
 }
 
-func GetPropertyValueAsRaw(result *C.ResultsIpi, property string) (string, error) {
-	var buffer []C.char
+// getPropertyIndexByName retrieves the index of a property by its name from the dataset associated with the ResultsIpi instance.
+func (r *ResultsIpi) getPropertyIndexByName(propertyName string) int {
+	dataSet := (*C.DataSetIpi)(r.CPtr.b.dataSet)
 
-	buffer = make([]C.char, defaultSize)
+	cName := C.CString(propertyName)
+	defer C.free(unsafe.Pointer(cName))
 
-	propertyName := C.CString(property)
-	defer C.free(unsafe.Pointer(propertyName))
+	i := C.PropertiesGetRequiredPropertyIndexFromName(dataSet.b.b.available, cName)
 
-	cSeparator := C.CString(separator)
-	defer C.free(unsafe.Pointer(cSeparator))
-
-	exception := NewException()
-
-	actualSize := uint64(C.ResultsIpiGetValuesString(result, propertyName, &buffer[0], C.size_t(defaultSize), cSeparator, exception.CPtr))
-	if !exception.IsOkay() {
-		return "", fmt.Errorf(C.GoString(C.ExceptionGetMessage(exception.CPtr)))
-	}
-
-	var ds uint64 = defaultSize
-
-	if actualSize > ds {
-		// Add 1 for the null terminator
-		ds = actualSize + 1
-	}
-
-	return C.GoString(&buffer[0]), nil
+	return int(i)
 }
 
-func GetPropertyValueAsStringWeightValue(result *C.ResultsIpi, property string) (string, float64, error) {
-	var buffer []C.char
+// RequiredPropertyIndexFromName retrieves the index of a required property by its name from the associated dataset.
+func (r *ResultsIpi) RequiredPropertyIndexFromName(propertyName string) int {
+	dataSet := (*C.DataSetIpi)(r.CPtr.b.dataSet)
 
-	buffer = make([]C.char, defaultSize)
+	cName := C.CString(propertyName)
+	defer C.free(unsafe.Pointer(cName))
 
-	propertyName := C.CString(property)
-	defer C.free(unsafe.Pointer(propertyName))
+	i := C.PropertiesGetRequiredPropertyIndexFromName(dataSet.b.b.available, cName)
 
-	cSeparator := C.CString(separator)
-	defer C.free(unsafe.Pointer(cSeparator))
+	return int(i)
+}
 
-	exception := NewException()
+// GetValuesByProperty retrieves a sorted list of WeightedValue by a specified property name from the ResultsIpi instance.
+func (r *ResultsIpi) GetValuesByProperty(requiredProperty string) ([]*WeightedValue, error) {
+	vv := make([]*WeightedValue, 0, 0)
 
-	actualSize := uint64(C.ResultsIpiGetValuesString(result, propertyName, &buffer[0], C.size_t(defaultSize), cSeparator, exception.CPtr))
-	if !exception.IsOkay() {
-		return "", 0, fmt.Errorf(C.GoString(C.ExceptionGetMessage(exception.CPtr)))
+	dataSet := (*C.DataSetIpi)(r.CPtr.b.dataSet)
+
+	requiredPropertyIndex := r.getPropertyIndexByName(requiredProperty)
+
+	propertyIndex := C.PropertiesGetPropertyIndexFromRequiredIndex(dataSet.b.b.available, C.int(requiredPropertyIndex))
+
+	if propertyIndex >= 0 {
+		exception := NewException()
+
+		storedValueType := C.PropertyGetStoredTypeByIndex(dataSet.propertyTypes, C.uint(propertyIndex), exception.CPtr)
+		if !exception.IsOkay() {
+			return vv, fmt.Errorf(C.GoString(C.ExceptionGetMessage(exception.CPtr)))
+		}
+
+		exception.Clear()
+
+		exposedValueType := C.PropertyGetValueType(dataSet.properties, C.uint(propertyIndex), exception.CPtr)
+		if !exception.IsOkay() {
+			return vv, fmt.Errorf(C.GoString(C.ExceptionGetMessage(exception.CPtr)))
+		}
+
+		exception.Clear()
+
+		valuesItems := C.ResultsIpiGetValues(r.CPtr, C.int(requiredPropertyIndex), exception.CPtr)
+
+		if valuesItems == nil {
+			return vv, nil
+		}
+
+		if !exception.IsOkay() {
+			return vv, fmt.Errorf(C.GoString(C.ExceptionGetMessage(exception.CPtr)))
+		}
+
+		goSlice := unsafe.Slice(valuesItems, r.CPtr.values.count)
+		for _, v := range goSlice {
+			var err error
+			var val interface{}
+
+			storedBinaryValue := (*C.StoredBinaryValue)(unsafe.Pointer(v.item.data.ptr))
+
+			valueType := PropertyValueType(exposedValueType)
+
+			switch valueType {
+			case IntegerValueType: // int
+				val = valueType.GetIntegerValue(storedBinaryValue, storedValueType)
+			case DoubleValueType: // float
+			case FloatValueType:
+				val = valueType.GetFloatValue(storedBinaryValue, storedValueType)
+			case BooleanValueType: // bool
+				val = valueType.GetBooleanValue(storedBinaryValue, storedValueType)
+			case StringValueType: // string
+				val = valueType.GetStringValue(storedBinaryValue)
+			default:
+				if val, err = valueType.GetIpAddressValue(storedBinaryValue, storedValueType); err != nil {
+					return vv, err
+				}
+			}
+
+			vv = append(vv, &WeightedValue{
+				Value:  val,
+				Weight: float64(v.rawWeighting) / 65535.0,
+			})
+		}
 	}
 
-	var ds uint64 = defaultSize
+	sort.Slice(vv, func(i, j int) bool {
+		return vv[i].Weight > vv[j].Weight
+	})
 
-	if actualSize > ds {
-		// Add 1 for the null terminator
-		ds = actualSize + 1
-	}
-
-	r, err := regexp.Compile(regexPatter)
-	if err != nil {
-		return "", 0, err
-	}
-
-	str := C.GoString(&buffer[0])
-
-	if len(str) == 0 {
-		return "", 0, errors.New("Ipi returned empty value")
-	}
-
-	match := r.FindStringSubmatch(str)
-
-	if len(match) < 3 {
-		return "", 0, errors.New("Invalid regex pattern")
-	}
-
-	weight, err := strconv.ParseFloat(strings.TrimSpace(match[2]), 64)
-	if err != nil {
-		return "", 0, err
-	}
-
-	return match[1], weight, nil
+	return vv, nil
 }

@@ -33,7 +33,7 @@ package ipi_interop
 //	}{
 //		{
 //			name:       "empty file path",
-//			filePath:   "/Users/marinalee/Documents/WORK/Postindustria/51Degrees/ip-intelligence-cxx/ip-intelligence-data/51Degrees-LiteIpiV41.ipi",
+//			filePath:   "/path/to/51Degrees-LiteIpiV41.ipi",
 //			properties: "property1,property2",
 //			config:     NewConfigIpi(InMemory),
 //			wantErr:    true,
