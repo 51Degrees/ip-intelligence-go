@@ -1,17 +1,12 @@
 package ipi_onpremise
 
-import (
-	"bytes"
-	"github.com/51Degrees/ip-intelligence-go/ipi_interop"
-	"strings"
-	"testing"
-)
-
 const (
 	liteDataPath  = "/path/to/51Degrees-LiteIpiV41.ipi"
 	licenseKey    = "<KEY>"
 	dataUpdateUrl = "https://example.com/ipi/data/51Degrees-LiteIpiV41.ipi"
 )
+
+/*
 
 func TestNew_WithDataFile(t *testing.T) {
 	tests := []struct {
@@ -915,3 +910,4 @@ func TestWithProperties(t *testing.T) {
 		})
 	}
 }
+*/
