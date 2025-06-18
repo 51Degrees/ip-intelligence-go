@@ -4,7 +4,7 @@
     "Image": "ubuntu-latest",
     "Language": "go",
     "LanguageVersion": "1.23",
-    "PackageRequirement": true,
+    "PackageRequirement": true
   },
   {
     "Name": "ubuntu-latest-go-1.24",
@@ -12,6 +12,7 @@
     "Language": "go",
     "LanguageVersion": "1.24",
     "PackageRequirement": true,
+    "RunPerformance": true
   },
   {
     "Name": "windows-go-1.24",
