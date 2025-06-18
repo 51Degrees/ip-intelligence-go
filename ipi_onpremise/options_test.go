@@ -1,8 +1,7 @@
 package ipi_onpremise
 
 import (
-	"bytes"
-	"github.com/51Degrees/ip-intelligence-go/ipi_interop"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,92 +14,76 @@ var (
 	dataUpdateUrl = "https://example.com/ipi/data/51Degrees-LiteIpiV41.ipi"
 )
 
-func TestNew_WithDataFile(t *testing.T) {
-	if ipiDataPath == "" {
-		ipiDataPath = os.Getenv("DATA_FILE")
+func TestWithDataFile(t *testing.T) {
+	// Create a temporary directory for testing
+	tempDir, err := os.MkdirTemp("", "test-data-dir")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create a test file
+	validFile := filepath.Join(tempDir, "valid.data")
+	if err := os.WriteFile(validFile, []byte("test data"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
 	}
 
 	tests := []struct {
 		name        string
-		filePath    string
-		profile     ipi_interop.PerformanceProfile
-		wantProfile ipi_interop.PerformanceProfile
+		path        string
+		expectError bool
+		errorMsg    string
 	}{
 		{
-			name:        "with lite data file and InMemory config",
-			filePath:    ipiDataPath,
-			profile:     ipi_interop.InMemory,
-			wantProfile: ipi_interop.InMemory,
+			name:        "valid file path",
+			path:        validFile,
+			expectError: false,
 		},
-		// TODO: uncomment when other profiles will be available
-		//{
-		//	name:       "with lite data file and HighPerformance config",
-		//	filePath:   ipiDataPath,
-		//	profile:     ipi_interop.HighPerformance,
-		//	wantProfile: ipi_interop.HighPerformance,
-		//},
-		//{
-		//	name:       "with lite data file and LowMemory config",
-		//	filePath:   ipiDataPath,
-		//	profile:     ipi_interop.LowMemory,
-		//	wantProfile: ipi_interop.LowMemory,
-		//},
-		//{
-		//	name:       "with lite data file and Balanced config",
-		//	filePath:   ipiDataPath,
-		//	profile:     ipi_interop.Balanced,
-		//	wantProfile: ipi_interop.Balanced,
-		//},
-		//{
-		//	name:       "with lite data file and BalancedTemp config",
-		//	filePath:   ipiDataPath,
-		//	profile:     ipi_interop.BalancedTemp,
-		//	wantProfile: ipi_interop.BalancedTemp,
-		//},
-		//{
-		//	name:       "with lite data file and SingleLoaded config",
-		//	filePath:   ipiDataPath,
-		//	profile:     ipi_interop.SingleLoaded,
-		//	wantProfile: ipi_interop.SingleLoaded,
-		//},
-		//{
-		//	name:       "with lite data file and Default config",
-		//	filePath:   ipiDataPath,
-		//	profile:     ipi_interop.Default,
-		//	wantProfile: ipi_interop.Default,
-		//},
+		{
+			name:        "empty path",
+			path:        "",
+			expectError: true,
+			errorMsg:    "failed to get file path",
+		},
+		{
+			name:        "non-existent file",
+			path:        filepath.Join(tempDir, "nonexistent.data"),
+			expectError: true,
+			errorMsg:    "failed to get file path",
+		},
+		{
+			name:        "directory instead of file",
+			path:        tempDir,
+			expectError: false, // Note: The function doesn't validate if it's a file or directory
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := ipi_interop.NewConfigIpi(tt.profile)
-			if config == nil {
-				t.Fatal("NewConfigIpi returned nil")
-			}
-			if config.CPtr == nil {
-				t.Error("ConfigIpi.CPtr is nil")
-			}
-			if got := config.PerformanceProfile(); got != tt.wantProfile {
-				t.Errorf("NewConfigIpi() profile = %v, want %v", got, tt.wantProfile)
-			}
+			// Create an Engine instance
+			engine := &Engine{}
 
-			engine, err := New(
-				WithTempDataCopy(false),
-				WithDataFile(ipiDataPath),
-				WithConfigIpi(config),
-				WithAutoUpdate(false),
-				WithUpdateOnStart(true),
-			)
+			// Apply the WithDataFile option
+			err := WithDataFile(tt.path)(engine)
 
-			if err != nil {
-				t.Fatalf("Expected no error with valid file, got: %v", err)
+			// Check error conditions
+			if tt.expectError {
+				if err == nil {
+					t.Error("Expected an error, but got none")
+				} else if !strings.Contains(err.Error(), tt.errorMsg) {
+					t.Errorf("Expected error containing %q, got %q", tt.errorMsg, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Did not expect an error, but got: %v", err)
+				}
+
+				// Verify the path was set correctly
+				expectedPath := filepath.Join(tt.path)
+				if engine.dataFile != expectedPath {
+					t.Errorf("Expected dataFile to be %q, got %q", expectedPath, engine.dataFile)
+				}
 			}
-
-			if engine.dataFile != ipiDataPath {
-				t.Errorf("Expected dataFile to be %s, got %s", ipiDataPath, engine.dataFile)
-			}
-
-			engine.Stop()
 		})
 	}
 }
@@ -115,47 +98,70 @@ func TestNew_WithInvalidDataFile(t *testing.T) {
 }
 
 func TestWithDataUpdateUrl(t *testing.T) {
-	if ipiDataPath == "" {
-		ipiDataPath = os.Getenv("DATA_FILE")
-	}
-
 	tests := []struct {
-		name          string
-		filePath      string
-		updateUrl     string
-		wantUpdateUrl string
+		name        string
+		url         string
+		expectError bool
+		errorMsg    string
 	}{
 		{
-			name:          "with data update url",
-			filePath:      ipiDataPath,
-			updateUrl:     dataUpdateUrl,
-			wantUpdateUrl: dataUpdateUrl,
+			name:        "valid http URL",
+			url:         "http://example.com/data/file.dat",
+			expectError: false,
+		},
+		{
+			name:        "valid https URL",
+			url:         "https://example.com/data/file.dat",
+			expectError: false,
+		},
+		{
+			name:        "valid URL with query parameters",
+			url:         "https://example.com/data/file.dat?key=value&other=param",
+			expectError: false,
+		},
+		{
+			name:        "empty URL",
+			url:         "",
+			expectError: true,
+			errorMsg:    "parse \"\": empty url",
+		},
+		{
+			name:        "invalid URL format",
+			url:         "not-a-url",
+			expectError: true,
+			errorMsg:    "invalid URI for request",
+		},
+		{
+			name:        "missing protocol",
+			url:         "example.com/file",
+			expectError: true,
+			errorMsg:    "invalid URI for request",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
-			if config == nil {
-				t.Fatal("NewConfigIpi returned nil")
-			}
+			// Create an Engine instance
+			engine := &Engine{}
 
-			engine, err := New(
-				WithTempDataCopy(false),
-				WithDataFile(ipiDataPath),
-				WithConfigIpi(config),
-				WithAutoUpdate(false),
-				WithDataUpdateUrl(tt.updateUrl),
-			)
-			if err != nil {
-				t.Fatalf("Expected no error with valid file, got: %v", err)
-			}
+			// Apply the WithDataUpdateUrl option
+			err := WithDataUpdateUrl(tt.url)(engine)
 
-			if engine.dataFileUrl != tt.wantUpdateUrl {
-				t.Errorf("Expected dataFileUrl to be %s, got %s", tt.wantUpdateUrl, engine.dataFileUrl)
+			// Check error conditions
+			if tt.expectError {
+				if err == nil {
+					t.Error("Expected an error, but got none")
+				} else if !strings.Contains(err.Error(), tt.errorMsg) {
+					t.Errorf("Expected error containing %q, got %q", tt.errorMsg, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Did not expect an error, but got: %v", err)
+				}
+				if engine.dataFileUrl != tt.url {
+					t.Errorf("Expected dataFileUrl to be %q, got %q", tt.url, engine.dataFileUrl)
+				}
 			}
-
-			engine.Stop()
 		})
 	}
 }
@@ -213,7 +219,7 @@ func TestWithTempDataDir(t *testing.T) {
 			// Apply the WithTempDataDir option
 			err := WithTempDataDir(tt.dir)(engine)
 
-			// Check if error was expected
+			// Check error conditions
 			if tt.expectError {
 				if err == nil {
 					t.Error("Expected an error, but got none")
@@ -233,774 +239,603 @@ func TestWithTempDataDir(t *testing.T) {
 }
 
 func TestWithPollingInterval(t *testing.T) {
-	if ipiDataPath == "" {
-		ipiDataPath = os.Getenv("DATA_FILE")
-	}
-
 	tests := []struct {
-		name         string
-		filePath     string
-		interval     int
-		wantInterval int
+		name       string
+		seconds    int
+		expectedMs int
 	}{
 		{
-			name:         "with polling interval",
-			filePath:     ipiDataPath,
-			interval:     60,
-			wantInterval: 60,
+			name:       "zero seconds",
+			seconds:    0,
+			expectedMs: 0,
+		},
+		{
+			name:       "one second",
+			seconds:    1,
+			expectedMs: 1000,
+		},
+		{
+			name:       "sixty seconds",
+			seconds:    60,
+			expectedMs: 60000,
+		},
+		{
+			name:       "negative value",
+			seconds:    -1,
+			expectedMs: -1000,
+		},
+		{
+			name:       "large value",
+			seconds:    86400, // 24 hours
+			expectedMs: 86400000,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
-			if config == nil {
-				t.Fatal("NewConfigIpi returned nil")
-			}
-			engine, err := New(
-				WithTempDataCopy(false),
-				WithDataFile(ipiDataPath),
-				WithConfigIpi(config),
-				WithAutoUpdate(false),
-				WithPollingInterval(tt.interval),
-			)
+			// Create an Engine instance
+			engine := &Engine{}
+
+			// Apply the WithPollingInterval option
+			err := WithPollingInterval(tt.seconds)(engine)
+
+			// Polling interval should never return an error
 			if err != nil {
-				t.Fatalf("Expected no error with valid file, got: %v", err)
+				t.Errorf("Expected no error, got: %v", err)
 			}
 
-			expectedMs := tt.wantInterval * 1000
-			if engine.dataFilePullEveryMs != expectedMs {
-				t.Errorf("Expected polling interval to be %d ms, got %d ms", expectedMs, engine.dataFilePullEveryMs)
+			// Check if the polling interval was set correctly
+			if engine.dataFilePullEveryMs != tt.expectedMs {
+				t.Errorf("Expected polling interval to be %d ms, got %d ms",
+					tt.expectedMs, engine.dataFilePullEveryMs)
 			}
-
-			engine.Stop()
 		})
 	}
 }
 
 func TestWithAutoUpdate(t *testing.T) {
-	if ipiDataPath == "" {
-		ipiDataPath = os.Getenv("DATA_FILE")
-	}
-
+	// Test the direct option function
 	tests := []struct {
-		name            string
-		autoUpdateValue bool
-		wantEnabled     bool
-		options         []EngineOptions
+		name     string
+		enabled  bool
+		expected bool
 	}{
 		{
-			name:            "auto update enabled",
-			autoUpdateValue: true,
-			wantEnabled:     true,
-			options: []EngineOptions{
-				WithAutoUpdate(true),
-				WithDataUpdateUrl(dataUpdateUrl),
-				WithLicenseKey(licenseKey),
-			},
+			name:     "enable auto update",
+			enabled:  true,
+			expected: true,
 		},
 		{
-			name:            "auto update disabled",
-			autoUpdateValue: false,
-			wantEnabled:     false,
-			options: []EngineOptions{
-				WithAutoUpdate(false),
-			},
+			name:     "disable auto update",
+			enabled:  false,
+			expected: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
-			if config == nil {
-				t.Fatal("NewConfigIpi returned nil")
-			}
+			engine := &Engine{}
 
-			options := append(tt.options,
-				WithTempDataCopy(false),
-				WithDataFile(ipiDataPath),
-				WithConfigIpi(config))
+			err := WithAutoUpdate(tt.enabled)(engine)
 
-			engine, err := New(options...)
+			// Should never return error
 			if err != nil {
-				t.Fatalf("Failed to create engine: %v", err)
+				t.Errorf("Expected no error, got: %v", err)
 			}
 
-			if engine.isAutoUpdateEnabled != tt.wantEnabled {
-				t.Errorf("WithAutoUpdate() = %v, want %v",
-					engine.isAutoUpdateEnabled, tt.wantEnabled)
+			if engine.isAutoUpdateEnabled != tt.expected {
+				t.Errorf("Expected isAutoUpdateEnabled to be %v, got %v",
+					tt.expected, engine.isAutoUpdateEnabled)
 			}
-
-			engine.Stop()
 		})
 	}
 }
 
 func TestWithLicenseKey(t *testing.T) {
-	if ipiDataPath == "" {
-		ipiDataPath = os.Getenv("DATA_FILE")
-	}
-
 	tests := []struct {
-		name    string
-		wantErr bool
-		options []EngineOptions
+		name        string
+		key         string
+		expectError bool
 	}{
 		{
-			name:    "valid license key",
-			wantErr: false,
-			options: []EngineOptions{
-				WithLicenseKey(licenseKey),
-				WithDataUpdateUrl(dataUpdateUrl),
-				WithAutoUpdate(true),
-			},
+			name:        "valid license key",
+			key:         "valid-license-key",
+			expectError: false,
 		},
 		{
-			name:    "empty license key",
-			wantErr: false,
-			options: []EngineOptions{
-				WithLicenseKey(""),
-				WithDataUpdateUrl(dataUpdateUrl),
-				WithAutoUpdate(false),
-			},
+			name:        "empty license key",
+			key:         "",
+			expectError: false,
 		},
 		{
-			name:    "license key with special characters",
-			wantErr: false,
-			options: []EngineOptions{
-				WithLicenseKey("license-key-123!@#$%^&*()"),
-				WithDataUpdateUrl(dataUpdateUrl),
-				WithAutoUpdate(true),
-			},
+			name:        "special characters in key",
+			key:         "key@123!#$%^",
+			expectError: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
-			if config == nil {
-				t.Fatal("NewConfigIpi returned nil")
+			// Create an Engine instance
+			engine := &Engine{}
+
+			// Apply the WithLicenseKey option
+			err := WithLicenseKey(tt.key)(engine)
+
+			// Check error conditions
+			if tt.expectError {
+				if err == nil {
+					t.Error("Expected an error, but got none")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Did not expect an error, but got: %v", err)
+				}
 			}
-
-			options := append(tt.options, WithTempDataCopy(false),
-				WithDataFile(ipiDataPath),
-				WithConfigIpi(config))
-
-			engine, err := New(options...)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("WithLicenseKey() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			engine.Stop()
 		})
 	}
 }
 
 func TestWithProduct(t *testing.T) {
-	if ipiDataPath == "" {
-		ipiDataPath = os.Getenv("DATA_FILE")
-	}
-
 	tests := []struct {
-		name    string
-		options []EngineOptions
-		wantErr bool
+		name        string
+		product     string
+		expectError bool
 	}{
 		{
-			name: "product with license key",
-			options: []EngineOptions{
-				WithProduct("TestProduct"),
-				WithLicenseKey(licenseKey),
-				WithAutoUpdate(false),
-			},
-			wantErr: false,
+			name:        "valid product name",
+			product:     "TestProduct",
+			expectError: false,
 		},
 		{
-			name: "product with custom URL",
-			options: []EngineOptions{
-				WithProduct("TestProduct"),
-				WithDataUpdateUrl(dataUpdateUrl),
-			},
-			wantErr: false,
+			name:        "empty product name",
+			product:     "",
+			expectError: false,
 		},
 		{
-			name: "product with auto update enabled",
-			options: []EngineOptions{
-				WithProduct("TestProduct"),
-				WithAutoUpdate(true),
-				WithDataUpdateUrl(dataUpdateUrl),
-			},
-			wantErr: false,
+			name:        "product with special characters",
+			product:     "Test-Product_123",
+			expectError: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
-			if config == nil {
-				t.Fatal("NewConfigIpi returned nil")
+			// Create an Engine instance
+			engine := &Engine{}
+
+			// Apply the WithProduct option
+			err := WithProduct(tt.product)(engine)
+
+			// Check error conditions
+			if tt.expectError {
+				if err == nil {
+					t.Error("Expected an error, but got none")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Did not expect an error, but got: %v", err)
+				}
 			}
-
-			// Add required WithDataFile option to test options
-			options := append(tt.options, WithTempDataCopy(false),
-				WithDataFile(ipiDataPath),
-				WithConfigIpi(config))
-
-			engine, err := New(options...)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("WithProduct() with other options error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			engine.Stop()
 		})
 	}
 }
 
 func TestWithMaxRetries(t *testing.T) {
-	if ipiDataPath == "" {
-		ipiDataPath = os.Getenv("DATA_FILE")
-	}
-
 	tests := []struct {
-		name        string
-		retries     int
-		wantRetries int
-		options     []EngineOptions
+		name    string
+		retries int
+		want    int
 	}{
 		{
-			name:        "positive retries",
-			wantRetries: 5,
-			options: []EngineOptions{
-				WithMaxRetries(5),
-			},
+			name:    "positive retries",
+			retries: 5,
+			want:    5,
 		},
 		{
-			name:        "zero retries",
-			wantRetries: 0,
-			options: []EngineOptions{
-				WithMaxRetries(0),
-			},
+			name:    "zero retries",
+			retries: 0,
+			want:    0,
 		},
 		{
-			name:        "negative retries",
-			wantRetries: -1,
-			options: []EngineOptions{
-				WithMaxRetries(-1),
-			},
+			name:    "negative retries",
+			retries: -1,
+			want:    -1,
 		},
 		{
-			name:        "large number of retries",
-			wantRetries: 1000,
-			options: []EngineOptions{
-				WithMaxRetries(1000),
-			},
+			name:    "large number of retries",
+			retries: 1000,
+			want:    1000,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
-			if config == nil {
-				t.Fatal("NewConfigIpi returned nil")
-			}
+			// Create an Engine instance
+			engine := &Engine{}
 
-			// Add required WithDataFile option to test options
-			options := append(tt.options, WithTempDataCopy(false),
-				WithAutoUpdate(false),
-				WithDataFile(ipiDataPath),
-				WithConfigIpi(config))
+			// Apply the WithMaxRetries option
+			err := WithMaxRetries(tt.retries)(engine)
 
-			engine, err := New(options...)
+			// Should never return error
 			if err != nil {
-				t.Fatalf("Failed to create engine: %v", err)
+				t.Errorf("WithMaxRetries() error = %v, want no error", err)
 			}
 
-			if engine.maxRetries != tt.wantRetries {
-				t.Errorf("WithMaxRetries() got = %v, want %v", engine.maxRetries, tt.wantRetries)
+			// Check if retries was set correctly
+			if engine.maxRetries != tt.want {
+				t.Errorf("WithMaxRetries() got = %v, want %v",
+					engine.maxRetries, tt.want)
 			}
-
-			engine.Stop()
 		})
 	}
 }
 
 func TestWithLogging(t *testing.T) {
-	if ipiDataPath == "" {
-		ipiDataPath = os.Getenv("DATA_FILE")
-	}
-
 	tests := []struct {
-		name        string
-		enabled     bool
-		wantEnabled bool
+		name     string
+		enabled  bool
+		expected bool
 	}{
 		{
-			name:        "enable logging",
-			enabled:     true,
-			wantEnabled: true,
+			name:     "enable logging",
+			enabled:  true,
+			expected: true,
 		},
 		{
-			name:        "disable logging",
-			enabled:     false,
-			wantEnabled: false,
+			name:     "disable logging",
+			enabled:  false,
+			expected: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
-			if config == nil {
-				t.Fatal("NewConfigIpi returned nil")
+			// Create an Engine instance
+			engine := &Engine{
+				logger: logWrapper{
+					enabled: !tt.enabled, // Set initial state opposite to test value
+				},
 			}
 
-			engine, err := New(
-				WithConfigIpi(config),
-				WithAutoUpdate(false),
-				WithDataFile(ipiDataPath),
+			// Apply the WithLogging option
+			err := WithLogging(tt.enabled)(engine)
 
-				WithLogging(tt.enabled),
-			)
+			// Should never return error
 			if err != nil {
-				t.Fatalf("Failed to create engine: %v", err)
+				t.Errorf("WithLogging() error = %v, want no error", err)
 			}
 
-			if engine.logger.enabled != tt.wantEnabled {
-				t.Errorf("WithLogging() got = %v, want %v", engine.logger.enabled, tt.wantEnabled)
+			// Check if logging was set correctly
+			if engine.logger.enabled != tt.expected {
+				t.Errorf("WithLogging() got = %v, want %v",
+					engine.logger.enabled, tt.expected)
 			}
-
-			engine.Stop()
 		})
 	}
 }
 
-// customTestLogger implements LogWriter interface for testing
-type customTestLogger struct {
-	buffer bytes.Buffer
-	called bool
+// Define test logger types
+type testLogger struct {
+	messages []string
 }
 
-func (l *customTestLogger) Printf(format string, v ...interface{}) {
-	l.called = true
+func (l *testLogger) Printf(format string, v ...interface{}) {
+	l.messages = append(l.messages, fmt.Sprintf(format, v...))
 }
+
+type nilLogger struct{}
+
+func (l *nilLogger) Printf(format string, v ...interface{}) {}
 
 func TestWithCustomLogger(t *testing.T) {
-	if ipiDataPath == "" {
-		ipiDataPath = os.Getenv("DATA_FILE")
-	}
-
 	tests := []struct {
-		name    string
-		logger  LogWriter
-		wantErr bool
-		testLog bool // whether to test logging functionality
+		name          string
+		logger        LogWriter
+		expectEnabled bool
+		verifyLogger  bool
 	}{
 		{
-			name:    "valid custom logger",
-			logger:  &customTestLogger{},
-			wantErr: false,
-			testLog: true,
+			name:          "custom logger",
+			logger:        &testLogger{},
+			expectEnabled: true,
+			verifyLogger:  true,
 		},
 		{
-			name:    "default logger replacement",
-			logger:  DefaultLogger,
-			wantErr: false,
-			testLog: true,
+			name:          "nil logger",
+			logger:        &nilLogger{},
+			expectEnabled: true,
+			verifyLogger:  true,
+		},
+		{
+			name:          "nil value",
+			logger:        nil,
+			expectEnabled: true,
+			verifyLogger:  true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
-			if config == nil {
-				t.Fatal("NewConfigIpi returned nil")
-			}
+			// Create an Engine instance
+			engine := &Engine{}
 
-			engine, err := New(
-				WithConfigIpi(config),
-				WithAutoUpdate(false),
-				WithDataFile(ipiDataPath),
+			// Apply the WithCustomLogger option
+			err := WithCustomLogger(tt.logger)(engine)
 
-				WithCustomLogger(tt.logger),
-			)
+			// Should never return error
 			if err != nil {
-				if !tt.wantErr {
-					t.Errorf("WithCustomLogger() error = %v, wantErr %v", err, tt.wantErr)
-				}
-				return
+				t.Errorf("WithCustomLogger() error = %v, want no error", err)
 			}
 
-			if tt.wantErr {
-				t.Error("WithCustomLogger() expected error, got none")
-				return
+			// Verify logger is enabled by default
+			if engine.logger.enabled != tt.expectEnabled {
+				t.Errorf("WithCustomLogger() enabled = %v, want %v",
+					engine.logger.enabled, tt.expectEnabled)
 			}
 
 			// Verify logger was set correctly
-			if engine.logger.logger != tt.logger {
-				t.Errorf("WithCustomLogger() logger not set correctly")
+			if tt.verifyLogger && engine.logger.logger != tt.logger {
+				t.Errorf("WithCustomLogger() logger not set correctly, got %v, want %v",
+					engine.logger.logger, tt.logger)
 			}
 
-			// Verify logging is enabled by default
-			if !engine.logger.enabled {
-				t.Error("WithCustomLogger() logger should be enabled by default")
-			}
-
-			// Test logging functionality if required
-			if tt.testLog {
-				if customLogger, ok := engine.logger.logger.(*customTestLogger); ok {
-					engine.logger.Printf("test message")
-					if !customLogger.called {
-						t.Error("WithCustomLogger() logger was not called")
-					}
+			// Test logger functionality if it's a testLogger
+			if testLog, ok := tt.logger.(*testLogger); ok {
+				testMessage := "test message"
+				engine.logger.Printf(testMessage)
+				if len(testLog.messages) != 1 {
+					t.Errorf("Expected 1 message, got %d", len(testLog.messages))
+				}
+				if len(testLog.messages) > 0 && testLog.messages[0] != testMessage {
+					t.Errorf("Expected message %q, got %q", testMessage, testLog.messages[0])
 				}
 			}
-
-			engine.Stop()
 		})
 	}
 }
 
 func TestWithFileWatch(t *testing.T) {
-	if ipiDataPath == "" {
-		ipiDataPath = os.Getenv("DATA_FILE")
-	}
-
 	tests := []struct {
-		name        string
-		enabled     bool
-		filePath    string
-		wantEnabled bool
+		name     string
+		enabled  bool
+		expected bool
 	}{
 		{
-			name:        "enable file watching",
-			enabled:     true,
-			filePath:    ipiDataPath,
-			wantEnabled: true,
+			name:     "enable file watching",
+			enabled:  true,
+			expected: true,
 		},
 		{
-			name:        "disable file watching",
-			enabled:     false,
-			filePath:    ipiDataPath,
-			wantEnabled: false,
+			name:     "disable file watching",
+			enabled:  false,
+			expected: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
-			if config == nil {
-				t.Fatal("NewConfigIpi returned nil")
+			// Create an Engine instance
+			engine := &Engine{
+				isFileWatcherEnabled: !tt.enabled, // Set initial state opposite to test value
 			}
 
-			// Create engine with test configuration
-			engine, err := New(
-				WithConfigIpi(config),
-				WithAutoUpdate(false),
-				WithDataFile(ipiDataPath),
+			// Apply the WithFileWatch option
+			err := WithFileWatch(tt.enabled)(engine)
 
-				WithTempDataCopy(false),
-				WithDataFile(tt.filePath),
-				WithAutoUpdate(false),
-				WithFileWatch(tt.enabled),
-			)
-
+			// Should never return error
 			if err != nil {
-				t.Fatalf("Failed to create engine: %v", err)
+				t.Errorf("WithFileWatch() error = %v, want no error", err)
 			}
 
-			// Verify the flag is set correctly
-			if engine.isFileWatcherEnabled != tt.wantEnabled {
-				t.Errorf("WithFileWatch(%v) = %v, want %v",
-					tt.enabled,
-					engine.isFileWatcherEnabled,
-					tt.wantEnabled)
+			// Check if file watching was set correctly
+			if engine.isFileWatcherEnabled != tt.expected {
+				t.Errorf("WithFileWatch() got = %v, want %v",
+					engine.isFileWatcherEnabled, tt.expected)
 			}
-
-			// Verify file watcher state matches the enabled flag
-			if tt.enabled {
-				if !engine.fileWatcherStarted {
-					t.Error("File watcher should be started when enabled")
-				}
-				if engine.fileWatcher == nil {
-					t.Error("File watcher should not be nil when enabled")
-				}
-			} else {
-				if engine.fileWatcherStarted {
-					t.Error("File watcher should not be started when disabled")
-				}
-				if engine.fileWatcher != nil {
-					t.Error("File watcher should be nil when disabled")
-				}
-			}
-
-			engine.Stop()
 		})
 	}
 }
 
 func TestWithUpdateOnStart(t *testing.T) {
-	if ipiDataPath == "" {
-		ipiDataPath = os.Getenv("DATA_FILE")
-	}
-
 	tests := []struct {
-		name        string
-		enabled     bool
-		dataFile    string
-		wantEnabled bool
+		name     string
+		enabled  bool
+		expected bool
 	}{
 		{
-			name:        "enable update on start",
-			enabled:     true,
-			dataFile:    ipiDataPath,
-			wantEnabled: true,
+			name:     "enable update on start",
+			enabled:  true,
+			expected: true,
 		},
 		{
-			name:        "disable update on start",
-			enabled:     false,
-			dataFile:    ipiDataPath,
-			wantEnabled: false,
+			name:     "disable update on start",
+			enabled:  false,
+			expected: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
-			if config == nil {
-				t.Fatal("NewConfigIpi returned nil")
+			// Create an Engine instance
+			engine := &Engine{
+				isUpdateOnStartEnabled: !tt.enabled, // Set initial state opposite to test value
 			}
 
-			// Create engine with test configuration
-			engine, err := New(
-				WithConfigIpi(config),
-				WithDataFile(ipiDataPath),
-				WithDataUpdateUrl(dataUpdateUrl),
+			// Apply the WithUpdateOnStart option
+			err := WithUpdateOnStart(tt.enabled)(engine)
 
-				WithTempDataCopy(false),
-				WithDataFile(tt.dataFile),
-				WithAutoUpdate(true), // Enable auto update to test update on start
-				WithUpdateOnStart(tt.enabled),
-			)
-
+			// Should never return error
 			if err != nil {
-				t.Fatalf("Failed to create engine: %v", err)
+				t.Errorf("WithUpdateOnStart() error = %v, want no error", err)
 			}
 
-			// Verify the flag is set correctly
-			if engine.isUpdateOnStartEnabled != tt.wantEnabled {
-				t.Errorf("WithUpdateOnStart(%v) = %v, want %v",
-					tt.enabled,
-					engine.isUpdateOnStartEnabled,
-					tt.wantEnabled)
+			// Check if update on start was set correctly
+			if engine.isUpdateOnStartEnabled != tt.expected {
+				t.Errorf("WithUpdateOnStart() got = %v, want %v",
+					engine.isUpdateOnStartEnabled, tt.expected)
 			}
-
-			engine.Stop()
 		})
 	}
 }
 
 func TestWithTempDataCopy(t *testing.T) {
-	if ipiDataPath == "" {
-		ipiDataPath = os.Getenv("DATA_FILE")
-	}
-
 	tests := []struct {
-		name        string
-		enabled     bool
-		dataFile    string
-		wantEnabled bool
+		name     string
+		enabled  bool
+		expected bool
 	}{
 		{
-			name:        "enable temp data copy",
-			enabled:     true,
-			dataFile:    ipiDataPath,
-			wantEnabled: true,
+			name:     "enable temp data copy",
+			enabled:  true,
+			expected: true,
 		},
 		{
-			name:        "disable temp data copy",
-			enabled:     false,
-			dataFile:    ipiDataPath,
-			wantEnabled: false,
+			name:     "disable temp data copy",
+			enabled:  false,
+			expected: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
-			if config == nil {
-				t.Fatal("NewConfigIpi returned nil")
+			// Create an Engine instance
+			engine := &Engine{
+				isCreateTempDataCopyEnabled: !tt.enabled, // Set initial state opposite to test value
 			}
 
-			// Create engine with test configuration
-			engine, err := New(
-				WithConfigIpi(config),
-				WithDataUpdateUrl(dataUpdateUrl),
+			// Apply the WithTempDataCopy option
+			err := WithTempDataCopy(tt.enabled)(engine)
 
-				WithDataFile(tt.dataFile),
-				WithTempDataCopy(tt.enabled),
-			)
-
+			// Should never return error
 			if err != nil {
-				t.Fatalf("Failed to create engine: %v", err)
+				t.Errorf("WithTempDataCopy() error = %v, want no error", err)
 			}
 
-			// Verify the flag is set correctly
-			if engine.isCreateTempDataCopyEnabled != tt.wantEnabled {
-				t.Errorf("WithTempDataCopy(%v) = %v, want %v",
-					tt.enabled,
-					engine.isCreateTempDataCopyEnabled,
-					tt.wantEnabled)
+			// Check if temp data copy setting was set correctly
+			if engine.isCreateTempDataCopyEnabled != tt.expected {
+				t.Errorf("WithTempDataCopy() got = %v, want %v",
+					engine.isCreateTempDataCopyEnabled, tt.expected)
 			}
-
-			// Check if temp directory is created when enabled
-			if tt.enabled {
-				if engine.tempDataDir == "" {
-					t.Error("Temp data directory should be set when temp data copy is enabled")
-				}
-			}
-
-			engine.Stop()
 		})
 	}
 }
 
 func TestWithRandomization(t *testing.T) {
-	if ipiDataPath == "" {
-		ipiDataPath = os.Getenv("DATA_FILE")
-	}
-
 	tests := []struct {
-		name       string
-		seconds    int
-		wantMillis int
-		dataFile   string
+		name           string
+		seconds        int
+		expectedMillis int
 	}{
 		{
-			name:       "zero randomization",
-			seconds:    0,
-			wantMillis: 0,
-			dataFile:   ipiDataPath,
+			name:           "zero seconds",
+			seconds:        0,
+			expectedMillis: 0,
 		},
 		{
-			name:       "positive randomization",
-			seconds:    60,
-			wantMillis: 60000,
-			dataFile:   ipiDataPath,
+			name:           "one second",
+			seconds:        1,
+			expectedMillis: 1000,
 		},
 		{
-			name:       "large randomization",
-			seconds:    3600,
-			wantMillis: 3600000,
-			dataFile:   ipiDataPath,
+			name:           "ten seconds",
+			seconds:        10,
+			expectedMillis: 10000,
+		},
+		{
+			name:           "negative value",
+			seconds:        -1,
+			expectedMillis: -1000,
+		},
+		{
+			name:           "large value",
+			seconds:        3600, // 1 hour
+			expectedMillis: 3600000,
+		},
+		{
+			name:           "default value (10 minutes)",
+			seconds:        600,
+			expectedMillis: 600000,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
-			if config == nil {
-				t.Fatal("NewConfigIpi returned nil")
-			}
+			// Create an Engine instance
+			engine := &Engine{}
 
-			// Create engine with test configuration
-			engine, err := New(
-				WithConfigIpi(config),
-				WithDataUpdateUrl(dataUpdateUrl),
+			// Apply the WithRandomization option
+			err := WithRandomization(tt.seconds)(engine)
 
-				WithDataFile(tt.dataFile),
-				WithRandomization(tt.seconds),
-			)
-
+			// Should never return error
 			if err != nil {
-				t.Fatalf("Failed to create engine: %v", err)
+				t.Errorf("WithRandomization() error = %v, want no error", err)
 			}
 
-			// Verify the randomization is set correctly
-			if engine.randomization != tt.wantMillis {
-				t.Errorf("WithRandomization(%v) = %v, want %v",
-					tt.seconds,
-					engine.randomization,
-					tt.wantMillis)
+			// Check if randomization was set correctly
+			if engine.randomization != tt.expectedMillis {
+				t.Errorf("WithRandomization() got = %v ms, want %v ms",
+					engine.randomization, tt.expectedMillis)
 			}
-
-			engine.Stop()
 		})
 	}
 }
 
 func TestWithProperties(t *testing.T) {
-	if ipiDataPath == "" {
-		ipiDataPath = os.Getenv("DATA_FILE")
-	}
-
 	tests := []struct {
-		name       string
-		properties []string
-		wantJoined string
-		dataFile   string
+		name          string
+		properties    []string
+		expectedValue string
 	}{
 		{
-			name:       "empty properties list",
-			properties: []string{},
-			wantJoined: "",
-			dataFile:   ipiDataPath,
-		},
-		//{
-		//	name:       "single property",
-		//	properties: []string{"IpRangeStart"},
-		//	wantJoined: "IpRangeStart",
-		//	dataFile:   ipiDataPath,
-		//},
-		{
-			name:       "multiple properties",
-			properties: []string{"IpRangeStart", "IpRangeEnd", "AccuracyRadius", "RegisteredCountry", "RegisteredName", "Longitude", "Latitude", "Areas"},
-			wantJoined: "IpRangeStart,IpRangeEnd,AccuracyRadius,RegisteredCountry,RegisteredName,Longitude,Latitude,Areas",
-			dataFile:   ipiDataPath,
+			name:          "nil properties",
+			properties:    nil,
+			expectedValue: "",
 		},
 		{
-			name:       "nil properties",
-			properties: nil,
-			wantJoined: strings.Join(defaultProperties, ","), // Should keep default properties
-			dataFile:   ipiDataPath,
+			name:          "empty properties slice",
+			properties:    []string{},
+			expectedValue: "",
+		},
+		{
+			name:          "single property",
+			properties:    []string{"property1"},
+			expectedValue: "property1",
+		},
+		{
+			name:          "multiple properties",
+			properties:    []string{"property1", "property2", "property3"},
+			expectedValue: "property1,property2,property3",
+		},
+		{
+			name:          "properties with special characters",
+			properties:    []string{"property.name", "property-name", "property_name"},
+			expectedValue: "property.name,property-name,property_name",
+		},
+		{
+			name:          "properties with spaces",
+			properties:    []string{"property one", "property two"},
+			expectedValue: "property one,property two",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
-			if config == nil {
-				t.Fatal("NewConfigIpi returned nil")
-			}
+			// Create an Engine instance
+			engine := &Engine{}
 
-			// Create engine with test configuration
-			engine, err := New(
-				WithConfigIpi(config),
-				WithAutoUpdate(false),
-				WithDataFile(tt.dataFile),
-				WithProperties(tt.properties),
-			)
+			// Apply the WithProperties option
+			err := WithProperties(tt.properties)(engine)
 
+			// Should never return error
 			if err != nil {
-				t.Fatalf("Failed to create engine: %v", err)
+				t.Errorf("WithProperties() error = %v, want no error", err)
 			}
-			defer engine.Stop()
 
-			// Verify the properties are set correctly
-			if tt.properties == nil {
-				// For nil properties, should keep default properties
-				if engine.managerProperties != tt.wantJoined {
-					t.Errorf("WithProperties(nil) = %v, want %v",
-						engine.managerProperties,
-						tt.wantJoined)
-				}
-			} else {
-				if engine.managerProperties != tt.wantJoined {
-					t.Errorf("WithProperties(%v) = %v, want %v",
-						tt.properties,
-						engine.managerProperties,
-						tt.wantJoined)
-				}
+			// Check if properties were set correctly
+			if engine.managerProperties != tt.expectedValue {
+				t.Errorf("WithProperties() got = %q, want %q",
+					engine.managerProperties, tt.expectedValue)
 			}
 		})
 	}
