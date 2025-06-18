@@ -1,14 +1,25 @@
 package ipi_onpremise
 
-const (
-	liteDataPath  = "/path/to/51Degrees-LiteIpiV41.ipi"
+import (
+	"bytes"
+	"github.com/51Degrees/ip-intelligence-go/ipi_interop"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+var (
+	ipiDataPath   = ""
 	licenseKey    = "<KEY>"
 	dataUpdateUrl = "https://example.com/ipi/data/51Degrees-LiteIpiV41.ipi"
 )
 
-/*
-
 func TestNew_WithDataFile(t *testing.T) {
+	if ipiDataPath == "" {
+		ipiDataPath = os.Getenv("DATA_FILE")
+	}
+
 	tests := []struct {
 		name        string
 		filePath    string
@@ -17,44 +28,44 @@ func TestNew_WithDataFile(t *testing.T) {
 	}{
 		{
 			name:        "with lite data file and InMemory config",
-			filePath:    liteDataPath,
+			filePath:    ipiDataPath,
 			profile:     ipi_interop.InMemory,
 			wantProfile: ipi_interop.InMemory,
 		},
 		// TODO: uncomment when other profiles will be available
 		//{
 		//	name:       "with lite data file and HighPerformance config",
-		//	filePath:   liteDataPath,
+		//	filePath:   ipiDataPath,
 		//	profile:     ipi_interop.HighPerformance,
 		//	wantProfile: ipi_interop.HighPerformance,
 		//},
 		//{
 		//	name:       "with lite data file and LowMemory config",
-		//	filePath:   liteDataPath,
+		//	filePath:   ipiDataPath,
 		//	profile:     ipi_interop.LowMemory,
 		//	wantProfile: ipi_interop.LowMemory,
 		//},
 		//{
 		//	name:       "with lite data file and Balanced config",
-		//	filePath:   liteDataPath,
+		//	filePath:   ipiDataPath,
 		//	profile:     ipi_interop.Balanced,
 		//	wantProfile: ipi_interop.Balanced,
 		//},
 		//{
 		//	name:       "with lite data file and BalancedTemp config",
-		//	filePath:   liteDataPath,
+		//	filePath:   ipiDataPath,
 		//	profile:     ipi_interop.BalancedTemp,
 		//	wantProfile: ipi_interop.BalancedTemp,
 		//},
 		//{
 		//	name:       "with lite data file and SingleLoaded config",
-		//	filePath:   liteDataPath,
+		//	filePath:   ipiDataPath,
 		//	profile:     ipi_interop.SingleLoaded,
 		//	wantProfile: ipi_interop.SingleLoaded,
 		//},
 		//{
 		//	name:       "with lite data file and Default config",
-		//	filePath:   liteDataPath,
+		//	filePath:   ipiDataPath,
 		//	profile:     ipi_interop.Default,
 		//	wantProfile: ipi_interop.Default,
 		//},
@@ -75,17 +86,18 @@ func TestNew_WithDataFile(t *testing.T) {
 
 			engine, err := New(
 				WithTempDataCopy(false),
-				WithDataFile(liteDataPath),
+				WithDataFile(ipiDataPath),
 				WithConfigIpi(config),
 				WithAutoUpdate(false),
+				WithUpdateOnStart(true),
 			)
 
 			if err != nil {
 				t.Fatalf("Expected no error with valid file, got: %v", err)
 			}
 
-			if engine.dataFile != liteDataPath {
-				t.Errorf("Expected dataFile to be %s, got %s", liteDataPath, engine.dataFile)
+			if engine.dataFile != ipiDataPath {
+				t.Errorf("Expected dataFile to be %s, got %s", ipiDataPath, engine.dataFile)
 			}
 
 			engine.Stop()
@@ -103,6 +115,10 @@ func TestNew_WithInvalidDataFile(t *testing.T) {
 }
 
 func TestWithDataUpdateUrl(t *testing.T) {
+	if ipiDataPath == "" {
+		ipiDataPath = os.Getenv("DATA_FILE")
+	}
+
 	tests := []struct {
 		name          string
 		filePath      string
@@ -111,7 +127,7 @@ func TestWithDataUpdateUrl(t *testing.T) {
 	}{
 		{
 			name:          "with data update url",
-			filePath:      liteDataPath,
+			filePath:      ipiDataPath,
 			updateUrl:     dataUpdateUrl,
 			wantUpdateUrl: dataUpdateUrl,
 		},
@@ -126,7 +142,7 @@ func TestWithDataUpdateUrl(t *testing.T) {
 
 			engine, err := New(
 				WithTempDataCopy(false),
-				WithDataFile(liteDataPath),
+				WithDataFile(ipiDataPath),
 				WithConfigIpi(config),
 				WithAutoUpdate(false),
 				WithDataUpdateUrl(tt.updateUrl),
@@ -145,47 +161,82 @@ func TestWithDataUpdateUrl(t *testing.T) {
 }
 
 func TestWithTempDataDir(t *testing.T) {
+	// Create a temporary directory for testing
+	tempDir, err := os.MkdirTemp("", "test-temp-dir")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create a file in the temp directory to test the "not a directory" case
+	tempFile := filepath.Join(tempDir, "testfile")
+	if err := os.WriteFile(tempFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+
 	tests := []struct {
-		name            string
-		filePath        string
-		tempDataDir     string
-		wantTempDataDir string
+		name        string
+		dir         string
+		expectError bool
+		errorMsg    string
 	}{
 		{
-			name:            "with data update url",
-			filePath:        liteDataPath,
-			tempDataDir:     "test_dir",
-			wantTempDataDir: "test_dir",
+			name:        "valid directory",
+			dir:         tempDir,
+			expectError: false,
+		},
+		{
+			name:        "non-existent directory",
+			dir:         filepath.Join(tempDir, "nonexistent"),
+			expectError: true,
+			errorMsg:    "failed to get file path",
+		},
+		{
+			name:        "file instead of directory",
+			dir:         tempFile,
+			expectError: true,
+			errorMsg:    "path is not a directory",
+		},
+		{
+			name:        "empty path",
+			dir:         "",
+			expectError: true,
+			errorMsg:    "failed to get file path",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
-			if config == nil {
-				t.Fatal("NewConfigIpi returned nil")
-			}
-			engine, err := New(
-				WithTempDataCopy(false),
-				WithDataFile(liteDataPath),
-				WithConfigIpi(config),
-				WithAutoUpdate(false),
-				WithTempDataDir(tt.tempDataDir),
-			)
-			if err != nil {
-				t.Fatalf("Expected no error with valid file, got: %v", err)
-			}
+			// Create an Engine instance to test the option
+			engine := &Engine{}
 
-			if engine.tempDataDir != tt.wantTempDataDir {
-				t.Errorf("Expected dataFileUrl to be %s, got %s", tt.wantTempDataDir, engine.dataFileUrl)
-			}
+			// Apply the WithTempDataDir option
+			err := WithTempDataDir(tt.dir)(engine)
 
-			engine.Stop()
+			// Check if error was expected
+			if tt.expectError {
+				if err == nil {
+					t.Error("Expected an error, but got none")
+				} else if !strings.Contains(err.Error(), tt.errorMsg) {
+					t.Errorf("Expected error containing %q, got %q", tt.errorMsg, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Did not expect an error, but got: %v", err)
+				}
+				if engine.tempDataDir != tt.dir {
+					t.Errorf("Expected tempDataDir to be %q, got %q", tt.dir, engine.tempDataDir)
+				}
+			}
 		})
 	}
 }
 
 func TestWithPollingInterval(t *testing.T) {
+	if ipiDataPath == "" {
+		ipiDataPath = os.Getenv("DATA_FILE")
+	}
+
 	tests := []struct {
 		name         string
 		filePath     string
@@ -194,7 +245,7 @@ func TestWithPollingInterval(t *testing.T) {
 	}{
 		{
 			name:         "with polling interval",
-			filePath:     liteDataPath,
+			filePath:     ipiDataPath,
 			interval:     60,
 			wantInterval: 60,
 		},
@@ -208,7 +259,7 @@ func TestWithPollingInterval(t *testing.T) {
 			}
 			engine, err := New(
 				WithTempDataCopy(false),
-				WithDataFile(liteDataPath),
+				WithDataFile(ipiDataPath),
 				WithConfigIpi(config),
 				WithAutoUpdate(false),
 				WithPollingInterval(tt.interval),
@@ -228,6 +279,10 @@ func TestWithPollingInterval(t *testing.T) {
 }
 
 func TestWithAutoUpdate(t *testing.T) {
+	if ipiDataPath == "" {
+		ipiDataPath = os.Getenv("DATA_FILE")
+	}
+
 	tests := []struct {
 		name            string
 		autoUpdateValue bool
@@ -263,7 +318,7 @@ func TestWithAutoUpdate(t *testing.T) {
 
 			options := append(tt.options,
 				WithTempDataCopy(false),
-				WithDataFile(liteDataPath),
+				WithDataFile(ipiDataPath),
 				WithConfigIpi(config))
 
 			engine, err := New(options...)
@@ -282,6 +337,10 @@ func TestWithAutoUpdate(t *testing.T) {
 }
 
 func TestWithLicenseKey(t *testing.T) {
+	if ipiDataPath == "" {
+		ipiDataPath = os.Getenv("DATA_FILE")
+	}
+
 	tests := []struct {
 		name    string
 		wantErr bool
@@ -324,7 +383,7 @@ func TestWithLicenseKey(t *testing.T) {
 			}
 
 			options := append(tt.options, WithTempDataCopy(false),
-				WithDataFile(liteDataPath),
+				WithDataFile(ipiDataPath),
 				WithConfigIpi(config))
 
 			engine, err := New(options...)
@@ -339,6 +398,10 @@ func TestWithLicenseKey(t *testing.T) {
 }
 
 func TestWithProduct(t *testing.T) {
+	if ipiDataPath == "" {
+		ipiDataPath = os.Getenv("DATA_FILE")
+	}
+
 	tests := []struct {
 		name    string
 		options []EngineOptions
@@ -381,7 +444,7 @@ func TestWithProduct(t *testing.T) {
 
 			// Add required WithDataFile option to test options
 			options := append(tt.options, WithTempDataCopy(false),
-				WithDataFile(liteDataPath),
+				WithDataFile(ipiDataPath),
 				WithConfigIpi(config))
 
 			engine, err := New(options...)
@@ -396,6 +459,10 @@ func TestWithProduct(t *testing.T) {
 }
 
 func TestWithMaxRetries(t *testing.T) {
+	if ipiDataPath == "" {
+		ipiDataPath = os.Getenv("DATA_FILE")
+	}
+
 	tests := []struct {
 		name        string
 		retries     int
@@ -442,7 +509,7 @@ func TestWithMaxRetries(t *testing.T) {
 			// Add required WithDataFile option to test options
 			options := append(tt.options, WithTempDataCopy(false),
 				WithAutoUpdate(false),
-				WithDataFile(liteDataPath),
+				WithDataFile(ipiDataPath),
 				WithConfigIpi(config))
 
 			engine, err := New(options...)
@@ -460,6 +527,10 @@ func TestWithMaxRetries(t *testing.T) {
 }
 
 func TestWithLogging(t *testing.T) {
+	if ipiDataPath == "" {
+		ipiDataPath = os.Getenv("DATA_FILE")
+	}
+
 	tests := []struct {
 		name        string
 		enabled     bool
@@ -487,7 +558,7 @@ func TestWithLogging(t *testing.T) {
 			engine, err := New(
 				WithConfigIpi(config),
 				WithAutoUpdate(false),
-				WithDataFile(liteDataPath),
+				WithDataFile(ipiDataPath),
 
 				WithLogging(tt.enabled),
 			)
@@ -515,6 +586,10 @@ func (l *customTestLogger) Printf(format string, v ...interface{}) {
 }
 
 func TestWithCustomLogger(t *testing.T) {
+	if ipiDataPath == "" {
+		ipiDataPath = os.Getenv("DATA_FILE")
+	}
+
 	tests := []struct {
 		name    string
 		logger  LogWriter
@@ -545,7 +620,7 @@ func TestWithCustomLogger(t *testing.T) {
 			engine, err := New(
 				WithConfigIpi(config),
 				WithAutoUpdate(false),
-				WithDataFile(liteDataPath),
+				WithDataFile(ipiDataPath),
 
 				WithCustomLogger(tt.logger),
 			)
@@ -587,6 +662,10 @@ func TestWithCustomLogger(t *testing.T) {
 }
 
 func TestWithFileWatch(t *testing.T) {
+	if ipiDataPath == "" {
+		ipiDataPath = os.Getenv("DATA_FILE")
+	}
+
 	tests := []struct {
 		name        string
 		enabled     bool
@@ -596,13 +675,13 @@ func TestWithFileWatch(t *testing.T) {
 		{
 			name:        "enable file watching",
 			enabled:     true,
-			filePath:    liteDataPath,
+			filePath:    ipiDataPath,
 			wantEnabled: true,
 		},
 		{
 			name:        "disable file watching",
 			enabled:     false,
-			filePath:    liteDataPath,
+			filePath:    ipiDataPath,
 			wantEnabled: false,
 		},
 	}
@@ -618,7 +697,7 @@ func TestWithFileWatch(t *testing.T) {
 			engine, err := New(
 				WithConfigIpi(config),
 				WithAutoUpdate(false),
-				WithDataFile(liteDataPath),
+				WithDataFile(ipiDataPath),
 
 				WithTempDataCopy(false),
 				WithDataFile(tt.filePath),
@@ -661,6 +740,10 @@ func TestWithFileWatch(t *testing.T) {
 }
 
 func TestWithUpdateOnStart(t *testing.T) {
+	if ipiDataPath == "" {
+		ipiDataPath = os.Getenv("DATA_FILE")
+	}
+
 	tests := []struct {
 		name        string
 		enabled     bool
@@ -670,13 +753,13 @@ func TestWithUpdateOnStart(t *testing.T) {
 		{
 			name:        "enable update on start",
 			enabled:     true,
-			dataFile:    liteDataPath,
+			dataFile:    ipiDataPath,
 			wantEnabled: true,
 		},
 		{
 			name:        "disable update on start",
 			enabled:     false,
-			dataFile:    liteDataPath,
+			dataFile:    ipiDataPath,
 			wantEnabled: false,
 		},
 	}
@@ -691,7 +774,7 @@ func TestWithUpdateOnStart(t *testing.T) {
 			// Create engine with test configuration
 			engine, err := New(
 				WithConfigIpi(config),
-				WithDataFile(liteDataPath),
+				WithDataFile(ipiDataPath),
 				WithDataUpdateUrl(dataUpdateUrl),
 
 				WithTempDataCopy(false),
@@ -718,6 +801,10 @@ func TestWithUpdateOnStart(t *testing.T) {
 }
 
 func TestWithTempDataCopy(t *testing.T) {
+	if ipiDataPath == "" {
+		ipiDataPath = os.Getenv("DATA_FILE")
+	}
+
 	tests := []struct {
 		name        string
 		enabled     bool
@@ -727,13 +814,13 @@ func TestWithTempDataCopy(t *testing.T) {
 		{
 			name:        "enable temp data copy",
 			enabled:     true,
-			dataFile:    liteDataPath,
+			dataFile:    ipiDataPath,
 			wantEnabled: true,
 		},
 		{
 			name:        "disable temp data copy",
 			enabled:     false,
-			dataFile:    liteDataPath,
+			dataFile:    ipiDataPath,
 			wantEnabled: false,
 		},
 	}
@@ -779,6 +866,10 @@ func TestWithTempDataCopy(t *testing.T) {
 }
 
 func TestWithRandomization(t *testing.T) {
+	if ipiDataPath == "" {
+		ipiDataPath = os.Getenv("DATA_FILE")
+	}
+
 	tests := []struct {
 		name       string
 		seconds    int
@@ -789,19 +880,19 @@ func TestWithRandomization(t *testing.T) {
 			name:       "zero randomization",
 			seconds:    0,
 			wantMillis: 0,
-			dataFile:   liteDataPath,
+			dataFile:   ipiDataPath,
 		},
 		{
 			name:       "positive randomization",
 			seconds:    60,
 			wantMillis: 60000,
-			dataFile:   liteDataPath,
+			dataFile:   ipiDataPath,
 		},
 		{
 			name:       "large randomization",
 			seconds:    3600,
 			wantMillis: 3600000,
-			dataFile:   liteDataPath,
+			dataFile:   ipiDataPath,
 		},
 	}
 
@@ -839,6 +930,10 @@ func TestWithRandomization(t *testing.T) {
 }
 
 func TestWithProperties(t *testing.T) {
+	if ipiDataPath == "" {
+		ipiDataPath = os.Getenv("DATA_FILE")
+	}
+
 	tests := []struct {
 		name       string
 		properties []string
@@ -849,25 +944,25 @@ func TestWithProperties(t *testing.T) {
 			name:       "empty properties list",
 			properties: []string{},
 			wantJoined: "",
-			dataFile:   liteDataPath,
+			dataFile:   ipiDataPath,
 		},
 		//{
 		//	name:       "single property",
 		//	properties: []string{"IpRangeStart"},
 		//	wantJoined: "IpRangeStart",
-		//	dataFile:   liteDataPath,
+		//	dataFile:   ipiDataPath,
 		//},
 		{
 			name:       "multiple properties",
 			properties: []string{"IpRangeStart", "IpRangeEnd", "AccuracyRadius", "RegisteredCountry", "RegisteredName", "Longitude", "Latitude", "Areas"},
 			wantJoined: "IpRangeStart,IpRangeEnd,AccuracyRadius,RegisteredCountry,RegisteredName,Longitude,Latitude,Areas",
-			dataFile:   liteDataPath,
+			dataFile:   ipiDataPath,
 		},
 		{
 			name:       "nil properties",
 			properties: nil,
 			wantJoined: strings.Join(defaultProperties, ","), // Should keep default properties
-			dataFile:   liteDataPath,
+			dataFile:   ipiDataPath,
 		},
 	}
 
@@ -910,4 +1005,3 @@ func TestWithProperties(t *testing.T) {
 		})
 	}
 }
-*/
