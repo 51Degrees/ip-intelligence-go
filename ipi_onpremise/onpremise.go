@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -55,6 +56,9 @@ type Engine struct {
 	filePullerStarted           bool
 	fileWatcherStarted          bool
 	managerProperties           []string
+	resultsPool                 chan *ipi_interop.ResultsIpi // Pool of pre-allocated ResultsIpi objects
+	propertyIndexCache          map[string]int
+	propertyIndexes             []int
 }
 
 const (
@@ -87,6 +91,7 @@ func New(opts ...EngineOptions) (*Engine, error) {
 		tempDataDir:                 "",
 		randomization:               10 * 60 * 1000, // default 10 minutes
 		managerProperties:           defaultProperties,
+		propertyIndexCache:          make(map[string]int),
 	}
 
 	for _, opt := range opts {
@@ -114,6 +119,12 @@ func New(opts ...EngineOptions) (*Engine, error) {
 		engine.Stop()
 		return nil, err
 	}
+
+	// Pre-compute property indexes using a temporary results object
+	engine.initPropertyIndexes()
+
+	// Initialize pool of ResultsIpi objects
+	engine.initResultsPool()
 
 	// if file watcher is enabled, start the watcher
 	if engine.isFileWatcherEnabled {
@@ -184,6 +195,14 @@ func (e *Engine) Stop() {
 
 	e.isStopped = true
 	close(e.stopCh)
+
+	// Free all ResultsIpi objects in the pool before freeing the manager
+	if e.resultsPool != nil {
+		close(e.resultsPool)
+		for results := range e.resultsPool {
+			results.Free()
+		}
+	}
 
 	if e.manager != nil {
 		e.manager.Free()
@@ -338,20 +357,59 @@ func (e *Engine) reloadManager(filePath string) error {
 	return nil
 }
 
+// initPropertyIndexes pre-computes and caches property indexes
+func (e *Engine) initPropertyIndexes() {
+	e.propertyIndexes = make([]int, len(e.managerProperties))
+	
+	// Create a temporary results object to get property indexes
+	tempResults := ipi_interop.NewResultsIpi(e.manager)
+	defer tempResults.Free()
+	
+	for i, prop := range e.managerProperties {
+		idx := e.getPropertyIndex(tempResults, prop)
+		e.propertyIndexes[i] = idx
+		e.propertyIndexCache[prop] = idx
+	}
+}
+
+// initResultsPool creates a pool of pre-allocated ResultsIpi objects
+func (e *Engine) initResultsPool() {
+	// Create a pool with size based on CPU count * 2 for good concurrency
+	poolSize := runtime.NumCPU() * 2
+	e.resultsPool = make(chan *ipi_interop.ResultsIpi, poolSize)
+	
+	// Pre-allocate ResultsIpi objects
+	for i := 0; i < poolSize; i++ {
+		results := ipi_interop.NewResultsIpi(e.manager)
+		e.resultsPool <- results
+	}
+}
+
+// getPropertyIndex gets the property index from results
+func (e *Engine) getPropertyIndex(results *ipi_interop.ResultsIpi, propertyName string) int {
+	// Use the existing method from results_ipi.go
+	return results.GetPropertyIndexByName(propertyName)
+}
+
 // Process processes the given IP address and retrieves associated values using the default properties.
 func (e *Engine) Process(ipAddress string) (ipi_interop.Values, error) {
-	results := ipi_interop.NewResultsIpi(e.manager)
+	// Get a ResultsIpi object from the pool
+	results := <-e.resultsPool
+	// Return it to the pool when done
+	defer func() {
+		e.resultsPool <- results
+	}()
+	
 	if err := results.ResultsIpiFromIpAddress(ipAddress); err != nil {
 		return nil, err
 	}
-
-	defer results.Free()
 
 	var values ipi_interop.Values
 	var err error
 
 	if results.HasValues() {
-		values, err = results.GetWeightedValues(e.managerProperties)
+		// Use pre-computed indexes instead of property names
+		values, err = results.GetWeightedValuesByIndexes(e.propertyIndexes)
 		if err != nil {
 			return nil, err
 		}

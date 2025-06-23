@@ -98,8 +98,8 @@ func resultsFinalizer(res *ResultsIpi) {
 	}
 }
 
-// getPropertyIndexByName retrieves the index of a property by its name from the associated dataset in the C library.
-func (r *ResultsIpi) getPropertyIndexByName(propertyName string) int {
+// GetPropertyIndexByName retrieves the index of a property by its name from the associated dataset in the C library.
+func (r *ResultsIpi) GetPropertyIndexByName(propertyName string) int {
 	dataSet := (*C.DataSetIpi)(r.CPtr.b.dataSet)
 
 	cName := C.CString(propertyName)
@@ -200,6 +200,98 @@ func (r *ResultsIpi) GetWeightedValues(properties []string) (Values, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Release the collection
+	defer C.fiftyoneDegreesWeightedValuesCollectionRelease(&collection)
+
+	values := make(Values, collection.itemsCount)
+
+	// Create a Go slice from the C array
+	headers := unsafe.Slice(collection.items, collection.itemsCount)
+	for _, h := range headers {
+		nextHeader := (*header)(unsafe.Pointer(h))
+
+		requiredPropertyIndex := nextHeader.requiredPropertyIndex
+
+		propName := r.getPropertyNameSafe(dataSet, requiredPropertyIndex)
+
+		values.InitProperty(propName)
+
+		var val interface{}
+
+		// Process based on value type
+		switch PropertyValueType(nextHeader.valueType) {
+		case IntegerValueType:
+			// Cast to weighted integer and get value
+			weightedInt := (*C.fiftyoneDegreesWeightedInt)(unsafe.Pointer(nextHeader))
+			val = int(weightedInt.value)
+
+		case FloatValueType:
+		case DoubleValueType:
+			// Cast to weighted double and get value
+			weightedDouble := (*C.fiftyoneDegreesWeightedDouble)(unsafe.Pointer(nextHeader))
+			val = float64(weightedDouble.value)
+
+		case BooleanValueType:
+			// Cast to weighted boolean and get value
+			weightedBool := (*C.fiftyoneDegreesWeightedBool)(unsafe.Pointer(nextHeader))
+			val = weightedBool.value
+
+		case ByteValueType:
+			// Cast to weighted byte and get value
+			weightedByte := (*C.fiftyoneDegreesWeightedByte)(unsafe.Pointer(nextHeader))
+			val = int(weightedByte.value)
+
+		case StringValueType:
+			fallthrough
+		default:
+			// Cast to weighted string and get value
+			weightedString := (*C.fiftyoneDegreesWeightedString)(unsafe.Pointer(nextHeader))
+			val = C.GoString(weightedString.value)
+		}
+
+		// Calculate weight
+		weight := float64(nextHeader.rawWeighting) / uint16Max
+
+		// append values to the map
+		values.Append(propName, val, weight)
+	}
+
+	return values, nil
+}
+
+// GetWeightedValuesByIndexes retrieves weighted values using pre-computed property indexes.
+// This is more efficient than GetWeightedValues as it avoids repeated string conversions and lookups.
+func (r *ResultsIpi) GetWeightedValuesByIndexes(indexes []int) (Values, error) {
+	dataSet := (*C.DataSetIpi)(r.CPtr.b.dataSet)
+	exception := NewException()
+
+	var cIndexes *C.int
+	var cIndexesCount C.uint
+
+	if len(indexes) > 0 {
+		// Allocate C memory for the array
+		cIndexes = (*C.int)(C.malloc(C.size_t(len(indexes)) * C.size_t(unsafe.Sizeof(C.int(0)))))
+		defer C.free(unsafe.Pointer(cIndexes))
+
+		// Copy Go slice elements to C array
+		cSlice := unsafe.Slice(cIndexes, len(indexes))
+		for i, idx := range indexes {
+			cSlice[i] = C.int(idx)
+		}
+
+		cIndexesCount = C.uint(len(indexes))
+	}
+
+	collection := C.fiftyoneDegreesResultsIpiGetValuesCollection(
+		r.CPtr,
+		cIndexes,
+		cIndexesCount,
+		nil, exception.CPtr,
+	)
+	if !exception.IsOkay() {
+		return nil, fmt.Errorf(C.GoString(C.ExceptionGetMessage(exception.CPtr)))
+	}
+	
 	// Release the collection
 	defer C.fiftyoneDegreesWeightedValuesCollectionRelease(&collection)
 
