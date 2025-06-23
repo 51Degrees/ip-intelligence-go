@@ -186,8 +186,7 @@ func WithRandomization(seconds int) EngineOptions {
 	}
 }
 
-// WithProperties sets properties that the engine retrieves from the data file for each device detection result instance
-// default is [] which will include all possible properties
+// WithProperties configures an Engine with a comma-separated list of manager properties derived from the provided slice.
 func WithProperties(properties []string) EngineOptions {
 	return func(cfg *Engine) error {
 		if properties != nil {
