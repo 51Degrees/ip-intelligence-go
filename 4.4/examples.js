@@ -1,4 +1,4 @@
 var examples =
 [
-    [ "examples/onpremise/getting_started.go", "examples_2onpremise_2getting_started_8go-example.html", null ]
+    [ "examples/ipi_onpremise/getting_started/getting_started.go", "examples_2ipi_onpremise_2getting_started_2getting_started_8go-example.html", null ]
 ];
