@@ -1,24 +1,15 @@
 param (
-    [Parameter(Mandatory)][string]$RepoName
+    [Parameter(Mandatory)][string]$DeviceDetectionUrl
 )
 $ErrorActionPreference = "Stop"
 
-# TODO: remove
-Write-Warning "No tests yet, not fetching assets"
-exit 0
-
 $assets = New-Item -ItemType Directory -Path assets -Force
-$assetsDestination = "$RepoName"
-$files = "51Degrees-LiteV4.1.hash", "20000 Evidence Records.yml"
+$dataFile = "$assets/51Degrees-EnterpriseIpiV41.ipi"
 
-foreach ($file in $files) {
-    if (!(Test-Path $assets/$file)) {
-        Write-Host "Downloading $file"
-        Invoke-WebRequest -Uri "https://github.com/51Degrees/device-detection-data/raw/main/$file" -OutFile $assets/$file
-    } else {
-        Write-Host "'$file' exists, skipping download"
-    }
-
-    New-Item -ItemType SymbolicLink -Force -Target "$assets/$file" -Path "$assetsDestination/$file"
+if (Test-Path $assets/$dataFile) {
+    Write-Host "Data file exists, skipping download"
+} else {
+    Write-Host "Downloading data file ($dataFile.gz)..."
+    ./steps/download-data-file.ps1 -FullFilePath "$dataFile.gz" -Url $DeviceDetectionUrl
+    ./steps/gunzip-file.ps1 "$dataFile.gz"
 }
-
