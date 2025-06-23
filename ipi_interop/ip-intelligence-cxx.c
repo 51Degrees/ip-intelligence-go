@@ -22604,6 +22604,13 @@ MAP_TYPE(Ipv4Range)
 MAP_TYPE(Ipv6Range)
 MAP_TYPE(CombinationProfileIndex)
 MAP_TYPE(ResultProfileIndex)
+MAP_TYPE(WeightedValueHeader)
+MAP_TYPE(WeightedInt)
+MAP_TYPE(WeightedDouble)
+MAP_TYPE(WeightedBool)
+MAP_TYPE(WeightedByte)
+MAP_TYPE(WeightedString)
+MAP_TYPE(WeightedValuesCollection)
 
 // Methods
 #define ResultsIpiCreate fiftyoneDegreesResultsIpiCreate /**< Synonym for #fiftyoneDegreesResultsIpiCreate function. */
@@ -22630,6 +22637,8 @@ MAP_TYPE(ResultProfileIndex)
 #define IpiGetIpAddressAsString fiftyoneDegreesIpiGetIpAddressAsString /**< Synonym for #fiftyoneDegreesIpiGetIpAddressAsString function. */
 #define IpiGetIpAddressAsByteArray fiftyoneDegreesIpiGetIpAddressAsByteArray /**< Synonym for #fiftyoneDegreesIpiGetIpAddressAsByteArray function. */
 #define IpiIterateProfilesForPropertyAndValue fiftyoneDegreesIpiIterateProfilesForPropertyAndValue /**< Synonym for #fiftyoneDegreesIpiIterateProfilesForPropertyAndValue function. */
+#define ResultsIpiGetValuesCollection fiftyoneDegreesResultsIpiGetValuesCollection /**< Synonym for #fiftyoneDegreesResultsIpiGetValuesCollection function. */
+#define WeightedValuesCollectionRelease fiftyoneDegreesWeightedValuesCollectionRelease /**< Synonym for #fiftyoneDegreesWeightedValuesCollectionRelease function. */
 
 // Constants
 #define DefaultWktDecimalPlaces fiftyoneDegreesDefaultWktDecimalPlaces /**< Synonym for #fiftyoneDegreesDefaultWktDecimalPlaces config. */
@@ -22643,15 +22652,6 @@ MAP_TYPE(ResultProfileIndex)
 #define IpiDefaultConfig fiftyoneDegreesIpiDefaultConfig /**< Synonym for #fiftyoneDegreesIpiDefaultConfig config. */
 
 #endif
-
-/* Map types for various weighted value structures */
-MAP_TYPE(WeightedValueHeader);
-MAP_TYPE(WeightedInt);
-MAP_TYPE(WeightedDouble);
-MAP_TYPE(WeightedBool);
-MAP_TYPE(WeightedByte);
-MAP_TYPE(WeightedString);
-MAP_TYPE(WeightedValuesCollection);
 
 
 /**
