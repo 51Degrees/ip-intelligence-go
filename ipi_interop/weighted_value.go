@@ -38,3 +38,16 @@ func (v Values) GetValueWeightByProperty(property string) (interface{}, float64,
 	}
 	return "", 0, false
 }
+
+func (v Values) Append(property string, value interface{}, weight float64) {
+	v[property] = append(v[property], &WeightedValue{
+		Value:  value,
+		Weight: weight,
+	})
+}
+
+func (v Values) InitProperty(property string) {
+	if _, ok := v[property]; !ok {
+		v[property] = make([]*WeightedValue, 0, 0)
+	}
+}

@@ -54,7 +54,7 @@ type Engine struct {
 	fileExternallyChangedCount  int
 	filePullerStarted           bool
 	fileWatcherStarted          bool
-	managerProperties           string
+	managerProperties           []string
 }
 
 const (
@@ -63,7 +63,7 @@ const (
 
 var (
 	defaultProperties = []string{
-		"IpRangeStart", "IpRangeEnd", "AccuracyRadius", "RegisteredCountry", "RegisteredName", "Longitude", "Latitude", "Areas", "MCC",
+		"IpRangeStart", "IpRangeEnd", "AccuracyRadius", "RegisteredCountry", "RegisteredName", "Longitude", "Latitude", "Areas", "Mcc",
 	}
 )
 
@@ -86,7 +86,7 @@ func New(opts ...EngineOptions) (*Engine, error) {
 		isCreateTempDataCopyEnabled: true,
 		tempDataDir:                 "",
 		randomization:               10 * 60 * 1000, // default 10 minutes
-		managerProperties:           strings.Join(defaultProperties, ","),
+		managerProperties:           defaultProperties,
 	}
 
 	for _, opt := range opts {
@@ -309,7 +309,7 @@ func (e *Engine) reloadManager(filePath string) error {
 			e.config = ipi_interop.NewConfigIpi(ipi_interop.Balanced)
 		}
 
-		if err := ipi_interop.InitManagerFromFile(e.manager, *e.config, e.managerProperties, filePath); err != nil {
+		if err := ipi_interop.InitManagerFromFile(e.manager, *e.config, strings.Join(e.managerProperties, ","), filePath); err != nil {
 			return fmt.Errorf("failed to init manager from file: %+v", err)
 		}
 		e.dataFileLastUsedByManager = filePath
@@ -323,7 +323,7 @@ func (e *Engine) reloadManager(filePath string) error {
 		return nil
 	}
 
-	err := e.manager.ReloadFromFile(*e.config, e.managerProperties, filePath)
+	err := e.manager.ReloadFromFile(*e.config, strings.Join(e.managerProperties, ","), filePath)
 	if err != nil {
 		return fmt.Errorf("failed to reload manager from file: %w", err)
 	}
@@ -347,19 +347,17 @@ func (e *Engine) Process(ipAddress string) (ipi_interop.Values, error) {
 
 	defer results.Free()
 
-	wv := make(ipi_interop.Values, 0)
+	var values ipi_interop.Values
+	var err error
 
 	if results.HasValues() {
-		for _, property := range defaultProperties {
-			res, err := results.GetValuesByProperty(property)
-			if err != nil {
-				return nil, err
-			}
-			wv[property] = res
+		values, err = results.GetWeightedValues(e.managerProperties)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	return wv, nil
+	return values, nil
 }
 
 // appendLicenceKey appends the license key as a query parameter to the data file URL in the Engine instance.

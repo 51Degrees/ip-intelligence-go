@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 type EngineOptions func(cfg *Engine) error
@@ -190,7 +189,7 @@ func WithRandomization(seconds int) EngineOptions {
 func WithProperties(properties []string) EngineOptions {
 	return func(cfg *Engine) error {
 		if properties != nil {
-			cfg.managerProperties = strings.Join(properties, ",")
+			cfg.managerProperties = properties
 		}
 		return nil
 	}

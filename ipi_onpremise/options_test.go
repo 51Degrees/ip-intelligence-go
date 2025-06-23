@@ -783,39 +783,70 @@ func TestWithRandomization(t *testing.T) {
 
 func TestWithProperties(t *testing.T) {
 	tests := []struct {
-		name          string
-		properties    []string
-		expectedValue string
+		name               string
+		properties         []string
+		expectError        bool
+		expectedProperties []string
 	}{
 		{
-			name:          "nil properties",
-			properties:    nil,
-			expectedValue: "",
+			name:               "valid properties slice",
+			properties:         []string{"Property1", "Property2", "Property3"},
+			expectError:        false,
+			expectedProperties: []string{"Property1", "Property2", "Property3"},
 		},
 		{
-			name:          "empty properties slice",
-			properties:    []string{},
-			expectedValue: "",
+			name:               "empty properties slice",
+			properties:         []string{},
+			expectError:        false,
+			expectedProperties: []string{},
 		},
 		{
-			name:          "single property",
-			properties:    []string{"property1"},
-			expectedValue: "property1",
+			name:               "single property",
+			properties:         []string{"SingleProperty"},
+			expectError:        false,
+			expectedProperties: []string{"SingleProperty"},
 		},
 		{
-			name:          "multiple properties",
-			properties:    []string{"property1", "property2", "property3"},
-			expectedValue: "property1,property2,property3",
+			name:               "properties with special characters",
+			properties:         []string{"Property-1", "Property_2", "Property@3"},
+			expectError:        false,
+			expectedProperties: []string{"Property-1", "Property_2", "Property@3"},
 		},
 		{
-			name:          "properties with special characters",
-			properties:    []string{"property.name", "property-name", "property_name"},
-			expectedValue: "property.name,property-name,property_name",
+			name:               "properties with spaces",
+			properties:         []string{"Property Name", "Another Property"},
+			expectError:        false,
+			expectedProperties: []string{"Property Name", "Another Property"},
 		},
 		{
-			name:          "properties with spaces",
-			properties:    []string{"property one", "property two"},
-			expectedValue: "property one,property two",
+			name:               "properties with empty strings",
+			properties:         []string{"", "ValidProperty", ""},
+			expectError:        false,
+			expectedProperties: []string{"", "ValidProperty", ""},
+		},
+		{
+			name:               "nil properties slice",
+			properties:         nil,
+			expectError:        false,
+			expectedProperties: nil,
+		},
+		{
+			name:               "large number of properties",
+			properties:         generateLargePropertySlice(100),
+			expectError:        false,
+			expectedProperties: generateLargePropertySlice(100),
+		},
+		{
+			name:               "duplicate properties",
+			properties:         []string{"Duplicate", "Property", "Duplicate"},
+			expectError:        false,
+			expectedProperties: []string{"Duplicate", "Property", "Duplicate"},
+		},
+		{
+			name:               "numeric string properties",
+			properties:         []string{"123", "456", "789"},
+			expectError:        false,
+			expectedProperties: []string{"123", "456", "789"},
 		},
 	}
 
@@ -827,16 +858,50 @@ func TestWithProperties(t *testing.T) {
 			// Apply the WithProperties option
 			err := WithProperties(tt.properties)(engine)
 
-			// Should never return error
-			if err != nil {
-				t.Errorf("WithProperties() error = %v, want no error", err)
-			}
+			// Check error conditions
+			if tt.expectError {
+				if err == nil {
+					t.Error("Expected an error, but got none")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Did not expect an error, but got: %v", err)
+				}
 
-			// Check if properties were set correctly
-			if engine.managerProperties != tt.expectedValue {
-				t.Errorf("WithProperties() got = %q, want %q",
-					engine.managerProperties, tt.expectedValue)
+				// Check if properties were set correctly
+				if tt.expectedProperties == nil {
+					if engine.managerProperties != nil {
+						t.Errorf("Expected managerProperties to be nil, got %v", engine.managerProperties)
+					}
+				} else {
+					if !slicesEqual(engine.managerProperties, tt.expectedProperties) {
+						t.Errorf("Expected managerProperties to be %v, got %v",
+							tt.expectedProperties, engine.managerProperties)
+					}
+				}
 			}
 		})
 	}
+}
+
+// Helper function to compare slices
+func slicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// Helper function to generate a large slice of properties for testing
+func generateLargePropertySlice(size int) []string {
+	properties := make([]string, size)
+	for i := 0; i < size; i++ {
+		properties[i] = fmt.Sprintf("Property%d", i)
+	}
+	return properties
 }

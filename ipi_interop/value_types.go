@@ -24,10 +24,6 @@ package ipi_interop
 //#include <string.h>
 //#include "ip-intelligence-cxx.h"
 import "C"
-import (
-	"fmt"
-	"unsafe"
-)
 
 type PropertyValueType int
 
@@ -49,78 +45,3 @@ const (
 	WkbRValueType                                 // FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB_R
 
 )
-
-// GetIntegerValue retrieves an integer value from the provided storedBinaryValue using the specified storedValueType.
-func (p PropertyValueType) GetIntegerValue(storedBinaryValue *C.StoredBinaryValue, storedValueType C.PropertyValueType) int {
-	intVal := C.fiftyoneDegreesStoredBinaryValueToIntOrDefault(
-		storedBinaryValue,
-		storedValueType,
-		0)
-
-	return int(intVal)
-}
-
-// GetFloatValue retrieves a float value from the provided storedBinaryValue using the specified storedValueType.
-func (p PropertyValueType) GetFloatValue(storedBinaryValue *C.StoredBinaryValue, storedValueType C.PropertyValueType) float64 {
-	floatVal := C.fiftyoneDegreesStoredBinaryValueToDoubleOrDefault(
-		storedBinaryValue,
-		storedValueType,
-		0)
-
-	return float64(floatVal)
-}
-
-// GetBooleanValue retrieves a boolean value from the provided storedBinaryValue using the specified storedValueType.
-func (p PropertyValueType) GetBooleanValue(storedBinaryValue *C.StoredBinaryValue, storedValueType C.PropertyValueType) bool {
-	boolVal := C.fiftyoneDegreesStoredBinaryValueToBoolOrDefault(
-		storedBinaryValue,
-		storedValueType,
-		false)
-
-	return bool(boolVal)
-}
-
-// GetStringValue retrieves a string value from the provided storedBinaryValue or returns an empty string if nil or invalid.
-func (p PropertyValueType) GetStringValue(storedBinaryValue *C.StoredBinaryValue) string {
-	if storedBinaryValue == nil {
-		return ""
-	}
-	stringMember := (*C.fiftyoneDegreesString)(unsafe.Pointer(storedBinaryValue))
-	if stringMember == nil {
-		return ""
-	}
-
-	dataPtr := (*C.char)(unsafe.Pointer(&stringMember.value))
-	if dataPtr == nil {
-		return ""
-	}
-
-	return string(C.GoString(dataPtr))
-}
-
-// GetIpAddressValue retrieves an IP address value from the provided storedBinaryValue using the specified storedValueType.
-func (p PropertyValueType) GetIpAddressValue(storedBinaryValue *C.StoredBinaryValue, storedValueType C.PropertyValueType) (string, error) {
-	buf := (*C.char)(C.malloc(C.size_t(defaultSize)))
-	defer C.free((unsafe.Pointer)(buf))
-
-	builder := &C.StringBuilder{
-		ptr:    buf,
-		length: defaultSize,
-	}
-	C.StringBuilderInit(builder)
-
-	exception := NewException()
-	C.StringBuilderAddStringValue(
-		builder,
-		storedBinaryValue,
-		storedValueType,
-		16,
-		exception.CPtr,
-	)
-	if !exception.IsOkay() {
-		return "", fmt.Errorf(C.GoString(C.ExceptionGetMessage(exception.CPtr)))
-	}
-	C.StringBuilderComplete(builder)
-
-	return C.GoString(buf), nil
-}

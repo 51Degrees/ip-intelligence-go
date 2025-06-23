@@ -226,3 +226,319 @@ func TestValues_EdgeCases(t *testing.T) {
 		})
 	}
 }
+
+func TestValues_Append(t *testing.T) {
+	tests := []struct {
+		name           string
+		initialValues  Values
+		property       string
+		value          interface{}
+		weight         float64
+		expectedLength int
+		expectedValue  interface{}
+		expectedWeight float64
+	}{
+		{
+			name:           "append to empty values",
+			initialValues:  make(Values),
+			property:       "browser",
+			value:          "Chrome",
+			weight:         0.9,
+			expectedLength: 1,
+			expectedValue:  "Chrome",
+			expectedWeight: 0.9,
+		},
+		{
+			name: "append to existing property",
+			initialValues: Values{
+				"browser": []*WeightedValue{
+					{Value: "Firefox", Weight: 0.8},
+				},
+			},
+			property:       "browser",
+			value:          "Chrome",
+			weight:         0.9,
+			expectedLength: 2,
+			expectedValue:  "Chrome",
+			expectedWeight: 0.9,
+		},
+		{
+			name: "append to new property in existing values",
+			initialValues: Values{
+				"os": []*WeightedValue{
+					{Value: "Windows", Weight: 0.7},
+				},
+			},
+			property:       "browser",
+			value:          "Safari",
+			weight:         0.6,
+			expectedLength: 1,
+			expectedValue:  "Safari",
+			expectedWeight: 0.6,
+		},
+		{
+			name:           "append integer value",
+			initialValues:  make(Values),
+			property:       "version",
+			value:          42,
+			weight:         1.0,
+			expectedLength: 1,
+			expectedValue:  42,
+			expectedWeight: 1.0,
+		},
+		{
+			name:           "append boolean value",
+			initialValues:  make(Values),
+			property:       "mobile",
+			value:          true,
+			weight:         0.95,
+			expectedLength: 1,
+			expectedValue:  true,
+			expectedWeight: 0.95,
+		},
+		{
+			name:           "append float64 value",
+			initialValues:  make(Values),
+			property:       "score",
+			value:          3.14159,
+			weight:         0.5,
+			expectedLength: 1,
+			expectedValue:  3.14159,
+			expectedWeight: 0.5,
+		},
+		{
+			name:           "append nil value",
+			initialValues:  make(Values),
+			property:       "nullable",
+			value:          nil,
+			weight:         0.0,
+			expectedLength: 1,
+			expectedValue:  nil,
+			expectedWeight: 0.0,
+		},
+		{
+			name:           "append with empty string property",
+			initialValues:  make(Values),
+			property:       "",
+			value:          "empty_key",
+			weight:         1.0,
+			expectedLength: 1,
+			expectedValue:  "empty_key",
+			expectedWeight: 1.0,
+		},
+		{
+			name:           "append with zero weight",
+			initialValues:  make(Values),
+			property:       "zero_weight",
+			value:          "test",
+			weight:         0.0,
+			expectedLength: 1,
+			expectedValue:  "test",
+			expectedWeight: 0.0,
+		},
+		{
+			name:           "append with negative weight",
+			initialValues:  make(Values),
+			property:       "negative",
+			value:          "test",
+			weight:         -0.5,
+			expectedLength: 1,
+			expectedValue:  "test",
+			expectedWeight: -0.5,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			values := tt.initialValues
+			values.Append(tt.property, tt.value, tt.weight)
+
+			// Check if property exists
+			propertyValues, exists := values[tt.property]
+			if !exists {
+				t.Errorf("Append() property %s was not created", tt.property)
+				return
+			}
+
+			// Check length
+			if len(propertyValues) != tt.expectedLength {
+				t.Errorf("Append() length = %d, want %d", len(propertyValues), tt.expectedLength)
+			}
+
+			// Check the last added value (should be at the end)
+			lastIndex := len(propertyValues) - 1
+			if lastIndex < 0 {
+				t.Errorf("Append() no values found in property %s", tt.property)
+				return
+			}
+
+			lastValue := propertyValues[lastIndex]
+			if !reflect.DeepEqual(lastValue.Value, tt.expectedValue) {
+				t.Errorf("Append() value = %v, want %v", lastValue.Value, tt.expectedValue)
+			}
+
+			if lastValue.Weight != tt.expectedWeight {
+				t.Errorf("Append() weight = %v, want %v", lastValue.Weight, tt.expectedWeight)
+			}
+		})
+	}
+}
+
+func TestValues_InitProperty(t *testing.T) {
+	tests := []struct {
+		name          string
+		initialValues Values
+		property      string
+		expectExists  bool
+		expectLength  int
+	}{
+		{
+			name:          "init property in empty values",
+			initialValues: make(Values),
+			property:      "browser",
+			expectExists:  true,
+			expectLength:  0,
+		},
+		{
+			name: "init property that already exists",
+			initialValues: Values{
+				"browser": []*WeightedValue{
+					{Value: "Chrome", Weight: 0.9},
+				},
+			},
+			property:     "browser",
+			expectExists: true,
+			expectLength: 1, // Should not change existing values
+		},
+		{
+			name: "init new property in existing values",
+			initialValues: Values{
+				"os": []*WeightedValue{
+					{Value: "Windows", Weight: 0.7},
+				},
+			},
+			property:     "browser",
+			expectExists: true,
+			expectLength: 0,
+		},
+		{
+			name:          "init property with empty string key",
+			initialValues: make(Values),
+			property:      "",
+			expectExists:  true,
+			expectLength:  0,
+		},
+		{
+			name: "init property that exists but is empty",
+			initialValues: Values{
+				"empty": []*WeightedValue{},
+			},
+			property:     "empty",
+			expectExists: true,
+			expectLength: 0, // Should remain empty
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			values := tt.initialValues
+			values.InitProperty(tt.property)
+
+			// Check if property exists after init
+			propertyValues, exists := values[tt.property]
+			if exists != tt.expectExists {
+				t.Errorf("InitProperty() exists = %v, want %v", exists, tt.expectExists)
+			}
+
+			if !exists {
+				return
+			}
+
+			// Check length
+			if len(propertyValues) != tt.expectLength {
+				t.Errorf("InitProperty() length = %d, want %d", len(propertyValues), tt.expectLength)
+			}
+
+			// Verify it's a valid slice (not nil)
+			if propertyValues == nil {
+				t.Errorf("InitProperty() created nil slice for property %s", tt.property)
+			}
+		})
+	}
+}
+
+func TestValues_AppendAfterInit(t *testing.T) {
+	// Test the combination of InitProperty followed by Append
+	values := make(Values)
+	property := "test_property"
+
+	// Initialize the property
+	values.InitProperty(property)
+
+	// Verify it's initialized correctly
+	if _, exists := values[property]; !exists {
+		t.Errorf("InitProperty() failed to create property %s", property)
+	}
+
+	if len(values[property]) != 0 {
+		t.Errorf("InitProperty() created non-empty slice, length = %d", len(values[property]))
+	}
+
+	// Append some values
+	values.Append(property, "value1", 0.8)
+	values.Append(property, "value2", 0.6)
+
+	// Verify append worked correctly
+	if len(values[property]) != 2 {
+		t.Errorf("Append() after InitProperty() length = %d, want 2", len(values[property]))
+	}
+
+	// Verify values are in correct order
+	if values[property][0].Value != "value1" || values[property][0].Weight != 0.8 {
+		t.Errorf("First appended value incorrect: got %v with weight %v",
+			values[property][0].Value, values[property][0].Weight)
+	}
+
+	if values[property][1].Value != "value2" || values[property][1].Weight != 0.6 {
+		t.Errorf("Second appended value incorrect: got %v with weight %v",
+			values[property][1].Value, values[property][1].Weight)
+	}
+}
+
+func TestValues_MultipleAppendsOrder(t *testing.T) {
+	// Test that multiple appends maintain correct order
+	values := make(Values)
+	property := "order_test"
+
+	// Append multiple values
+	testValues := []struct {
+		value  interface{}
+		weight float64
+	}{
+		{"first", 1.0},
+		{"second", 0.9},
+		{"third", 0.8},
+		{42, 0.7},
+		{true, 0.6},
+	}
+
+	for _, tv := range testValues {
+		values.Append(property, tv.value, tv.weight)
+	}
+
+	// Verify all values are present in correct order
+	if len(values[property]) != len(testValues) {
+		t.Errorf("MultipleAppendsOrder() length = %d, want %d", len(values[property]), len(testValues))
+	}
+
+	for i, tv := range testValues {
+		if !reflect.DeepEqual(values[property][i].Value, tv.value) {
+			t.Errorf("MultipleAppendsOrder() value at index %d = %v, want %v",
+				i, values[property][i].Value, tv.value)
+		}
+		if values[property][i].Weight != tv.weight {
+			t.Errorf("MultipleAppendsOrder() weight at index %d = %v, want %v",
+				i, values[property][i].Weight, tv.weight)
+		}
+	}
+}
