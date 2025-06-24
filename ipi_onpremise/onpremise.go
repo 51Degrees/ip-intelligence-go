@@ -57,7 +57,8 @@ type Engine struct {
 	fileWatcherStarted          bool
 	managerProperties           []string
 	resultsPool                 chan *ipi_interop.ResultsIpi // Pool of pre-allocated ResultsIpi objects
-	propertyIndexCache          map[string]int
+	propertyIndexCache          map[string]int               // name → index mapping
+	propertyNameCache           map[int]string               // index → name mapping (readonly after init)
 	propertyIndexes             []int
 }
 
@@ -92,6 +93,7 @@ func New(opts ...EngineOptions) (*Engine, error) {
 		randomization:               10 * 60 * 1000, // default 10 minutes
 		managerProperties:           defaultProperties,
 		propertyIndexCache:          make(map[string]int),
+		propertyNameCache:           make(map[int]string),
 	}
 
 	for _, opt := range opts {
@@ -357,7 +359,7 @@ func (e *Engine) reloadManager(filePath string) error {
 	return nil
 }
 
-// initPropertyIndexes pre-computes and caches property indexes
+// initPropertyIndexes pre-computes and caches bidirectional property index↔name mappings
 func (e *Engine) initPropertyIndexes() {
 	e.propertyIndexes = make([]int, len(e.managerProperties))
 	
@@ -368,7 +370,9 @@ func (e *Engine) initPropertyIndexes() {
 	for i, prop := range e.managerProperties {
 		idx := e.getPropertyIndex(tempResults, prop)
 		e.propertyIndexes[i] = idx
+		// Cache bidirectional mappings: name ↔ index
 		e.propertyIndexCache[prop] = idx
+		e.propertyNameCache[idx] = prop
 	}
 }
 
@@ -391,6 +395,15 @@ func (e *Engine) getPropertyIndex(results *ipi_interop.ResultsIpi, propertyName 
 	return results.GetPropertyIndexByName(propertyName)
 }
 
+// GetPropertyNameByIndex retrieves the property name for a given index from the engine's cache
+// This is thread-safe as the cache is readonly after initialization
+func (e *Engine) GetPropertyNameByIndex(index int) string {
+	if name, exists := e.propertyNameCache[index]; exists {
+		return name
+	}
+	return "" // Unknown index
+}
+
 // Process processes the given IP address and retrieves associated values using the default properties.
 func (e *Engine) Process(ipAddress string) (ipi_interop.Values, error) {
 	// Get a ResultsIpi object from the pool
@@ -408,8 +421,9 @@ func (e *Engine) Process(ipAddress string) (ipi_interop.Values, error) {
 	var err error
 
 	if results.HasValues() {
-		// Use pre-computed indexes instead of property names
-		values, err = results.GetWeightedValuesByIndexes(e.propertyIndexes)
+		// OPTIMIZATION: Use pre-computed indexes with Engine's bidirectional property mapping
+		// This eliminates expensive index→name CGO calls by using Engine's readonly cache
+		values, err = results.GetWeightedValuesByIndexes(e.propertyIndexes, e.GetPropertyNameByIndex)
 		if err != nil {
 			return nil, err
 		}
