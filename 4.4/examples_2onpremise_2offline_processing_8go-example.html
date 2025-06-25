@@ -65,25 +65,29 @@ $(document).ready(function(){initNavTree('examples_2onpremise_2offline_processin
 <h2 class="g-docs__page-title">examples/onpremise/offline_processing.go</h2></div><!--header-->
 <div class="g-docs__inner">
 <div class="g-docs__primary" id="primary">
-<p>Offline processing example of using 51Degrees IP intelligence.This example demonstrates one possible use of the 51Degrees on-premise IP intelligence API and data for offline data processing. It also demonstrates that you can reuse the retrieved results for multiple uses and only then release it.</p>
+<h1 class="g-docs__section-heading">Offline processing example of using 51Degrees IP intelligence.</h1>
+<p>This example demonstrates one possible use of the 51Degrees on-premise IP intelligence API and data for offline data processing. It also demonstrates that you can reuse the retrieved results for multiple uses and only then release it.</p>
 <p>This example is available in full on <a href="https://github.com/51Degrees/ip-intelligence-go-examples/tree/main/ipi_onpremise/offline_processing">GitHub</a>.</p>
 <h2>In detail, the example shows how to</h2>
 <h3>1. Specify config for engine:</h3>
 <p><br />
  This setting specifies the performance profile that will be used when initializing the C library. <br />
  </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)</div></div><p> <br />
- ### 2. Initialization of the engine with the following parameters: </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">&lt;br/&gt;</div><div class="c-code__line">engine, err := ipi_onpremise.New(</div><div class="c-code__line"></div><div class="c-code__line">    <span class="c-code__comment">// Optimized config provided</span></div><div class="c-code__line">    ipi_onpremise.WithConfigIpi(config),</div><div class="c-code__line">    <span class="c-code__comment">// Path to your data file</span></div><div class="c-code__line">    ipi_onpremise.WithDataFile(params.DataFile),</div><div class="c-code__line">    <span class="c-code__comment">// Enable automatic updates.</span></div><div class="c-code__line">    ipi_onpremise.WithAutoUpdate(<span class="c-code__keyword">false</span>),</div><div class="c-code__line"></div><div class="c-code__line">)</div></div><p> <br />
- <b>WithConfigIpi</b> allows to configure the Ipi matching algorithm.</p>
-<div class="c-code__block c-code__block--outline"><div class="c-code__line">ipi_onpremise.WithConfigIpi(config)</div></div><p> <br />
- <b>WithDataFile</b> sets the path to the local data file, this parameter is required to start the engine</p>
-<div class="c-code__block c-code__block--outline"><div class="c-code__line">ipi_onpremise.WithDataFile(params.DataFile),</div></div><p> <br />
- <b>WithAutoUpdate</b> enables or disables auto update</p>
-<div class="c-code__block c-code__block--outline"><div class="c-code__line">ipi_onpremise.WithAutoUpdate(<span class="c-code__keyword">false</span>),</div></div><p> <br />
+ </p><h3>2. Initialization of the engine with the following parameters:</h3>
+<p><br />
+ </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">engine, err := ipi_onpremise.New(</div><div class="c-code__line"></div><div class="c-code__line">    <span class="c-code__comment">// Optimized config provided</span></div><div class="c-code__line">    ipi_onpremise.WithConfigIpi(config),</div><div class="c-code__line">    <span class="c-code__comment">// Path to your data file</span></div><div class="c-code__line">    ipi_onpremise.WithDataFile(params.DataFile),</div><div class="c-code__line">    <span class="c-code__comment">// Enable automatic updates.</span></div><div class="c-code__line">    ipi_onpremise.WithAutoUpdate(<span class="c-code__keyword">false</span>),</div><div class="c-code__line"></div><div class="c-code__line">)</div></div><p> <br />
+ <b>WithConfigIpi</b> allows to configure the Ipi matching algorithm. <br />
+ </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">ipi_onpremise.WithConfigIpi(config)</div></div><p> <br />
+ <b>WithDataFile</b> sets the path to the local data file, this parameter is required to start the engine <br />
+ </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">ipi_onpremise.WithDataFile(params.DataFile),</div></div><p> <br />
+ <b>WithAutoUpdate</b> enables or disables auto update <br />
+ </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">ipi_onpremise.WithAutoUpdate(<span class="c-code__keyword">false</span>),</div></div><p> <br />
  </p><h3>3. Run evidence processing with parameters</h3>
-<div class="c-code__block c-code__block--outline"><div class="c-code__line">runOfflineProcessing(engine, params)</div></div><p> <br />
+<p><br />
+ </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">runOfflineProcessing(engine, params)</div></div><p> <br />
  </p><h3>4. Load evidence one by one from the EvidenceYaml file</h3>
 <p><br />
- </p><div class="c-code__block c-code__block--outline"><div class="c-code__line"><span class="c-code__comment">// Open the Evidence Records file for processing</span></div><div class="c-code__line">file, err := os.OpenFile(evidenceFilePath, os.O_RDONLY, 0444)</div><div class="c-code__line"><span class="c-code__keywordflow">if</span> err != nil {</div><div class="c-code__line">    log.Fatalf(<span class="c-code__stringliteral">&quot;Failed to open file \&quot;%s\&quot;.\n&quot;</span>, evidenceFilePath)</div><div class="c-code__line">}</div><div class="c-code__line">defer func() {</div><div class="c-code__line">    <span class="c-code__keywordflow">if</span> err := file.Close(); err != nil {</div><div class="c-code__line">        log.Fatalf(<span class="c-code__stringliteral">&quot;Failed to close file \&quot;%s\&quot;.\n&quot;</span>, evidenceFilePath)</div><div class="c-code__line">    }</div><div class="c-code__line">}()</div></div><p> <br />
+ </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">file, err := os.OpenFile(evidenceFilePath, os.O_RDONLY, 0444)</div><div class="c-code__line"><span class="c-code__keywordflow">if</span> err != nil {</div><div class="c-code__line">    log.Fatalf(<span class="c-code__stringliteral">&quot;Failed to open file \&quot;%s\&quot;.\n&quot;</span>, evidenceFilePath)</div><div class="c-code__line">}</div><div class="c-code__line">defer func() {</div><div class="c-code__line">    <span class="c-code__keywordflow">if</span> err := file.Close(); err != nil {</div><div class="c-code__line">        log.Fatalf(<span class="c-code__stringliteral">&quot;Failed to close file \&quot;%s\&quot;.\n&quot;</span>, evidenceFilePath)</div><div class="c-code__line">    }</div><div class="c-code__line">}()</div></div><p> <br />
  </p><h3>5. Create a new file for writing processed evidence</h3>
 <p><br />
  </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">outFile, err := os.Create(outputFilePath)</div><div class="c-code__line"><span class="c-code__keywordflow">if</span> err != nil {</div><div class="c-code__line">    log.Fatalf(<span class="c-code__stringliteral">&quot;Failed to create file %s.\n&quot;</span>, outputFilePath)</div><div class="c-code__line">}</div><div class="c-code__line">defer func() {</div><div class="c-code__line">    <span class="c-code__keywordflow">if</span> err := outFile.Close(); err != nil {</div><div class="c-code__line">        log.Fatalf(<span class="c-code__stringliteral">&quot;Failed to close file \&quot;%s\&quot;.\n&quot;</span>, outputFilePath)</div><div class="c-code__line">    }</div><div class="c-code__line">}()</div></div><p> <br />

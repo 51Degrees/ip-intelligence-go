@@ -65,7 +65,8 @@ $(document).ready(function(){initNavTree('examples_2onpremise_2performance_8go-e
 <h2 class="g-docs__page-title">examples/onpremise/performance.go</h2></div><!--header-->
 <div class="g-docs__inner">
 <div class="g-docs__primary" id="primary">
-<p>The example illustrates a "clock-time" benchmark for assessing detection speed.It's important to understand the trade-offs between performance, memory usage and accuracy, that the 51Degrees pipeline configuration makes available, and this example shows a range of different configurations to illustrate the difference in performance.</p>
+<h1 class="g-docs__section-heading">The example illustrates a "clock-time" benchmark for assessing detection speed.</h1>
+<p>It's important to understand the trade-offs between performance, memory usage and accuracy, that the 51Degrees pipeline configuration makes available, and this example shows a range of different configurations to illustrate the difference in performance.</p>
 <p>Requesting properties from a single component reduces detection time compared with requesting properties from multiple components. If you don't specify any properties to detect, then all properties are detected.</p>
 <p>This example is available in full on <a href="https://github.com/51Degrees/ip-intelligence-go-examples/tree/main/ipi_onpremise/performance">GitHub</a>.</p>
 <h2>In detail, the example shows how to</h2>
@@ -76,17 +77,14 @@ $(document).ready(function(){initNavTree('examples_2onpremise_2performance_8go-e
  </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)</div></div><p> <br />
  </p><h3>2. Initialization of the engine with the following parameters:</h3>
 <p><br />
- </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">engine, err := ipi_onpremise.New(</div><div class="c-code__line"></div><div class="c-code__line">    <span class="c-code__comment">// Optimized config provided</span></div><div class="c-code__line">    ipi_onpremise.WithConfigIpi(config),</div><div class="c-code__line">    <span class="c-code__comment">// Path to your data file</span></div><div class="c-code__line">    ipi_onpremise.WithDataFile(params.DataFile),</div><div class="c-code__line">    <span class="c-code__comment">// Enable automatic updates.</span></div><div class="c-code__line">    ipi_onpremise.WithAutoUpdate(<span class="c-code__keyword">false</span>),</div><div class="c-code__line">    <span class="c-code__comment">// Set only 1 parameter for getting data</span></div><div class="c-code__line">    ipi_onpremise.WithProperties([]<span class="c-code__keywordtype">string</span>{<span class="c-code__stringliteral">&quot;RegisteredName&quot;</span>}),</div><div class="c-code__line">)</div></div><p> <br />
- WithConfigIpi allows to configure the Ipi matching algorithm. <br />
+ </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">engine, err := ipi_onpremise.New(</div><div class="c-code__line">    <span class="c-code__comment">// Optimized config provided</span></div><div class="c-code__line">    ipi_onpremise.WithConfigIpi(config),</div><div class="c-code__line">    <span class="c-code__comment">// Path to your data file</span></div><div class="c-code__line">    ipi_onpremise.WithDataFile(params.DataFile),</div><div class="c-code__line">    <span class="c-code__comment">// Enable automatic updates.</span></div><div class="c-code__line">    ipi_onpremise.WithAutoUpdate(<span class="c-code__keyword">false</span>),</div><div class="c-code__line">    <span class="c-code__comment">// Set only 1 parameter for getting data</span></div><div class="c-code__line">    ipi_onpremise.WithProperties([]<span class="c-code__keywordtype">string</span>{<span class="c-code__stringliteral">&quot;RegisteredName&quot;</span>}),</div><div class="c-code__line">)</div></div><p> <br />
+ <b>WithConfigIpi</b> allows to configure the Ipi matching algorithm. <br />
  </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">ipi_onpremise.WithConfigIpi(config)</div></div><p> <br />
- </p><h1 class="g-docs__section-heading">WithDataFile sets the path to the local data file, this parameter is required to start the engine</h1>
-<p><br />
+ <b>WithDataFile</b> sets the path to the local data file, this parameter is required to start the engine <br />
  </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">ipi_onpremise.WithDataFile(params.DataFile),</div></div><p> <br />
- </p><h1 class="g-docs__section-heading">WithAutoUpdate enables or disables auto update</h1>
-<p><br />
+ <b>WithAutoUpdate</b> enables or disables auto update <br />
  </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">ipi_onpremise.WithAutoUpdate(<span class="c-code__keyword">false</span>),</div></div><p> <br />
- </p><h1 class="g-docs__section-heading">WithProperties configures an Engine with a comma-separated list of manager properties derived from the provided slice.te</h1>
-<p><br />
+ <b>WithProperties</b> configures an Engine with a comma-separated list of manager properties derived from the provided slice.te <br />
  </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">ipi_onpremise.WithProperties([]<span class="c-code__keywordtype">string</span>{<span class="c-code__stringliteral">&quot;RegisteredName&quot;</span>}),</div></div><p> <br />
  </p><h3>3. Run evidence processing with parameters and get the report as returned value</h3>
 <p><br />
