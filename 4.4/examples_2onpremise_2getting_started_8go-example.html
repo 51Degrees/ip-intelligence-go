@@ -70,19 +70,19 @@ $(document).ready(function(){initNavTree('examples_2onpremise_2getting_started_8
 <p>This example is available in full on <a href="https://github.com/51Degrees/ip-intelligence-go-examples/tree/main/ipi_onpremise/getting_started">GitHub</a>.</p>
 <h2>In detail, the example shows how to</h2>
 <h3>1. Specify config for engine:</h3>
-<p>This setting specifies the performance profile that will be used when initializing the C library.</p>
-<div class="c-code__block c-code__block--outline"><div class="c-code__line">config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)</div></div><h3>2. Initialization of the engine with the following parameters:</h3>
+<p><br />
+ This setting specifies the performance profile that will be used when initializing the C library.</p>
+<div class="c-code__block c-code__block--outline"><div class="c-code__line">config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)</div></div><p> <br />
+ </p><h3>2. Initialization of the engine with the following parameters:</h3>
 <div class="c-code__block c-code__block--outline"><div class="c-code__line">engine, err := ipi_onpremise.New(</div><div class="c-code__line"></div><div class="c-code__line">    <span class="c-code__comment">// Optimized config provided</span></div><div class="c-code__line">    ipi_onpremise.WithConfigIpi(config),</div><div class="c-code__line">    <span class="c-code__comment">// Path to your data file</span></div><div class="c-code__line">    ipi_onpremise.WithDataFile(params.DataFile),</div><div class="c-code__line">    <span class="c-code__comment">// Enable automatic updates.</span></div><div class="c-code__line">    ipi_onpremise.WithAutoUpdate(<span class="c-code__keyword">false</span>),</div><div class="c-code__line">)</div></div><p> <br />
- <b>WithConfigIpi allows to configure the Ipi matching algorithm.</b></p>
+ <b>WithConfigIpi</b> allows to configure the Ipi matching algorithm.</p>
 <div class="c-code__block c-code__block--outline"><div class="c-code__line">ipi_onpremise.WithConfigIpi(config)</div></div><p> <br />
- <b>WithDataFile sets the path to the local data file, this parameter is required to start the engine.</b></p>
+ <b>WithDataFile</b> sets the path to the local data file, this parameter is required to start the engine.</p>
 <div class="c-code__block c-code__block--outline"><div class="c-code__line">ipi_onpremise.WithDataFile(params.DataFile),</div></div><p> <br />
- <b>WithAutoUpdate enables or disables auto update.</b></p>
+ <b>WithAutoUpdate</b> enables or disables auto update.</p>
 <div class="c-code__block c-code__block--outline"><div class="c-code__line">ipi_onpremise.WithAutoUpdate(<span class="c-code__keyword">false</span>),</div></div><p> <br />
- <br />
  </p><h3>3. Engine output with the parameter of the required address to receive data</h3>
 <div class="c-code__block c-code__block--outline"><div class="c-code__line">result, err := engine.Process(ipiItem.IpAddress)</div></div><p> <br />
- <br />
  </p><h3>4. Getting the results of the value, weight values after processing</h3>
 <div class="c-code__block c-code__block--outline"><div class="c-code__line">val, weight, _ := result.GetValueWeightByProperty(property)</div></div><p> <br />
  <br />
