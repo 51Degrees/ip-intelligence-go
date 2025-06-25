@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -56,7 +55,6 @@ type Engine struct {
 	filePullerStarted           bool
 	fileWatcherStarted          bool
 	managerProperties           []string
-	resultsPool                 chan *ipi_interop.ResultsIpi // Pool of pre-allocated ResultsIpi objects
 	propertyIndexCache          map[string]int               // name → index mapping
 	propertyNameCache           map[int]string               // index → name mapping (readonly after init)
 	propertyIndexes             []int
@@ -124,9 +122,6 @@ func New(opts ...EngineOptions) (*Engine, error) {
 
 	// Pre-compute property indexes using a temporary results object
 	engine.initPropertyIndexes()
-
-	// Initialize pool of ResultsIpi objects
-	engine.initResultsPool()
 
 	// if file watcher is enabled, start the watcher
 	if engine.isFileWatcherEnabled {
@@ -198,13 +193,6 @@ func (e *Engine) Stop() {
 	e.isStopped = true
 	close(e.stopCh)
 
-	// Free all ResultsIpi objects in the pool before freeing the manager
-	if e.resultsPool != nil {
-		close(e.resultsPool)
-		for results := range e.resultsPool {
-			results.Free()
-		}
-	}
 
 	if e.manager != nil {
 		e.manager.Free()
@@ -376,18 +364,6 @@ func (e *Engine) initPropertyIndexes() {
 	}
 }
 
-// initResultsPool creates a pool of pre-allocated ResultsIpi objects
-func (e *Engine) initResultsPool() {
-	// Create a pool with size based on CPU count * 2 for good concurrency
-	poolSize := runtime.NumCPU() * 2
-	e.resultsPool = make(chan *ipi_interop.ResultsIpi, poolSize)
-	
-	// Pre-allocate ResultsIpi objects
-	for i := 0; i < poolSize; i++ {
-		results := ipi_interop.NewResultsIpi(e.manager)
-		e.resultsPool <- results
-	}
-}
 
 // getPropertyIndex gets the property index from results
 func (e *Engine) getPropertyIndex(results *ipi_interop.ResultsIpi, propertyName string) int {
@@ -404,14 +380,34 @@ func (e *Engine) GetPropertyNameByIndex(index int) string {
 	return "" // Unknown index
 }
 
+// NewResultsIpi creates a new ResultsIpi object using this engine's manager
+// Caller is responsible for calling Free() on the returned object
+func (e *Engine) NewResultsIpi() *ipi_interop.ResultsIpi {
+	return ipi_interop.NewResultsIpi(e.manager)
+}
+
 // Process processes the given IP address and retrieves associated values using the default properties.
+// If results is nil, creates a new ResultsIpi object for this call (per-call mode).
+// If results is provided, reuses the existing object (reuse mode for better performance).
 func (e *Engine) Process(ipAddress string) (ipi_interop.Values, error) {
-	// Get a ResultsIpi object from the pool
-	results := <-e.resultsPool
-	// Return it to the pool when done
-	defer func() {
-		e.resultsPool <- results
-	}()
+	return e.ProcessWithResults(ipAddress, nil)
+}
+
+// ProcessWithResults processes the given IP address with an optional reusable ResultsIpi object.
+// If results is nil, creates a new ResultsIpi object for this call.
+// If results is provided, reuses it for better performance (caller manages lifecycle).
+func (e *Engine) ProcessWithResults(ipAddress string, results *ipi_interop.ResultsIpi) (ipi_interop.Values, error) {
+	var shouldFree bool
+	
+	if results == nil {
+		// Create a new ResultsIpi object for this call
+		results = ipi_interop.NewResultsIpi(e.manager)
+		shouldFree = true // We created it, so we should free it
+	}
+	
+	if shouldFree {
+		defer results.Free() // Ensure proper cleanup only if we created it
+	}
 	
 	if err := results.ResultsIpiFromIpAddress(ipAddress); err != nil {
 		return nil, err
