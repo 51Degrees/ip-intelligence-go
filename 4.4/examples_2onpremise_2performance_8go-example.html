@@ -67,9 +67,10 @@ $(document).ready(function(){initNavTree('examples_2onpremise_2performance_8go-e
 <div class="g-docs__primary" id="primary">
 <h1 class="g-docs__section-heading">The example illustrates a "clock-time" benchmark for assessing detection speed.</h1>
 <p>It's important to understand the trade-offs between performance, memory usage and accuracy, that the 51Degrees pipeline configuration makes available, and this example shows a range of different configurations to illustrate the difference in performance.</p>
+<p>By default, this example runs in multi-threaded mode using all available CPU cores for optimal performance. Use the <code>--single</code> flag to run in single-threaded mode for comparison.</p>
 <p>Requesting properties from a single component reduces detection time compared with requesting properties from multiple components. If you don't specify any properties to detect, then all properties are detected.</p>
 <p>This example is available in full on <a href="https://github.com/51Degrees/ip-intelligence-go-examples/tree/main/ipi_onpremise/performance">GitHub</a>.</p>
-<h2>In detail, the example shows how to</h2>
+<p>## Usage </p><div class="c-code__block c-code__block--outline"><div class="c-code__line"><span class="c-code__preprocessor"># Multi-threaded mode (default)</span></div><div class="c-code__line">go run .</div><div class="c-code__line"></div><div class="c-code__line"># Single-threaded mode</div><div class="c-code__line">go run . --single</div></div><h2>In detail, the example shows how to</h2>
 <h3>1. Specify config for engine:</h3>
 <p>This setting specifies the performance profile that will be used when initializing the C library.</p>
 <div class="c-code__block c-code__block--outline"><div class="c-code__line">config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)</div></div><p> <br />
@@ -86,7 +87,7 @@ $(document).ready(function(){initNavTree('examples_2onpremise_2performance_8go-e
  </p><h3>3. Run evidence processing with parameters and get the report as returned value</h3>
 <div class="c-code__block c-code__block--outline"><div class="c-code__line">report, err := runPerformance(engine, params)</div></div><p> <br />
  </p><h3>Expected output (performance_report.log):</h3>
-<div class="c-code__block c-code__block--outline"><div class="c-code__line">Average 0.00510 ms per Evidence Record</div><div class="c-code__line">Average 196078.43 detections per second</div><div class="c-code__line">Total Evidence Records: 20000</div><div class="c-code__line">Iteration Count: 5</div><div class="c-code__line">Processed Evidence Records: 100000</div><div class="c-code__line">Number of CPUs: 14</div></div><div class="c-code__block c-code__block--outline"></div> </div><!-- primary -->
+<p>Multi-threaded mode (default): </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">Average 0.00075 ms per Evidence Record</div><div class="c-code__line">Average 1333333.33 detections per second</div><div class="c-code__line">Total Evidence Records: 20000</div><div class="c-code__line">Iteration Count: 1</div><div class="c-code__line">Processed Evidence Records: 120000</div><div class="c-code__line">Number of CPUs: 12</div></div><p>Single-threaded mode (&ndash;single flag): </p><div class="c-code__block c-code__block--outline"><div class="c-code__line">Average 0.00202 ms per Evidence Record</div><div class="c-code__line">Average 495867.77 detections per second</div><div class="c-code__line">Total Evidence Records: 20000</div><div class="c-code__line">Iteration Count: 1</div><div class="c-code__line">Processed Evidence Records: 120000</div><div class="c-code__line">Number of CPUs: 12</div></div><div class="c-code__block c-code__block--outline"></div> </div><!-- primary -->
 </div><!-- inner-->
 <!-- HTML footer for doxygen 1.8.15-->
 <!-- start footer part -->
