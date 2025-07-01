@@ -1,8 +1,2 @@
-github.com/51Degrees/common-go v0.0.0-20250630180021-053fd90535bf h1:UhWPCycVJO0SLyP11TOCxMttZZ1A64xxyvptvQUgQnE=
-github.com/51Degrees/common-go v0.0.0-20250630180021-053fd90535bf/go.mod h1:aKNLD02uPpMZg5SvcJbUFvhK/xFmHCC27VtFZVGrlP0=
-github.com/51Degrees/common-go v0.0.0-20250630180329-5cf06aa3191b h1:HNPH6LRl/SLk5OpAQ9elJ31T428EUyWYM5deVu8jbxE=
-github.com/51Degrees/common-go v0.0.0-20250630180329-5cf06aa3191b/go.mod h1:uXwXmmSURNPH6Bq8Hy6QiDp9lR3FdLqCMQjE39fJadI=
-github.com/51Degrees/common-go v0.0.5 h1:5hoIApJtNwWt5LjUbUCg8bNacyftLzfJOs4RF07to4M=
-github.com/51Degrees/common-go v0.0.5/go.mod h1:uXwXmmSURNPH6Bq8Hy6QiDp9lR3FdLqCMQjE39fJadI=
 github.com/51Degrees/common-go v0.0.8 h1:ZwOQb5Bf3tGwtD3DSfUcxwxXojn3QlyBQUPmFQGqtNI=
 github.com/51Degrees/common-go v0.0.8/go.mod h1:aKNLD02uPpMZg5SvcJbUFvhK/xFmHCC27VtFZVGrlP0=
