@@ -77,8 +77,8 @@ To view APIs and their descriptions, users can use `go doc` in the package direc
 - Then run the below to display all APIs, structures and their descriptions.
 
 
-```
-bash go doc -all
+```bash
+go doc -all
 ```
 
 ### Examples
