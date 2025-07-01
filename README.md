@@ -4,7 +4,7 @@
 
 ## Introduction
 
-This repository contains a Go Lite implementation of the IP Intelligence engine.
+This repository contains a Go implementation of the IP Intelligence engine.
 This module allows you to call functions for determining to set up with an IP Intelligence engine and begin using it to process IP addresses.
 
 ## Module Structure
@@ -35,12 +35,7 @@ This Go version contains the following packages:
 ### Data File Setup
 
 To process IP addresses, you will need to use the 51Degrees data file.
-A 'lite' file can be found at [ip-intelligence-data](https://github.com/51degrees/ip-intelligence-data). You can run:
-
-```
-bash pwsh ci/fetch-assets.ps1 .
-```
-
+See ip-intelligence-data repo for the instructions on how to get a Lite data file or [contact us](https://51degrees.com/contact-us) to get an Enterprise data file.
 
 ### Windows Configuration
 
@@ -67,10 +62,7 @@ go import "github.com/51Degrees/ip-intelligence-go/ipi_onpremise"
 
 ### Vendored C Library
 
-An amalgamation is an alternative way to distribute a library's source code using only a few files (as low as one or two).
-This go module depends on and ships an amalgamation of the ip-intelligence C-library [ip-intelligence-cxx](https://github.com/51degrees/ip-intelligence-cxx) repository, which is then built automatically by CGo during `go build`.
-
-The amalgamation is produced automatically and regularly by the [Nightly Package Update](https://github.com/51Degrees/ip-intelligence-go/actions/workflows/nightly-package-update.yml) CI workflow from the ip-intelligence C-library source code.
+Implementation wraps an amalgamated C library from [ip-intelligence-cxx](https://github.com/51Degrees/ip-intelligence-cxx) repo
 
 ## Development
 
@@ -89,10 +81,7 @@ To view APIs and their descriptions, users can use `go doc` in the package direc
 bash go doc -all
 ```
 
-
-**NOTE**: Not all APIs are available. Ones that are not available include string `TODO: To be implemented` in their descriptions.
-
 ### Examples
 
-Examples are included in a separate repository at [ip-intelligence-examples-go](https://github.com/51degrees/ip-intelligence-examples-go).
+Examples are included in a separate repository at [ip-intelligence-examples-go](https://github.com/51Degrees/ip-intelligence-go-examples).
 Users can follow its README.md for details and comments in each examples for how to run them.
