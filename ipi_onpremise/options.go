@@ -1,7 +1,9 @@
 package ipi_onpremise
 
 import (
+	"errors"
 	"fmt"
+	common_go "github.com/51Degrees/common-go"
 	"github.com/51Degrees/ip-intelligence-go/ipi_interop"
 	"net/url"
 	"os"
@@ -19,7 +21,7 @@ func WithDataFile(path string) EngineOptions {
 			return fmt.Errorf("failed to get file path: %w", err)
 		}
 
-		cfg.dataFile = path
+		cfg.SetDataFile(path)
 		return nil
 	}
 }
@@ -40,10 +42,11 @@ func WithConfigIpi(configIpi *ipi_interop.ConfigIpi) EngineOptions {
 // this option can only be used when using the default data file url from 51Degrees, it will be appended as a query parameter
 func WithLicenseKey(key string) EngineOptions {
 	return func(cfg *Engine) error {
-		//if !cfg.isDefaultDataFileUrl() {
-		//	return errors.New("license key can only be set when using default data file url")
-		//}
-		//cfg.licenseKey = key
+		if !cfg.isDefaultDataFileUrl() {
+			return errors.New("license key can only be set when using default data file url")
+		}
+
+		cfg.licenseKey = key
 		return nil
 	}
 }
@@ -52,11 +55,11 @@ func WithLicenseKey(key string) EngineOptions {
 // licenseKey has to be provided using WithLicenseKey
 func WithProduct(product string) EngineOptions {
 	return func(cfg *Engine) error {
-		//if !cfg.isDefaultDataFileUrl() {
-		//	return errors.New("product can only be set when using default data file url")
-		//}
-		//
-		//cfg.product = product
+		if !cfg.isDefaultDataFileUrl() {
+			return errors.New("product can only be set when using default data file url")
+		}
+
+		cfg.product = product
 		return nil
 	}
 }
@@ -64,12 +67,11 @@ func WithProduct(product string) EngineOptions {
 // WithDataUpdateUrl sets a custom URL to download the data file from
 func WithDataUpdateUrl(urlStr string) EngineOptions {
 	return func(cfg *Engine) error {
-		_, err := url.ParseRequestURI(urlStr)
-		if err != nil {
+		if _, err := url.ParseRequestURI(urlStr); err != nil {
 			return err
 		}
 
-		cfg.dataFileUrl = urlStr
+		cfg.SetDataFileUrl(urlStr)
 
 		return nil
 	}
@@ -86,7 +88,7 @@ func WithMaxRetries(retries int) EngineOptions {
 // WithPollingInterval sets the interval in seconds to pull the data file
 func WithPollingInterval(seconds int) EngineOptions {
 	return func(cfg *Engine) error {
-		cfg.dataFilePullEveryMs = seconds * 1000
+		cfg.SetDataFilePullEveryMs(seconds * 1000)
 		return nil
 	}
 }
@@ -94,18 +96,16 @@ func WithPollingInterval(seconds int) EngineOptions {
 // WithLogging enables or disables the logger
 func WithLogging(enabled bool) EngineOptions {
 	return func(cfg *Engine) error {
-		cfg.logger.enabled = enabled
+		cfg.logger = cfg.SetLoggerEnabled(enabled)
+
 		return nil
 	}
 }
 
 // WithCustomLogger sets a custom logger
-func WithCustomLogger(logger LogWriter) EngineOptions {
+func WithCustomLogger(logger common_go.LogWriter) EngineOptions {
 	return func(cfg *Engine) error {
-		cfg.logger = logWrapper{
-			enabled: true,
-			logger:  logger,
-		}
+		cfg.logger = cfg.SetCustomLogger(logger)
 
 		return nil
 	}
@@ -115,7 +115,7 @@ func WithCustomLogger(logger LogWriter) EngineOptions {
 // engine will automatically reload the data file.  Default is true
 func WithFileWatch(enabled bool) EngineOptions {
 	return func(cfg *Engine) error {
-		cfg.isFileWatcherEnabled = enabled
+		cfg.SetIsFileWatcherEnabled(enabled)
 		return nil
 	}
 }
@@ -125,7 +125,7 @@ func WithFileWatch(enabled bool) EngineOptions {
 // default is false
 func WithUpdateOnStart(enabled bool) EngineOptions {
 	return func(cfg *Engine) error {
-		cfg.isUpdateOnStartEnabled = enabled
+		cfg.SetUpdateOnStartEnabled(enabled)
 
 		return nil
 	}
@@ -137,7 +137,7 @@ func WithUpdateOnStart(enabled bool) EngineOptions {
 // if disabled options like WithDataUpdateUrl, WithLicenseKey will be ignored
 func WithAutoUpdate(enabled bool) EngineOptions {
 	return func(cfg *Engine) error {
-		cfg.isAutoUpdateEnabled = enabled
+		cfg.SetIsAutoUpdateEnabled(enabled)
 
 		return nil
 	}
@@ -150,7 +150,7 @@ func WithAutoUpdate(enabled bool) EngineOptions {
 // this is useful when 3rd party updates the data file on the file system
 func WithTempDataCopy(enabled bool) EngineOptions {
 	return func(cfg *Engine) error {
-		cfg.isCreateTempDataCopyEnabled = enabled
+		cfg.SetIsCreateTempDataCopyEnabled(enabled)
 
 		return nil
 	}
@@ -169,7 +169,7 @@ func WithTempDataDir(dir string) EngineOptions {
 			return fmt.Errorf("path is not a directory: %s", dir)
 		}
 
-		cfg.tempDataDir = dir
+		cfg.SetTempDataDir(dir)
 		return nil
 	}
 }
@@ -180,7 +180,7 @@ func WithTempDataDir(dir string) EngineOptions {
 // this is useful to avoid multiple engines pulling the data file at the same time in case of multiple engines/instances
 func WithRandomization(seconds int) EngineOptions {
 	return func(cfg *Engine) error {
-		cfg.randomization = seconds * 1000
+		cfg.SetRandomization(seconds * 1000)
 		return nil
 	}
 }

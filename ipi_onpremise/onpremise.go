@@ -2,7 +2,7 @@ package ipi_onpremise
 
 import (
 	"fmt"
-	core "github.com/51Degrees/common-go"
+	common_go "github.com/51Degrees/common-go"
 	"github.com/51Degrees/ip-intelligence-go/ipi_interop"
 	"net/url"
 	"os"
@@ -19,37 +19,23 @@ import (
 // The 51degrees distributor service can also be used with a licenseKey
 // For more information see With... options and examples
 type Engine struct {
-	core.FileUpdater
-	//core.FileUpdater
-	//*core.FileUpdater
+	*common_go.FileUpdater
+	logger *common_go.LogWrapper
 
-	//logger *core.LogWrapper
-
-	//dataFile                    string
-	licenseKey string
-	//dataFileUrl                 string
-	//dataFilePullEveryMs         int
-	//isAutoUpdateEnabled         bool
 	manager *ipi_interop.ResourceManager
 	config  *ipi_interop.ConfigIpi
-	//totalFilePulls              int
+
 	stopCh           chan *sync.WaitGroup
 	reloadFileEvents chan struct{}
-	//fileSynced                  bool
-	product    string
-	maxRetries int
-	//lastModificationTimestamp   *time.Time
-	//isFileWatcherEnabled        bool
-	//isUpdateOnStartEnabled      bool
-	//isCreateTempDataCopyEnabled bool
-	//tempDataFile                string
-	//tempDataDir                 string
+
+	product                   string
 	dataFileLastUsedByManager string
-	//randomization               int
+	licenseKey                string
+
+	maxRetries int
+
 	isStopped bool
-	//fileExternallyChangedCount  int
-	//filePullerStarted           bool
-	//fileWatcherStarted          bool
+
 	managerProperties  []string
 	propertyIndexCache map[string]int // name → index mapping
 	propertyNameCache  map[int]string // index → name mapping (readonly after init)
@@ -69,7 +55,7 @@ var (
 // New creates an instance of the on-premise device detection engine.  WithDataFile must be provided
 // to specify the path to the data file, otherwise initialization will fail
 func New(opts ...EngineOptions) (*Engine, error) {
-	fileUpdater := core.NewFileUpdater(defaultDataFileUrl)
+	fileUpdater := common_go.NewFileUpdater(defaultDataFileUrl)
 	logger := fileUpdater.GetLogger()
 
 	engine := &Engine{
@@ -93,7 +79,7 @@ func New(opts ...EngineOptions) (*Engine, error) {
 	}
 
 	if !engine.IsDataFileProvided() {
-		return nil, core.ErrNoDataFileProvided
+		return nil, common_go.ErrNoDataFileProvided
 	}
 
 	if err := engine.InitCreateTempDataCopy(); err != nil {
@@ -120,20 +106,6 @@ func New(opts ...EngineOptions) (*Engine, error) {
 
 		engine.SetFileWatcherStarted(true)
 		engine.RunWatcher()
-
-		//engine.fileWatcher, err = newFileWatcher(engine.logger, engine.dataFile, engine.stopCh)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//// this will watch the data file, if it changes, it will reload the data file in the manager
-		//err = engine.fileWatcher.watch(engine.handleFileExternallyChanged)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//
-		//engine.SetFileWatcherStarted(true)
-		//engine.RunWatcher()
-		//go engine.fileWatcher.run()
 	}
 
 	return engine, nil
@@ -229,7 +201,7 @@ func (e *Engine) reloadFileEvent() {
 
 func (e *Engine) validateAndAppendUrlParams() error {
 	if e.isDefaultDataFileUrl() && !e.hasDefaultDistributorParams() && e.IsAutoUpdateEnabled() {
-		return core.ErrLicenseKeyRequired
+		return common_go.ErrLicenseKeyRequired
 	}
 
 	if e.isDefaultDataFileUrl() && e.IsAutoUpdateEnabled() {
