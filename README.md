@@ -35,7 +35,7 @@ This Go version contains the following packages:
 ### Data File Setup
 
 To process IP addresses, you will need to use the 51Degrees data file.
-See ip-intelligence-data repo for the instructions on how to get a Lite data file or [contact us](https://51degrees.com/contact-us) to get an Enterprise data file.
+See [ip-intelligence-data](https://github.com/51Degrees/ip-intelligence-data) repo for the instructions on how to get a Lite data file or [contact us](https://51degrees.com/contact-us) to get an Enterprise data file.
 
 ### Windows Configuration
 
@@ -83,5 +83,5 @@ bash go doc -all
 
 ### Examples
 
-Examples are included in a separate repository at [ip-intelligence-examples-go](https://github.com/51Degrees/ip-intelligence-go-examples).
+Examples are included in a separate repository at [ip-intelligence-go-examples](https://github.com/51Degrees/ip-intelligence-go-examples).
 Users can follow its README.md for details and comments in each examples for how to run them.
