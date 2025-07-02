@@ -2,14 +2,15 @@ package ipi_onpremise
 
 import (
 	"fmt"
-	common_go "github.com/51Degrees/common-go/v4"
-	"github.com/51Degrees/ip-intelligence-go/v4/ipi_interop"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	common_go "github.com/51Degrees/common-go/v4"
+	"github.com/51Degrees/ip-intelligence-go/v4/ipi_interop"
 )
 
 // Engine is an implementation of the on-premise (based on a local data file) device detection. It encapsulates
@@ -111,6 +112,7 @@ func New(opts ...EngineOptions) (*Engine, error) {
 	return engine, nil
 }
 
+// handleFileExternallyChanged handles the logic for processing a file that has been altered externally to ensure consistency.
 func (e *Engine) handleFileExternallyChanged() {
 	if err := e.processFileExternallyChanged(); err != nil {
 		e.logger.Printf("failed to handle file externally changed: %v", err)
@@ -178,6 +180,7 @@ func (e *Engine) Stop() {
 	}
 }
 
+// recoverEngine attempts to recover the engine from a panic by logging the error and restarting file pulling if needed.
 func (e *Engine) recoverEngine() {
 	// recover from panic
 	// if panic occurs, we will log the error and restart the file pulling
@@ -191,6 +194,7 @@ func (e *Engine) recoverEngine() {
 	}()
 }
 
+// reloadFileEvent listens for file reload events and triggers processing when an external file change is detected.
 func (e *Engine) reloadFileEvent() {
 	for range e.reloadFileEvents {
 		if err := e.processFileExternallyChanged(); err != nil {
@@ -199,6 +203,8 @@ func (e *Engine) reloadFileEvent() {
 	}
 }
 
+// validateAndAppendUrlParams validates URL parameters and appends necessary values for default data file URLs.
+// Returns an error if required parameters are missing or appending fails.
 func (e *Engine) validateAndAppendUrlParams() error {
 	if e.isDefaultDataFileUrl() && !e.hasDefaultDistributorParams() && e.IsAutoUpdateEnabled() {
 		return common_go.ErrLicenseKeyRequired
@@ -217,6 +223,7 @@ func (e *Engine) validateAndAppendUrlParams() error {
 	return nil
 }
 
+// appendProduct appends the product parameter to the data file URL and updates the URL in the Engine. Returns an error if parsing fails.
 func (e *Engine) appendProduct() error {
 	urlParsed, err := url.Parse(e.GetDataFileUrl())
 	if err != nil {
@@ -231,14 +238,17 @@ func (e *Engine) appendProduct() error {
 	return nil
 }
 
+// isDefaultDataFileUrl checks if the current data file URL matches the predefined defaultDataFileUrl constant.
 func (e *Engine) isDefaultDataFileUrl() bool {
 	return e.GetDataFileUrl() == defaultDataFileUrl
 }
 
+// hasDefaultDistributorParams checks if the default distributor parameters are set based on the presence of a license key.
 func (e *Engine) hasDefaultDistributorParams() bool {
 	return len(e.licenseKey) > 0
 }
 
+// processFileExternallyChanged reloads the file if it detects external changes by invoking the reload manager with the file path.
 func (e *Engine) processFileExternallyChanged() error {
 	reloadFilePath, err := e.GetReloadFilePath()
 	if err != nil {
@@ -301,36 +311,9 @@ func (e *Engine) reloadManager(filePath string) error {
 	return nil
 }
 
-// initPropertyIndexes pre-computes and caches bidirectional property index↔name mappings
-func (e *Engine) initPropertyIndexes() {
-	e.propertyIndexes = make([]int, len(e.managerProperties))
-
-	// Create a temporary results object to get property indexes
-	tempResults := ipi_interop.NewResultsIpi(e.manager)
-	defer tempResults.Free()
-
-	for i, prop := range e.managerProperties {
-		idx := e.getPropertyIndex(tempResults, prop)
-		e.propertyIndexes[i] = idx
-		// Cache bidirectional mappings: name ↔ index
-		e.propertyIndexCache[prop] = idx
-		e.propertyNameCache[idx] = prop
-	}
-}
-
-// getPropertyIndex gets the property index from results
-func (e *Engine) getPropertyIndex(results *ipi_interop.ResultsIpi, propertyName string) int {
-	// Use the existing method from results_ipi.go
-	return results.GetPropertyIndexByName(propertyName)
-}
-
-// GetPropertyNameByIndex retrieves the property name for a given index from the engine's cache
-// This is thread-safe as the cache is readonly after initialization
-func (e *Engine) GetPropertyNameByIndex(index int) string {
-	if name, exists := e.propertyNameCache[index]; exists {
-		return name
-	}
-	return "" // Unknown index
+// getPublishedDate retrieves the published date of the data file being used by the engine.
+func (e *Engine) getPublishedDate() time.Time {
+	return ipi_interop.GetPublishedDate(e.manager)
 }
 
 // NewResultsIpi creates a new ResultsIpi object using this engine's manager
@@ -396,7 +379,34 @@ func (e *Engine) appendLicenceKey() error {
 	return nil
 }
 
-// getPublishedDate retrieves the published date of the data file being used by the engine.
-func (e *Engine) getPublishedDate() time.Time {
-	return ipi_interop.GetPublishedDate(e.manager)
+// initPropertyIndexes pre-computes and caches bidirectional property index↔name mappings
+func (e *Engine) initPropertyIndexes() {
+	e.propertyIndexes = make([]int, len(e.managerProperties))
+
+	// Create a temporary results object to get property indexes
+	tempResults := ipi_interop.NewResultsIpi(e.manager)
+	defer tempResults.Free()
+
+	for i, prop := range e.managerProperties {
+		idx := e.getPropertyIndex(tempResults, prop)
+		e.propertyIndexes[i] = idx
+		// Cache bidirectional mappings: name ↔ index
+		e.propertyIndexCache[prop] = idx
+		e.propertyNameCache[idx] = prop
+	}
+}
+
+// getPropertyIndex gets the property index from results
+func (e *Engine) getPropertyIndex(results *ipi_interop.ResultsIpi, propertyName string) int {
+	// Use the existing method from results_ipi.go
+	return results.GetPropertyIndexByName(propertyName)
+}
+
+// GetPropertyNameByIndex retrieves the property name for a given index from the engine's cache
+// This is thread-safe as the cache is readonly after initialization
+func (e *Engine) GetPropertyNameByIndex(index int) string {
+	if name, exists := e.propertyNameCache[index]; exists {
+		return name
+	}
+	return "" // Unknown index
 }
