@@ -15,20 +15,8 @@ This Go version contains the following packages:
 - `ipi_interop` - a lower level API wrapping the C IP Intelligence library
 - `ipi_onpremise` - a higher level Engine API providing IP Intelligence library and file update functions
 
-## System Requirements
-
-### Supported Platforms and Architectures
-- Linux 32/64 bit, Intel and ARM processor
-- MacOS 64 bit, Intel and ARM processor
-- Windows 64bit, Intel
-
-### Go Version
+### Minimum Go Version
 - Go 1.19
-
-### Required Software
-- Powershell Core (7 or above)
-- A C compiler that support C11 or above (Gcc on Linux, Clang on MacOS and MinGW-x64 on Windows)
-- libatomic - which usually come with default Gcc, Clang installation
 
 ## Setup Instructions
 
@@ -47,18 +35,15 @@ If you are on Windows, make sure that:
 bash go env -w CGO_ENABLED=1
 ```
 
-
 ## Build and Usage
 
 ### Installation
 
 Import the package as usual and it will get build automatically:
 
-
 ```
 go import "github.com/51Degrees/ip-intelligence-go/v4/ipi_onpremise"
 ```
-
 
 ### Vendored C Library
 
