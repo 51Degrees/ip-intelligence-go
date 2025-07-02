@@ -3,8 +3,8 @@ package ipi_onpremise
 import (
 	"errors"
 	"fmt"
-	common_go "github.com/51Degrees/common-go"
-	"github.com/51Degrees/ip-intelligence-go/ipi_interop"
+	common_go "github.com/51Degrees/common-go/v4"
+	"github.com/51Degrees/ip-intelligence-go/v4/ipi_interop"
 	"net/url"
 	"os"
 	"path/filepath"

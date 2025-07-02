@@ -1,7 +1,7 @@
 package ipi_onpremise
 
 import (
-	common_go "github.com/51Degrees/common-go"
+	common_go "github.com/51Degrees/common-go/v4"
 	"os"
 	"path/filepath"
 	"strings"
