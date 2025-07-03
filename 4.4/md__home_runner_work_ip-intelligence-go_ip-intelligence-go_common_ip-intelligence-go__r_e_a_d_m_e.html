@@ -74,27 +74,14 @@ $(document).ready(function(){initNavTree('md__home_runner_work_ip-intelligence-g
 <h2>Introduction</h2>
 <p>This repository contains a Go implementation of the IP Intelligence engine. This module allows you to call functions for determining to set up with an IP Intelligence engine and begin using it to process IP addresses.</p>
 <h2>Module Structure</h2>
-<p><b>Module</b>: <code>ip-intelligence-go</code> at path <code>github.com/51Degrees/ip-intelligence-go</code></p>
+<p><b>Module</b>: <code>ip-intelligence-go</code> at path <code>github.com/51Degrees/ip-intelligence-go/v4</code></p>
 <p>This Go version contains the following packages:</p><ul>
 <li><code>ipi_interop</code> - a lower level API wrapping the C IP Intelligence library</li>
 <li><code>ipi_onpremise</code> - a higher level Engine API providing IP Intelligence library and file update functions</li>
 </ul>
-<h2>System Requirements</h2>
-<h3>Supported Platforms and Architectures</h3>
-<ul>
-<li>Linux 32/64 bit, Intel and ARM processor</li>
-<li>MacOS 64 bit, Intel and ARM processor</li>
-<li>Windows 64bit, Intel</li>
-</ul>
-<h3>Go Version</h3>
+<h3>Minimum Go Version</h3>
 <ul>
 <li>Go 1.19</li>
-</ul>
-<h3>Required Software</h3>
-<ul>
-<li>Powershell Core (7 or above)</li>
-<li>A C compiler that support C11 or above (Gcc on Linux, Clang on MacOS and MinGW-x64 on Windows)</li>
-<li>libatomic - which usually come with default Gcc, Clang installation</li>
 </ul>
 <h2>Setup Instructions</h2>
 <h3>Data File Setup</h3>
@@ -107,7 +94,7 @@ $(document).ready(function(){initNavTree('md__home_runner_work_ip-intelligence-g
 <div class="c-code__block c-code__block--outline"><div class="c-code__line">bash go env -w CGO_ENABLED=1</div></div><h2>Build and Usage</h2>
 <h3>Installation</h3>
 <p>Import the package as usual and it will get build automatically:</p>
-<div class="c-code__block c-code__block--outline"><div class="c-code__line">go import &quot;github.com/51Degrees/ip-intelligence-go/ipi_onpremise&quot;</div></div><h3>Vendored C Library</h3>
+<div class="c-code__block c-code__block--outline"><div class="c-code__line">go import &quot;github.com/51Degrees/ip-intelligence-go/v4/ipi_onpremise&quot;</div></div><h3>Vendored C Library</h3>
 <p>Implementation wraps an amalgamated C library from <a href="https://github.com/51Degrees/ip-intelligence-cxx">ip-intelligence-cxx</a> repo</p>
 <h2>Development</h2>
 <h3>Testing</h3>
