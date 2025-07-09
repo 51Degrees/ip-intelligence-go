@@ -65,8 +65,6 @@ func NewConfigIpi(perf PerformanceProfile) *ConfigIpi {
 		config = C.IpiBalancedConfig
 	case BalancedTemp:
 		config = C.IpiBalancedTempConfig
-	case SingleLoaded:
-		config = C.fiftyoneDegreesIpiSingleLoadedConfig
 	default:
 		config = C.IpiDefaultConfig
 		profile = Default
