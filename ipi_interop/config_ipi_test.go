@@ -62,11 +62,6 @@ func TestNewConfigIpi(t *testing.T) {
 			wantProfile: InMemory,
 		},
 		{
-			name:        "SingleLoaded profile",
-			profile:     SingleLoaded,
-			wantProfile: SingleLoaded,
-		},
-		{
 			name:        "Invalid profile",
 			profile:     PerformanceProfile(999),
 			wantProfile: Default,

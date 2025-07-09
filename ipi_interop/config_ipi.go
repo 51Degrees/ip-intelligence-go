@@ -35,7 +35,6 @@ const (
 	Balanced
 	HighPerformance
 	InMemory
-	SingleLoaded
 )
 
 // ConfigIpi wraps around pointer to a value of C ConfigIpi structure
