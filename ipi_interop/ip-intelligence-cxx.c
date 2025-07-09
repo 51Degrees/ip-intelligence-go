@@ -1881,6 +1881,158 @@ EXTERNAL int64_t fiftyoneDegreesCacheHash64(const void *key);
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+#ifndef FIFTYONE_DEGREES_COLLECTION_KEY_H_INCLUDED
+#define FIFTYONE_DEGREES_COLLECTION_KEY_H_INCLUDED
+
+/**
+ * @ingroup FiftyOneDegreesCommon
+ * @defgroup FiftyOneDegreesCollectionKey CollectionKey
+ *
+ * Group of related items such as keys.
+ *
+ * @{
+ */
+
+#include <stdint.h>
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2023 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+#ifndef FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_H_INCLUDED
+#define FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_H_INCLUDED
+
+/**
+ * Enum of property types.
+ */
+typedef enum e_fiftyone_degrees_property_value_type {
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_STRING = 0, /**< String */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_INTEGER = 1, /**< Integer */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_DOUBLE = 2, /**< Double */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_BOOLEAN = 3, /**< Boolean */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_JAVASCRIPT = 4, /**< JavaScript string */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_PRECISION_FLOAT = 5, /**< Single precision floating point value */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_BYTE = 6, /**< Single byte value */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_COORDINATE = 7, /**< Coordinate */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_IP_ADDRESS = 8, /**< Ip Range */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB = 9, /**< Well-known binary for geometry */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_OBJECT = 10, /**<  Mainly this is used for nested AspectData. */
+	/**
+	 * Angle north (positive) or south (negative) of the [celestial] equator,
+	 * [-90;90] saved as short (int16_t),
+	 * i.e. projected onto [-INT16_MAX;INT16_MAX]
+	 */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_DECLINATION = 11,
+	/**
+	 * Horizontal angle from a cardinal direction (e.g. 0 meridian),
+	 * [-180;180] saved as short (int16_t),
+	 * i.e. projected onto [-INT16_MAX;INT16_MAX]
+	 */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_AZIMUTH = 12,
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB_R = 13, /**< Well-known binary (reduced) for geometry */
+
+	// Non-Property Collection Value Types
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_CUSTOM = 1000, /**< Reservation start. Should not be used. */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_VALUE, /**< fiftyoneDegreesValue */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_PROFILE, /**< fiftyoneDegreesProfile */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_PROFILE_OFFSET, /**< fiftyoneDegreesProfileOffset */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_COMPONENT, /**< fiftyoneDegreesComponent */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_PROPERTY, /**< fiftyoneDegreesProperty */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_PROPERTY_TYPE_RECORD, /**< fiftyoneDegreesPropertyTypeRecord */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_IPV4_RANGE, /**< fiftyoneDegreesIpv4Range */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_IPV6_RANGE, /**< fiftyoneDegreesIpv6Range */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_OFFSET_PERCENTAGE, /**< offsetPercentage (in ipi.c) */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_GRAPH_DATA_CLUSTER, /**< Cluster (in graph.c) */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_GRAPH_DATA_SPAN, /**< Span (in graph.c) */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_GRAPH_DATA_SPAN_BYTES, /**< bytes of Span (in graph.c) */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_GRAPH_DATA_NODE_BYTES, /**< bytes of node (in graph.c) */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_GRAPH_INFO, /**< fiftyoneDegreesIpiCgInfo */
+} fiftyoneDegreesPropertyValueType;
+
+#endif
+
+/**
+ * Passed a pointer to the first part of a variable size item and returns
+ * the size of the entire item.
+ * @param initial pointer to the start of the item
+ * @return size of the item in bytes
+ */
+typedef uint32_t (*fiftyoneDegreesCollectionGetVariableSizeMethod)(
+	const void *initial,
+	fiftyoneDegreesException *exception);
+
+/**
+ * Location of the item within the Collection.
+ */
+typedef union fiftyone_degrees_collection_index_or_offset_t {
+	uint32_t index;  /**< index of the item in the collection. */
+	uint32_t offset;  /**< byte offset of the item from the start of collection. */
+} fiftyoneDegreesCollectionIndexOrOffset;
+
+static const fiftyoneDegreesCollectionIndexOrOffset
+	fiftyoneDegreesCollectionIndexOrOffset_Zero = { 0 };
+
+/**
+ * Explains to a collection how to properly extract the requested value.
+ */
+typedef struct fiftyone_degrees_collection_key_type_t {
+	const fiftyoneDegreesPropertyValueType valueType;  /**< Size of known-length "head" of the item. */
+	uint32_t initialBytesCount; /**< Size of known-length "head" of the item. */
+	const fiftyoneDegreesCollectionGetVariableSizeMethod getFinalSizeMethod; /**< Size of unknown-length "tail" of the item. */
+} fiftyoneDegreesCollectionKeyType;
+
+/**
+ * Explains to a collection (or cache) what the consumer is looking for.
+ */
+typedef struct fiftyone_degrees_collection_key_t {
+	fiftyoneDegreesCollectionIndexOrOffset indexOrOffset; /**< Where to look for the item. */
+	const fiftyoneDegreesCollectionKeyType *keyType;  /**< Not used if collection is fixed width. */
+} fiftyoneDegreesCollectionKey;
+
+/**
+ * @}
+ */
+
+#endif
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2023 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
 /**
  * @ingroup FiftyOneDegreesCommon
  * @defgroup FiftyOneDegreesFile File
@@ -2912,6 +3064,7 @@ EXTERNAL const char* fiftyoneDegreesFileGetFileName(const char *filePath);
 #include <stdio.h>
 #include <string.h>
 
+
 /**
  * Free a collection by checking if it is NULL first.
  * @param c collection to free
@@ -2927,7 +3080,7 @@ if (c != NULL) { c->freeCollection(c); }
  * @param i item to release
  */
 #ifndef FIFTYONE_DEGREES_MEMORY_ONLY
-#define FIFTYONE_DEGREES_COLLECTION_RELEASE(c, i) c->release(i)
+#define FIFTYONE_DEGREES_COLLECTION_RELEASE(c, i) { assert(!((i)->collection) || (c == (i)->collection)); c->release(i); };
 #else
 #define FIFTYONE_DEGREES_COLLECTION_RELEASE(c, i)
 #endif
@@ -2949,8 +3102,7 @@ typedef struct fiftyone_degrees_collection_header_t {
  * be created by the create methods.
  */
 typedef struct fiftyone_degrees_collection_config_t {
-	uint32_t loaded; /**< Number of items to load into memory from the start of
-					     the collection */
+	bool loaded; /**< Collection is loaded entirely into memory */
 	uint32_t capacity; /**< Number of items the cache should store, 0 for no
 	                       cache */
 	uint16_t concurrency; /**< Expected number of concurrent requests, 1 or
@@ -2972,10 +3124,12 @@ typedef struct fiftyone_degrees_collection_file_t fiftyoneDegreesCollectionFile;
 typedef struct fiftyone_degrees_collection_item_t {
 	fiftyoneDegreesData data; /**< Item data including allocated memory */
 	void *handle; /**< A handle that relates to the data. i.e. a cache node */
-	fiftyoneDegreesCollection *collection; /**< Collection the item came from
-	                                           which may not have been set.
-	                                           Should not be used by external
-	                                           code */
+
+	/**
+	 * Collection the item came from which may not have been set.
+	 * Should not be used by external code.
+	 */
+	const fiftyoneDegreesCollection *collection;
 } fiftyoneDegreesCollectionItem;
 
 /**
@@ -2983,32 +3137,23 @@ typedef struct fiftyone_degrees_collection_item_t {
  * if the item could not be loaded. The exception parameter is set to the 
  * status code to indicate the failure.
  * @param collection pointer to the file collection
- * @param indexOrOffset index or offset to the item in the data structure
+ * @param key key of the item in the data structure
  * @param item pointer to the item structure to place the result in
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h.
  * @return the value in the data->ptr field, or NULL if not successful
  */
 typedef void* (*fiftyoneDegreesCollectionGetMethod)(
-	fiftyoneDegreesCollection *collection,
-	uint32_t indexOrOffset,
+	const fiftyoneDegreesCollection *collection,
+	const fiftyoneDegreesCollectionKey *key,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
-
-/**
- * Passed a pointer to the first part of a variable size item and returns
- * the size of the entire item.
- * @param initial pointer to the start of the item
- * @return size of the item in bytes
- */
-typedef uint32_t (*fiftyoneDegreesCollectionGetFileVariableSizeMethod)(
-	void *initial);
 
 /**
  * Reads the item from the underlying data file. Used by the file related
  * collection methods.
  * @param collection pointer to the file collection
- * @param offsetOrIndex index or offset to the item in the data structure
+ * @param key key of the item in the data structure
  * @param data pointer to the data structure to store the item
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h.
@@ -3016,7 +3161,7 @@ typedef uint32_t (*fiftyoneDegreesCollectionGetFileVariableSizeMethod)(
  */
 typedef void* (*fiftyoneDegreesCollectionFileRead)(
 	const fiftyoneDegreesCollectionFile *collection,
-	uint32_t offsetOrIndex,
+	const fiftyoneDegreesCollectionKey *key,
 	fiftyoneDegreesData *data,
 	fiftyoneDegreesException *exception);
 
@@ -3025,7 +3170,7 @@ typedef void* (*fiftyoneDegreesCollectionFileRead)(
  * of a binary search of ordering operation.
  * @param state to be used for the comparison
  * @param item the value to compare against the state
- * @param curIndex the index of the current item in the collection
+ * @param key key of the item in the data structure
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h
  * @return negative if a is lower than b, positive if a is higher than b or 0 
@@ -3034,7 +3179,7 @@ typedef void* (*fiftyoneDegreesCollectionFileRead)(
 typedef int(*fiftyoneDegreesCollectionItemComparer)(
 	void *state,
 	fiftyoneDegreesCollectionItem *item,
-	long curIndex,
+	fiftyoneDegreesCollectionKey key,
 	fiftyoneDegreesException *exception);
 
 /**
@@ -3084,12 +3229,11 @@ typedef struct fiftyone_degrees_collection_t {
 	                #fiftyoneDegreesCollectionMemory,
 	                #fiftyoneDegreesCollectionFile or 
 	                #fiftyoneDegreesCollectionCache */
-	fiftyoneDegreesCollection *next; /**< The next collection implementation or
-	                                    NULL */
 	uint32_t count; /**< The number of items, or 0 if not available */
 	uint32_t elementSize; /**< The size of each entry, or 0 if variable length */
 	uint32_t size; /**< Number of bytes in the source data structure containing
 					  the collection's data */
+	const char *typeName; /**< Name of collection type (vtable). */
 } fiftyoneDegreesCollection;
 
 /**
@@ -3146,7 +3290,7 @@ EXTERNAL bool fiftyoneDegreesCollectionGetIsMemoryOnly();
  * @return the 32 bit integer at the index or offset provided
  */
 EXTERNAL int32_t fiftyoneDegreesCollectionGetInteger32(
-	fiftyoneDegreesCollection *collection,
+	const fiftyoneDegreesCollection *collection,
 	uint32_t indexOrOffset,
 	fiftyoneDegreesException *exception);
 
@@ -3212,7 +3356,7 @@ EXTERNAL fiftyoneDegreesFileHandle* fiftyoneDegreesCollectionReadFilePosition(
  * @param file pointer to the #fiftyoneDegreesCollectionFile to use for the
  * read
  * @param data structure to populate with a reference to the item
- * @param index zero based index of the item required in the fixed with data 
+ * @param key zero based index of the item required in the fixed with data
  * structure
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h.
@@ -3221,7 +3365,7 @@ EXTERNAL fiftyoneDegreesFileHandle* fiftyoneDegreesCollectionReadFilePosition(
  */
 EXTERNAL void* fiftyoneDegreesCollectionReadFileFixed(
 	const fiftyoneDegreesCollectionFile *file,
-	uint32_t index,
+	const fiftyoneDegreesCollectionKey *key,
 	fiftyoneDegreesData *data,
 	fiftyoneDegreesException *exception);
 
@@ -3249,10 +3393,8 @@ fiftyoneDegreesCollectionHeaderFromFile(
  * @param file pointer to the #fiftyoneDegreesCollectionFile to use for the
  * read
  * @param data structure to populate with a reference to the item
- * @param offset zero based offset to the item within the data structure
+ * @param key key of the item in the data structure
  * @param initial pointer to enough memory to store the initial data
- * @param initialSize amount of initial data to read
- * @param getFinalSize method pass the initial pointer to get the final size
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h.
  * @return a pointer to the item in the data structure or NULL if can't be
@@ -3261,10 +3403,8 @@ fiftyoneDegreesCollectionHeaderFromFile(
 EXTERNAL void* fiftyoneDegreesCollectionReadFileVariable(
 	const fiftyoneDegreesCollectionFile *file,
 	fiftyoneDegreesData *data,
-	uint32_t offset,
+	const fiftyoneDegreesCollectionKey *key,
 	void *initial,
-	size_t initialSize,
-	fiftyoneDegreesCollectionGetFileVariableSizeMethod getFinalSize,
 	fiftyoneDegreesException *exception);
 
 /**
@@ -3297,8 +3437,9 @@ fiftyoneDegreesCollectionHeaderFromMemory(
  * @param item memory to be used to store the current value being compared. 
  * Will have a lock on the item at the index returned if an item is found.
  * The caller should release the item when finished with it.
- * @param lowerIndex to start the search at
- * @param upperIndex to end the search at
+ * @param lowerKey to start the search at
+ * @param upperKey to end the search at
+ * @param keyType type of lower/upper keys
  * @param state used with the compare method when comparing items
  * @param comparer method used to perform the comparison
  * @param exception pointer to an exception data structure to be used if an
@@ -3306,10 +3447,11 @@ fiftyoneDegreesCollectionHeaderFromMemory(
  * @return the index of the item if found, otherwise -1.
  */
 EXTERNAL long fiftyoneDegreesCollectionBinarySearch(
-	fiftyoneDegreesCollection *collection,
+	const fiftyoneDegreesCollection *collection,
 	fiftyoneDegreesCollectionItem *item,
-	uint32_t lowerIndex,
-	uint32_t upperIndex,
+	fiftyoneDegreesCollectionIndexOrOffset lowerKey,
+	fiftyoneDegreesCollectionIndexOrOffset upperKey,
+	const fiftyoneDegreesCollectionKeyType *keyType,
 	void *state,
 	fiftyoneDegreesCollectionItemComparer comparer,
 	fiftyoneDegreesException *exception);
@@ -3327,8 +3469,7 @@ EXTERNAL long fiftyoneDegreesCollectionBinarySearch(
  * @param collection to get the count for
  * @return the number of items in the collection
  */
-EXTERNAL uint32_t fiftyoneDegreesCollectionGetCount(
-	fiftyoneDegreesCollection *collection);
+#define fiftyoneDegreesCollectionGetCount(collection) ((collection)->count)
 
 /**
  * @}
@@ -3881,62 +4022,6 @@ EXTERNAL int fiftyoneDegreesIpAddressesCompare(
  */
 
 #endif
-/* *********************************************************************
- * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
- * Copyright 2023 51 Degrees Mobile Experts Limited, Davidson House,
- * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
- *
- * This Original Work is licensed under the European Union Public Licence
- * (EUPL) v.1.2 and is subject to its terms as set out below.
- *
- * If a copy of the EUPL was not distributed with this file, You can obtain
- * one at https://opensource.org/licenses/EUPL-1.2.
- *
- * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
- * amended by the European Commission) shall be deemed incompatible for
- * the purposes of the Work and the provisions of the compatibility
- * clause in Article 5 of the EUPL shall not apply.
- *
- * If using the Work as, or as part of, a network application, by
- * including the attribution notice(s) required under Article 5 of the EUPL
- * in the end user terms of the application under an appropriate heading,
- * such notice(s) shall fulfill the requirements of that article.
- * ********************************************************************* */
-
-#ifndef FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_H_INCLUDED
-#define FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_H_INCLUDED
-
-/**
- * Enum of property types.
- */
-typedef enum e_fiftyone_degrees_property_value_type {
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_STRING = 0, /**< String */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_INTEGER = 1, /**< Integer */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_DOUBLE = 2, /**< Double */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_BOOLEAN = 3, /**< Boolean */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_JAVASCRIPT = 4, /**< JavaScript string */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_PRECISION_FLOAT = 5, /**< Single precision floating point value */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_BYTE = 6, /**< Single byte value */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_COORDINATE = 7, /**< Coordinate */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_IP_ADDRESS = 8, /**< Ip Range */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB = 9, /**< Well-known binary for geometry */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_OBJECT = 10, /**<  Mainly this is used for nested AspectData. */
-	/**
-	 * Angle north (positive) or south (negative) of the [celestial] equator,
-	 * [-90;90] saved as short (int16_t),
-	 * i.e. projected onto [-INT16_MAX;INT16_MAX]
-	 */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_DECLINATION = 11,
-	/**
-	 * Horizontal angle from a cardinal direction (e.g. 0 meridian),
-	 * [-180;180] saved as short (int16_t),
-	 * i.e. projected onto [-INT16_MAX;INT16_MAX]
-	 */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_AZIMUTH = 12,
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB_R = 13, /**< Well-known binary (reduced) for geometry */
-} fiftyoneDegreesPropertyValueType;
-
-#endif
 
 /**
  * Macro used to check for NULL before returning the string as a const char *.
@@ -3962,13 +4047,26 @@ typedef struct fiftyone_degrees_string_t {
 } fiftyoneDegreesString;
 #pragma pack(pop)
 
+/**
+ * Gets size of String with trailing characters.
+ * @param initial pointer to string "head"
+ * @return full (with tail) struct size
+ */
 #ifndef FIFTYONE_DEGREES_MEMORY_ONLY
+EXTERNAL uint32_t fiftyoneDegreesStringGetFinalSize(
+	const void *initial,
+	fiftyoneDegreesException *exception);
+#else
+#define fiftyoneDegreesStringGetFinalSize NULL
+#endif
 
+
+#ifndef FIFTYONE_DEGREES_MEMORY_ONLY
 /**
  * Reads a string from the source file at the offset within the string
  * structure.
  * @param file collection to read from
- * @param offset of the string in the collection
+ * @param key of the string in the collection
  * @param data to store the new string in
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h.
@@ -3976,7 +4074,7 @@ typedef struct fiftyone_degrees_string_t {
  */
 EXTERNAL void* fiftyoneDegreesStringRead(
 	const fiftyoneDegreesCollectionFile *file,
-	uint32_t offset,
+	const fiftyoneDegreesCollectionKey *key,
 	fiftyoneDegreesData *data,
 	fiftyoneDegreesException *exception);
 
@@ -3991,8 +4089,8 @@ EXTERNAL void* fiftyoneDegreesStringRead(
  * exception occurs. See exceptions.h.
  * @return a pointer to string of NULL if the offset is not valid
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesStringGet(
-	fiftyoneDegreesCollection *strings,
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesStringGet(
+	const fiftyoneDegreesCollection *strings,
 	uint32_t offset,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
@@ -4637,6 +4735,14 @@ typedef struct fiftyoneDegrees_component_t {
 #pragma pack(pop)
 
 /**
+ * Gets size of Component with trailing key-value pair.
+ * @param initial pointer to component "head"
+ * @return full (with tail) struct size
+ */
+EXTERNAL uint32_t fiftyoneDegreesComponentGetFinalSize(
+	const void *initial,
+	fiftyoneDegreesException *exception);
+/**
  * Returns the string name of the component using the item provided. The
  * collection item must be released when the caller is finished with the
  * string.
@@ -4647,7 +4753,7 @@ typedef struct fiftyoneDegrees_component_t {
  * exception occurs. See exceptions.h
  * @return a pointer to a string in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesComponentGetName(
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesComponentGetName(
 	fiftyoneDegreesCollection *stringsCollection,
 	fiftyoneDegreesComponent *component,
 	fiftyoneDegreesCollectionItem *item,
@@ -4690,15 +4796,15 @@ void fiftyoneDegreesComponentInitList(
  * Read a component from the file collection provided and store in the data
  * pointer. This method is used when creating a collection from file.
  * @param file collection to read from
- * @param offset of the component in the collection
+ * @param key of the component in the collection
  * @param data to store the resulting component in
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h
  * @return pointer to the component allocated within the data structure
  */
-void* fiftyoneDegreesComponentReadFromFile(
+EXTERNAL void* fiftyoneDegreesComponentReadFromFile(
 	const fiftyoneDegreesCollectionFile *file,
-	uint32_t offset,
+	const fiftyoneDegreesCollectionKey *key,
 	fiftyoneDegreesData *data,
 	fiftyoneDegreesException *exception);
 
@@ -5393,7 +5499,7 @@ EXTERNAL typedef struct fiftyone_degrees_properties_required_t {
  * @param item used to obtain a handle to the string
  * @return pointer to the string or NULL if no property available
  */
-typedef fiftyoneDegreesString*(*fiftyoneDegreesPropertiesGetMethod)(
+typedef const fiftyoneDegreesString*(*fiftyoneDegreesPropertiesGetMethod)(
 	void *state,
 	uint32_t index,
 	fiftyoneDegreesCollectionItem *item);
@@ -6343,9 +6449,9 @@ typedef struct property_type_record_t {
  * exception occurs. See exceptions.h.
  * @return a pointer to a string in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesPropertyGetName(
-	fiftyoneDegreesCollection *stringsCollection,
-	fiftyoneDegreesProperty *property,
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesPropertyGetName(
+	const fiftyoneDegreesCollection *stringsCollection,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
 
@@ -6358,8 +6464,8 @@ EXTERNAL fiftyoneDegreesString* fiftyoneDegreesPropertyGetName(
  * @return a type the property is stored as.
  */
 EXTERNAL fiftyoneDegreesPropertyValueType fiftyoneDegreesPropertyGetStoredType(
-	fiftyoneDegreesCollection *propertyTypesCollection,
-	fiftyoneDegreesProperty *property,
+	const fiftyoneDegreesCollection *propertyTypesCollection,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesException *exception);
 
 /**
@@ -6371,7 +6477,7 @@ EXTERNAL fiftyoneDegreesPropertyValueType fiftyoneDegreesPropertyGetStoredType(
  * @return a type the property is stored as.
  */
 EXTERNAL fiftyoneDegreesPropertyValueType fiftyoneDegreesPropertyGetStoredTypeByIndex(
-	fiftyoneDegreesCollection *propertyTypesCollection,
+	const fiftyoneDegreesCollection *propertyTypesCollection,
 	uint32_t index,
 	fiftyoneDegreesException *exception);
 
@@ -6386,9 +6492,9 @@ EXTERNAL fiftyoneDegreesPropertyValueType fiftyoneDegreesPropertyGetStoredTypeBy
  * exception occurs. See exceptions.h.
  * @return a pointer to a string in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesPropertyGetDescription(
-	fiftyoneDegreesCollection *stringsCollection,
-	fiftyoneDegreesProperty *property,
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesPropertyGetDescription(
+	const fiftyoneDegreesCollection *stringsCollection,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
 
@@ -6403,9 +6509,9 @@ EXTERNAL fiftyoneDegreesString* fiftyoneDegreesPropertyGetDescription(
  * exception occurs. See exceptions.h.
  * @return a pointer to a string in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesPropertyGetCategory(
-	fiftyoneDegreesCollection *stringsCollection,
-	fiftyoneDegreesProperty *property,
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesPropertyGetCategory(
+	const fiftyoneDegreesCollection *stringsCollection,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
 
@@ -6420,9 +6526,9 @@ EXTERNAL fiftyoneDegreesString* fiftyoneDegreesPropertyGetCategory(
  * exception occurs. See exceptions.h.
  * @return a pointer to a string in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesPropertyGetUrl(
-	fiftyoneDegreesCollection *stringsCollection,
-	fiftyoneDegreesProperty *property,
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesPropertyGetUrl(
+	const fiftyoneDegreesCollection *stringsCollection,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
 
@@ -6466,7 +6572,7 @@ EXTERNAL fiftyoneDegreesProperty* fiftyoneDegreesPropertyGet(
  * exception occurs. See exceptions.h.
  * @return the property requested or NULL
  */
-EXTERNAL fiftyoneDegreesProperty* fiftyoneDegreesPropertyGetByName(
+EXTERNAL const fiftyoneDegreesProperty* fiftyoneDegreesPropertyGetByName(
 	fiftyoneDegreesCollection *properties,
 	fiftyoneDegreesCollection *strings,
 	const char *requiredPropertyName,
@@ -7161,7 +7267,7 @@ typedef union fiftyone_degrees_stored_binary_value_t {
  * Reads a binary value from the source file at the offset within the string
  * structure.
  * @param file collection to read from
- * @param offset of the string in the collection
+ * @param key of the binary value in the collection
  * @param data to store the new string in
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h.
@@ -7171,7 +7277,7 @@ typedef union fiftyone_degrees_stored_binary_value_t {
  */
 EXTERNAL void* fiftyoneDegreesStoredBinaryValueRead(
  const fiftyoneDegreesCollectionFile *file,
- uint32_t offset,
+ const fiftyoneDegreesCollectionKey *key,
  fiftyoneDegreesData *data,
  fiftyoneDegreesException *exception);
 
@@ -7180,15 +7286,15 @@ EXTERNAL void* fiftyoneDegreesStoredBinaryValueRead(
 /**
  * Gets the binary value at the required offset from the collection provided.
  * @param strings collection to get the string from
- * @param offset of the string in the collection
+ * @param offset of the binary value in the collection
  * @param storedValueType format of byte array representation
  * @param item to store the string in
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h.
  * @return a pointer to binary value or NULL if the offset is not valid
  */
-EXTERNAL fiftyoneDegreesStoredBinaryValue* fiftyoneDegreesStoredBinaryValueGet(
- fiftyoneDegreesCollection *strings,
+EXTERNAL const fiftyoneDegreesStoredBinaryValue* fiftyoneDegreesStoredBinaryValueGet(
+ const fiftyoneDegreesCollection *strings,
  uint32_t offset,
  fiftyoneDegreesPropertyValueType storedValueType,
  fiftyoneDegreesCollectionItem *item,
@@ -7464,6 +7570,19 @@ typedef bool(*fiftyoneDegreesProfileIterateValueIndexesMethod)(
 	uint32_t valueIndex);
 
 /**
+ * Gets size of Profile with trailing values.
+ * @param initial pointer to profile "head"
+ * @return full (with tail) struct size
+ */
+#ifndef FIFTYONE_DEGREES_MEMORY_ONLY
+EXTERNAL uint32_t fiftyoneDegreesProfileGetFinalSize(
+	const void *initial,
+	fiftyoneDegreesException * const exception);
+#else
+#define fiftyoneDegreesProfileGetFinalSize NULL
+#endif
+
+/**
  * Gets the profile associated with the profileId or NULL if there is no
  * corresponding profile.
  * @param profileOffsets collection containing the profile offsets (with profile ID)
@@ -7509,15 +7628,15 @@ EXTERNAL fiftyoneDegreesProfile* fiftyoneDegreesProfileGetByIndex(
  * Read a profile from the file collection provided and store in the data
  * pointer. This method is used when creating a collection from file.
  * @param file collection to read from
- * @param offset of the profile in the collection
+ * @param key of the profile in the collection
  * @param data to store the resulting profile in
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h
  * @return pointer to the profile allocated within the data structure
  */
-void* fiftyoneDegreesProfileReadFromFile(
+EXTERNAL void* fiftyoneDegreesProfileReadFromFile(
 	const fiftyoneDegreesCollectionFile *file,
-	uint32_t offset,
+	const fiftyoneDegreesCollectionKey *key,
 	fiftyoneDegreesData *data,
 	fiftyoneDegreesException *exception);
 #endif
@@ -7535,9 +7654,9 @@ void* fiftyoneDegreesProfileReadFromFile(
  * @return the number of matching values which have been iterated
  */
 EXTERNAL uint32_t fiftyoneDegreesProfileIterateValuesForProperty(
-	fiftyoneDegreesCollection *values,
-	fiftyoneDegreesProfile *profile,
-	fiftyoneDegreesProperty *property,
+	const fiftyoneDegreesCollection *values,
+	const fiftyoneDegreesProfile *profile,
+	const fiftyoneDegreesProperty *property,
 	void *state,
 	fiftyoneDegreesProfileIterateMethod callback,
 	fiftyoneDegreesException *exception);
@@ -7557,11 +7676,11 @@ EXTERNAL uint32_t fiftyoneDegreesProfileIterateValuesForProperty(
  * @return the number of matching values which have been iterated
  */
 EXTERNAL uint32_t fiftyoneDegreesProfileIterateValuesForPropertyWithIndex(
-	fiftyoneDegreesCollection* values,
+	const fiftyoneDegreesCollection* values,
 	fiftyoneDegreesIndicesPropertyProfile* index,
 	uint32_t availablePropertyIndex,
-	fiftyoneDegreesProfile* profile,
-	fiftyoneDegreesProperty* property,
+	const fiftyoneDegreesProfile* profile,
+	const fiftyoneDegreesProperty* property,
 	void* state,
 	fiftyoneDegreesProfileIterateMethod callback,
 	fiftyoneDegreesException* exception);
@@ -7624,7 +7743,7 @@ EXTERNAL uint32_t fiftyoneDegreesProfileIterateProfilesForPropertyWithTypeAndVal
 	fiftyoneDegreesCollection *propertyTypes,
 	fiftyoneDegreesCollection *values,
 	fiftyoneDegreesCollection *profiles,
-	fiftyoneDegreesCollection *profileOffsets,
+	const fiftyoneDegreesCollection *profileOffsets,
 	fiftyoneDegreesProfileOffsetValueExtractor offsetValueExtractor,
 	const char *propertyName,
 	const char* valueName,
@@ -7747,9 +7866,9 @@ typedef struct fiftyoneDegrees_value_t {
  * exception occurs. See exceptions.h.
  * @return a pointer to a contents in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesStoredBinaryValue* fiftyoneDegreesValueGetContent(
-	fiftyoneDegreesCollection *strings,
-	fiftyoneDegreesValue *value,
+EXTERNAL const fiftyoneDegreesStoredBinaryValue* fiftyoneDegreesValueGetContent(
+	const fiftyoneDegreesCollection *strings,
+	const fiftyoneDegreesValue *value,
 	fiftyoneDegreesPropertyValueType storedValueType,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
@@ -7765,9 +7884,9 @@ EXTERNAL fiftyoneDegreesStoredBinaryValue* fiftyoneDegreesValueGetContent(
  * exception occurs. See exceptions.h.
  * @return a pointer to a string in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesValueGetName(
-	fiftyoneDegreesCollection *strings,
-	fiftyoneDegreesValue *value,
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesValueGetName(
+	const fiftyoneDegreesCollection *strings,
+	const fiftyoneDegreesValue *value,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
 
@@ -7782,9 +7901,9 @@ EXTERNAL fiftyoneDegreesString* fiftyoneDegreesValueGetName(
  * exception occurs. See exceptions.h.
  * @return a pointer to a string in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesValueGetDescription(
-	fiftyoneDegreesCollection *strings,
-	fiftyoneDegreesValue *value,
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesValueGetDescription(
+	const fiftyoneDegreesCollection *strings,
+	const fiftyoneDegreesValue *value,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
 
@@ -7799,9 +7918,9 @@ EXTERNAL fiftyoneDegreesString* fiftyoneDegreesValueGetDescription(
  * exception occurs. See exceptions.h.
  * @return a pointer to a string in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesValueGetUrl(
-	fiftyoneDegreesCollection *strings,
-	fiftyoneDegreesValue *value,
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesValueGetUrl(
+	const fiftyoneDegreesCollection *strings,
+	const fiftyoneDegreesValue *value,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
 
@@ -7814,8 +7933,8 @@ EXTERNAL fiftyoneDegreesString* fiftyoneDegreesValueGetUrl(
  * exception occurs. See exceptions.h.
  * @return pointer to the value or NULL
  */
-EXTERNAL fiftyoneDegreesValue* fiftyoneDegreesValueGet(
-	fiftyoneDegreesCollection *values,
+EXTERNAL const fiftyoneDegreesValue* fiftyoneDegreesValueGet(
+	const fiftyoneDegreesCollection *values,
 	uint32_t valueIndex,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
@@ -7832,10 +7951,10 @@ EXTERNAL fiftyoneDegreesValue* fiftyoneDegreesValueGet(
  * exception occurs. See exceptions.h
  * @return pointer to the value or NULL if it does not exist
  */
-EXTERNAL fiftyoneDegreesValue* fiftyoneDegreesValueGetByNameAndType(
-	fiftyoneDegreesCollection *values,
-	fiftyoneDegreesCollection *strings,
-	fiftyoneDegreesProperty *property,
+EXTERNAL const fiftyoneDegreesValue* fiftyoneDegreesValueGetByNameAndType(
+	const fiftyoneDegreesCollection *values,
+	const fiftyoneDegreesCollection *strings,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesPropertyValueType storedValueType,
 	const char *valueName,
 	fiftyoneDegreesCollectionItem *item,
@@ -7852,10 +7971,10 @@ EXTERNAL fiftyoneDegreesValue* fiftyoneDegreesValueGetByNameAndType(
  * exception occurs. See exceptions.h
  * @return pointer to the value or NULL if it does not exist
  */
-EXTERNAL fiftyoneDegreesValue* fiftyoneDegreesValueGetByName(
-	fiftyoneDegreesCollection *values,
-	fiftyoneDegreesCollection *strings,
-	fiftyoneDegreesProperty *property,
+EXTERNAL const fiftyoneDegreesValue* fiftyoneDegreesValueGetByName(
+	const fiftyoneDegreesCollection *values,
+	const fiftyoneDegreesCollection *strings,
+	const fiftyoneDegreesProperty *property,
 	const char *valueName,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
@@ -7872,9 +7991,9 @@ EXTERNAL fiftyoneDegreesValue* fiftyoneDegreesValueGetByName(
  * @return the 0 based index of the item if found, otherwise -1
  */
 EXTERNAL long fiftyoneDegreesValueGetIndexByNameAndType(
-	fiftyoneDegreesCollection *values,
-	fiftyoneDegreesCollection *strings,
-	fiftyoneDegreesProperty *property,
+	const fiftyoneDegreesCollection *values,
+	const fiftyoneDegreesCollection *strings,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesPropertyValueType storedValueType,
 	const char *valueName,
 	fiftyoneDegreesException *exception);
@@ -8346,6 +8465,9 @@ typedef fiftyoneDegreesCollectionItem Item; /**< Synonym for #fiftyoneDegreesCol
  */
 
 MAP_TYPE(Exception);
+MAP_TYPE(CollectionIndexOrOffset)
+MAP_TYPE(CollectionKey)
+MAP_TYPE(CollectionKeyType)
 MAP_TYPE(CollectionIterateMethod)
 MAP_TYPE(CollectionMemory)
 #ifndef FIFTYONE_DEGREES_MEMORY_ONLY
@@ -8431,6 +8553,7 @@ MAP_TYPE(IpAddress)
 MAP_TYPE(WkbtotResult)
 MAP_TYPE(WkbtotReductionMode)
 
+#define ProfileGetFinalSize fiftyoneDegreesProfileGetFinalSize /**< Synonym for #fiftyoneDegreesProfileGetFinalSize function. */
 #define ProfileGetOffsetForProfileId fiftyoneDegreesProfileGetOffsetForProfileId /**< Synonym for #fiftyoneDegreesProfileGetOffsetForProfileId function. */
 #define OverrideValuesAdd fiftyoneDegreesOverrideValuesAdd /**< Synonym for #fiftyoneDegreesOverrideValuesAdd function. */
 #define ExceptionGetMessage fiftyoneDegreesExceptionGetMessage /**< Synonym for #fiftyoneDegreesExceptionGetMessage function. */
@@ -8441,6 +8564,7 @@ MAP_TYPE(WkbtotReductionMode)
 #define OverrideProfileIds fiftyoneDegreesOverrideProfileIds /**< Synonym for #fiftyoneDegreesOverrideProfileIds function. */
 #define OverridePropertiesFree fiftyoneDegreesOverridePropertiesFree /**< Synonym for #fiftyoneDegreesOverridePropertiesFree function. */
 #define ComponentInitList fiftyoneDegreesComponentInitList /**< Synonym for #fiftyoneDegreesComponentInitList function. */
+#define ComponentGetFinalSize fiftyoneDegreesComponentGetFinalSize /**< Synonym for #fiftyoneDegreesComponentGetFinalSize function. */
 #define ComponentGetHeaders fiftyoneDegreesComponentGetHeaders /**< Synonym for #fiftyoneDegreesComponentGetHeaders function. */
 #define CollectionGetInteger32 fiftyoneDegreesCollectionGetInteger32 /**< Synonym for #fiftyoneDegreesCollectionGetInteger32 function. */
 #define PropertyGet fiftyoneDegreesPropertyGet /**< Synonym for #fiftyoneDegreesPropertyGet function. */
@@ -8535,6 +8659,7 @@ MAP_TYPE(WkbtotReductionMode)
 #define MemoryStandardFreeAligned fiftyoneDegreesMemoryStandardFreeAligned /**< Synonym for #fiftyoneDegreesMemoryStandardFreeAligned function. */
 #define ResourceManagerFree fiftyoneDegreesResourceManagerFree /**< Synonym for #fiftyoneDegreesResourceManagerFree function. */
 #define StringGet fiftyoneDegreesStringGet /**< Synonym for #fiftyoneDegreesStringGet function. */
+#define StringGetFinalSize fiftyoneDegreesStringGetFinalSize /**< Synonym for #fiftyoneDegreesStringGetFinalSize function. */
 #define StoredBinaryValueGet fiftyoneDegreesStoredBinaryValueGet /**< Synonym for #fiftyoneDegreesStoredBinaryValueGet function. */
 #define StoredBinaryValueRead fiftyoneDegreesStoredBinaryValueRead /**< Synonym for #fiftyoneDegreesStoredBinaryValueRead function. */
 #define StoredBinaryValueCompareWithString fiftyoneDegreesStoredBinaryValueCompareWithString /**< Synonym for #fiftyoneDegreesStoredBinaryValueCompareWithString function. */
@@ -9172,6 +9297,172 @@ int64_t fiftyoneDegreesCacheHash64(const void *key) {
  * ********************************************************************* */
 
 
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2023 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+#ifndef FIFTYONE_DEGREES_COLLECTION_KEY_TYPES_H_INCLUDED
+#define FIFTYONE_DEGREES_COLLECTION_KEY_TYPES_H_INCLUDED
+
+/**
+ * @ingroup FiftyOneDegreesCommon
+ * @defgroup FiftyOneDegreesCollectionKeyTypes CollectionKeyTypes
+ *
+ * Group of related items such as collection key type constants.
+ *
+ * @{
+ */
+
+
+#ifndef FIFTYONE_DEGREES_MEMORY_ONLY
+static uint32_t fiftyoneDegreesGetFinalByteArraySize(
+    const void *initial,
+    fiftyoneDegreesException * const exception) {
+#	ifdef _MSC_VER
+    UNREFERENCED_PARAMETER(exception);
+#	endif
+    return (uint32_t)(sizeof(int16_t) + (*(int16_t*)initial));
+}
+#else
+#define fiftyoneDegreesGetFinalByteArraySize NULL
+#endif
+
+#ifndef FIFTYONE_DEGREES_MEMORY_ONLY
+EXTERNAL uint32_t fiftyoneDegreesThrowUnsupportedStoredValueType(
+    const void *initial,
+    fiftyoneDegreesException *exception);
+#else
+#define fiftyoneDegreesThrowUnsupportedStoredValueType NULL
+#endif
+
+
+static const fiftyoneDegreesCollectionKeyType CollectionKeyType_Azimuth_raw = {
+    FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_AZIMUTH,
+    sizeof(int16_t),
+    NULL,
+};
+static const fiftyoneDegreesCollectionKeyType * const CollectionKeyType_Azimuth = &CollectionKeyType_Azimuth_raw;
+static const fiftyoneDegreesCollectionKeyType CollectionKeyType_Byte_raw = {
+    FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_BYTE,
+    sizeof(uint8_t),
+    NULL,
+};
+static const fiftyoneDegreesCollectionKeyType * const CollectionKeyType_Byte = &CollectionKeyType_Byte_raw;
+static const fiftyoneDegreesCollectionKeyType CollectionKeyType_Component_raw = {
+    FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_COMPONENT,
+    sizeof(fiftyoneDegreesComponent) - sizeof(fiftyoneDegreesComponentKeyValuePair),
+    fiftyoneDegreesComponentGetFinalSize,
+};
+static const fiftyoneDegreesCollectionKeyType * const CollectionKeyType_Component = &CollectionKeyType_Component_raw;
+static const fiftyoneDegreesCollectionKeyType CollectionKeyType_Declination_raw = {
+    FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_DECLINATION,
+    sizeof(int16_t),
+    NULL,
+};
+static const fiftyoneDegreesCollectionKeyType * const CollectionKeyType_Declination = &CollectionKeyType_Declination_raw;
+static const fiftyoneDegreesCollectionKeyType CollectionKeyType_Integer_raw = {
+    FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_INTEGER,
+    sizeof(uint32_t),
+    NULL,
+};
+static const fiftyoneDegreesCollectionKeyType * const CollectionKeyType_Integer = &CollectionKeyType_Integer_raw;
+static const fiftyoneDegreesCollectionKeyType CollectionKeyType_IPAddress_raw = {
+    FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_IP_ADDRESS,
+    sizeof(uint16_t),
+    fiftyoneDegreesGetFinalByteArraySize,
+};
+static const fiftyoneDegreesCollectionKeyType * const CollectionKeyType_IPAddress = &CollectionKeyType_IPAddress_raw;
+static const fiftyoneDegreesCollectionKeyType CollectionKeyType_Float_raw = {
+    FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_PRECISION_FLOAT,
+    sizeof(fiftyoneDegreesFloat),
+    NULL,
+};
+static const fiftyoneDegreesCollectionKeyType * const CollectionKeyType_Float = &CollectionKeyType_Float_raw;
+static const fiftyoneDegreesCollectionKeyType CollectionKeyType_Profile_raw = {
+    FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_PROFILE,
+    sizeof(fiftyoneDegreesProfile),
+    fiftyoneDegreesProfileGetFinalSize,
+};
+static const fiftyoneDegreesCollectionKeyType * const CollectionKeyType_Profile = &CollectionKeyType_Profile_raw;
+static const fiftyoneDegreesCollectionKeyType CollectionKeyType_ProfileOffset_raw = {
+    FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_PROFILE_OFFSET,
+    sizeof(fiftyoneDegreesProfileOffset),
+    NULL,
+};
+static const fiftyoneDegreesCollectionKeyType * const CollectionKeyType_ProfileOffset = &CollectionKeyType_ProfileOffset_raw;
+static const fiftyoneDegreesCollectionKeyType CollectionKeyType_Property_raw = {
+    FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_PROPERTY,
+    sizeof(fiftyoneDegreesProperty),
+    NULL,
+};
+static const fiftyoneDegreesCollectionKeyType * const CollectionKeyType_Property = &CollectionKeyType_Property_raw;
+static const fiftyoneDegreesCollectionKeyType CollectionKeyType_PropertyTypeRecord_raw = {
+    FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_PROPERTY_TYPE_RECORD,
+    sizeof(fiftyoneDegreesPropertyTypeRecord),
+    NULL,
+};
+static const fiftyoneDegreesCollectionKeyType * const CollectionKeyType_PropertyTypeRecord = &CollectionKeyType_PropertyTypeRecord_raw;
+static const fiftyoneDegreesCollectionKeyType CollectionKeyType_String_raw = {
+    FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_STRING,
+    sizeof(uint16_t),
+    fiftyoneDegreesStringGetFinalSize,
+};
+static const fiftyoneDegreesCollectionKeyType * const CollectionKeyType_String = &CollectionKeyType_String_raw;
+static const fiftyoneDegreesCollectionKeyType CollectionKeyType_Unsupported_raw = {
+    FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_CUSTOM,
+    1,
+    fiftyoneDegreesThrowUnsupportedStoredValueType,
+};
+static const fiftyoneDegreesCollectionKeyType * const CollectionKeyType_Unsupported = &CollectionKeyType_Unsupported_raw;
+static const fiftyoneDegreesCollectionKeyType CollectionKeyType_Value_raw = {
+    FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_VALUE,
+    sizeof(fiftyoneDegreesValue),
+    NULL,
+};
+static const fiftyoneDegreesCollectionKeyType * const CollectionKeyType_Value = &CollectionKeyType_Value_raw;
+static const fiftyoneDegreesCollectionKeyType CollectionKeyType_WKB_raw = {
+    FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB,
+    sizeof(uint16_t),
+    fiftyoneDegreesGetFinalByteArraySize,
+};
+static const fiftyoneDegreesCollectionKeyType * const CollectionKeyType_WKB = &CollectionKeyType_WKB_raw;
+static const fiftyoneDegreesCollectionKeyType CollectionKeyType_WKB_R_raw = {
+    FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB_R,
+    sizeof(uint16_t),
+    fiftyoneDegreesGetFinalByteArraySize,
+};
+static const fiftyoneDegreesCollectionKeyType * const CollectionKeyType_WKB_R = &CollectionKeyType_WKB_R_raw;
+
+EXTERNAL const fiftyoneDegreesCollectionKeyType *fiftyoneDegreesGetCollectionKeyTypeForStoredValueType(
+    fiftyoneDegreesPropertyValueType storedValueType,
+    fiftyoneDegreesException *exception);
+
+#define GetCollectionKeyTypeForStoredValueType fiftyoneDegreesGetCollectionKeyTypeForStoredValueType /**< Synonym for #fiftyoneDegreesGetCollectionKeyTypeForStoredValueType function. */
+
+/**
+ * @}
+ */
+
+#endif
+
 MAP_TYPE(Collection)
 #ifndef FIFTYONE_DEGREES_MEMORY_ONLY
 MAP_TYPE(CollectionConfig)
@@ -9181,7 +9472,7 @@ MAP_TYPE(CollectionConfig)
  * Used by methods which retrieve values from a collection to set an exception.
  */
 #ifndef FIFTYONE_DEGREES_EXCEPTIONS_DISABLED
-#define GET_EXCEPTION_SET(s) \
+#define GET_CLEAR_ITEM \
 if (item->data.allocated > 0) { \
 	Free(item->data.ptr); \
 } \
@@ -9189,11 +9480,14 @@ item->data.ptr = NULL; \
 item->data.used = 0; \
 item->data.allocated = 0; \
 item->handle = NULL; \
-item->collection = NULL; \
+item->collection = NULL;
+#define GET_EXCEPTION_SET(s) \
+GET_CLEAR_ITEM \
 if (exception->status == NOT_SET) { \
 	EXCEPTION_SET(s); \
 }
 #else
+#define GET_CLEAR_ITEM
 #define GET_EXCEPTION_SET(s)
 #endif
 
@@ -9241,7 +9535,7 @@ bool fiftyoneDegreesCollectionGetIsMemoryOnly() { return true; }
  * The data is reset so that further item operations
  * no longer access collection-controlled memory.
  */
-static void releaseNothing(Item *item) {
+static void releaseMemory(Item *item) {
 	assert(item != NULL);
 	DataReset(&item->data);
 }
@@ -9299,10 +9593,6 @@ static void freeCollection(Collection *collection) {
 static void freeMemoryCollection(Collection *collection) {
 	CollectionMemory *memory = (CollectionMemory*)collection->state;
 
-	if (collection->next != NULL) {
-		collection->next->freeCollection(collection->next);
-	}
-
 	if (memory->memoryToFree != NULL) {
 		Free(memory->memoryToFree);
 	}
@@ -9338,13 +9628,13 @@ static void freeCacheCollection(Collection *collection) {
 #pragma warning (disable: 4100) 
 #endif
 static void* getMemoryVariable(
-	Collection *collection,
-	uint32_t offset,
+	const Collection *collection,
+	const CollectionKey * const key,
 	Item *item,
 	Exception *exception) {
 	CollectionMemory *memory = (CollectionMemory*)collection->state;
-	if (offset < collection->size) {
-		item->data.ptr = memory->firstByte + offset;
+	if (key->indexOrOffset.offset < collection->size) {
+		item->data.ptr = memory->firstByte + key->indexOrOffset.offset;
 		assert(item->data.ptr < memory->lastByte);
 		item->collection = collection;
 	}
@@ -9355,13 +9645,13 @@ static void* getMemoryVariable(
 }
 
 static void* getMemoryFixed(
-	Collection *collection,
-	uint32_t index,
+	const Collection *collection,
+	const CollectionKey * const key,
 	Item *item,
 	Exception *exception) {
 	CollectionMemory *memory = (CollectionMemory*)collection->state;
-	if (index < collection->count) {
-		item->data.ptr = memory->firstByte + ((uint64_t)index * collection->elementSize);
+	if (key->indexOrOffset.index < collection->count) {
+		item->data.ptr = memory->firstByte + ((uint64_t)key->indexOrOffset.index * collection->elementSize);
 		assert(item->data.ptr < memory->lastByte);
 		item->collection = collection;
 	}
@@ -9377,55 +9667,9 @@ static void* getMemoryFixed(
 
 #ifndef FIFTYONE_DEGREES_MEMORY_ONLY
 
-static void* getPartialVariable(
-	Collection *collection,
-	uint32_t offset,
-	Item *item,
-	Exception *exception) {
-	CollectionMemory *memory = (CollectionMemory*)collection->state;
-	if (offset < collection->size) {
-		item->data.ptr = memory->firstByte + offset;
-		assert(item->data.ptr < memory->lastByte);
-		item->data.allocated = 0;
-		item->data.used = 0;
-		item->handle = NULL;
-		item->collection = collection;
-	}
-	else if (collection->next != NULL) {
-		collection->next->get(collection->next, offset, item, exception);
-	}
-	else {
-		GET_EXCEPTION_SET(COLLECTION_OFFSET_OUT_OF_RANGE);
-	}
-	return item->data.ptr;
-}
-
-static void* getPartialFixed(
-	Collection *collection,
-	uint32_t index,
-	Item *item,
-	Exception *exception) {
-	CollectionMemory *memory = (CollectionMemory*)collection->state;
-	if (index < collection->count) {
-		item->data.ptr = memory->firstByte + ((uint64_t)index * collection->elementSize);
-		assert(item->data.ptr < memory->lastByte);
-		item->data.allocated = 0;
-		item->data.used = collection->elementSize;
-		item->handle = NULL;
-		item->collection = collection;
-	}
-	else if (collection->next != NULL) {
-		collection->next->get(collection->next, index, item, exception);
-	}
-	else {
-		GET_EXCEPTION_SET(COLLECTION_INDEX_OUT_OF_RANGE);
-	}
-	return item->data.ptr;
-}
-
 static void* getFile(
-	Collection *collection,
-	uint32_t indexOrOffset,
+	const Collection *collection,
+	const fiftyoneDegreesCollectionKey * const key,
 	Item *item,
 	Exception *exception) {
 	CollectionFile *file = (CollectionFile*)collection->state;
@@ -9433,7 +9677,7 @@ static void* getFile(
 
 	// Set the item's handle to the pointer at the start of the data item's
 	// data structure following the read operation.
-	item->handle = file->read(file, indexOrOffset, &item->data, exception);
+	item->handle = file->read(file, key, &item->data, exception);
 
 	// If the read operation returned a pointer to the item's data then set
 	// the collection for the item to the collection used so that it is
@@ -9443,6 +9687,8 @@ static void* getFile(
 	if (EXCEPTION_OKAY && item->handle != NULL) {
 		item->collection = collection;
 		ptr = item->data.ptr;
+	} else {
+		GET_CLEAR_ITEM;
 	}
 
 	return ptr;
@@ -9460,8 +9706,8 @@ static void* getFile(
  * @return a pointer to the data retrieved, or NULL if no data retrieved.
  */
 static void* getFromCache(
-	Collection *collection,
-	uint32_t key,
+	const Collection *collection,
+	const fiftyoneDegreesCollectionKey * const key,
 	Item *item,
 	Exception *exception) {
 	void *ptr = NULL;
@@ -9472,7 +9718,7 @@ static void* getFromCache(
 	// Get the node from the cache or the loader. This method doesn't need
 	// to know which.
 	CollectionCache *cache = (CollectionCache*)collection->state;
-	CacheNode *node = CacheGet(cache->cache, &key, exception);
+	CacheNode *node = CacheGet(cache->cache, key, exception);
 	
 	if (EXCEPTION_OKAY && node != NULL) {
 
@@ -9519,7 +9765,7 @@ static void loaderCache(
 	DataReset(&item.data);
 	if (collection->get(
 		collection,
-		*(uint32_t*)key,
+		(const CollectionKey *)key,
 		&item,
 		exception) != NULL &&
 		EXCEPTION_OKAY) {
@@ -9547,103 +9793,15 @@ static void loaderCache(
 
 #endif
 
-static void iterateCollection(
-	Collection *collection,
-	void *state,
-	CollectionIterateMethod callback,
-	Exception *exception) {
-	Item item;
-	uint32_t nextIndexOrOffset = 0;
-	DataReset(&item.data);
-	while (nextIndexOrOffset < collection->size &&
-		collection->get(
-			collection,
-			nextIndexOrOffset,
-			&item,
-			exception) != NULL &&
-		EXCEPTION_OKAY &&
-		// There is valid data for this iteration. Call the callback method.
-		callback(state, nextIndexOrOffset, &item.data)) {
-
-		// Set the next index or offset.
-		if (collection->elementSize != 0) {
-			nextIndexOrOffset++;
-		}
-		else {
-			nextIndexOrOffset += item.data.used;
-		}
-
-		// Release the item just retrieved.
-		COLLECTION_RELEASE(collection, &item);
-	}
-
-	// Release the final item that wasn't released in the while loop.
-	// This uses the actual method pointer instead of the macro and is the only
-	// place this is necessary. This is the case because even when MEMORY_ONLY
-	// is specified, a file collection can still exist internally while
-	// creating a memory collection, so the real method must be called here to
-	// ensure any allocated memory is freed.
-	if (collection->release != NULL) {
-		collection->release(&item);
-	}
-}
-
-#ifdef _MSC_VER
-#pragma warning (push)
-#pragma warning (disable: 4100) 
-#endif
-static bool callbackLoadedSize(
-	void *state, 
-	uint32_t key, 
-	void *data) {
-	sizeCounter *tracker = (sizeCounter*)state;
-	tracker->size += ((Data*)data)->used;
-	tracker->count++;
-	return tracker->count < tracker->max;
-}
-#ifdef _MSC_VER
-#pragma warning (default: 4100) 
-#pragma warning (pop)
-#endif
-
-static sizeCounter calculateLoadedSize(
-	Collection *collection,
-	const uint32_t count,
-	Exception *exception) {
-	sizeCounter counter;
-	counter.max = count;
-
-	// Can the size be worked out from the element size and the count?
-	if (collection->elementSize != 0) {
-		counter.count = count > collection->count ? collection->count : count;
-		counter.size = counter.count * collection->elementSize;
-	}
-
-	// Can the size be worked out from the collection itself?
-	else if (collection->size < count) {
-		counter.count = 0;
-		counter.size = collection->size;
-	}
-
-	// If none of the previous options can work then iterate the collection 
-	// reading all the values to work out it's size.
-	else {
-		counter.count = 0;
-		counter.size = 0;
-		iterateCollection(collection, &counter, callbackLoadedSize, exception);
-	}
-
-	return counter;
-}
-
 static Collection* createCollection(
 	size_t sizeOfState,
-	CollectionHeader *header) {
+	CollectionHeader *header,
+	const char * const typeName) {
 	Collection *collection = (Collection*)Malloc(sizeof(Collection));
 	if (collection != NULL) {
 		collection->state = Malloc(sizeOfState);
+		collection->typeName = typeName;
 		if (collection->state != NULL) {
-			collection->next = NULL;
 			collection->elementSize = header->count == 0 ?
 				0 : header->length / header->count;
 			collection->size = header->length;
@@ -9689,7 +9847,8 @@ static Collection* createFromFile(
 	// Allocate the memory for the collection and file implementation.
 	Collection *collection = createCollection(
 		sizeof(CollectionFile),
-		header);
+		header,
+		"CollectionFile");
 	CollectionFile *fileCollection = (CollectionFile*)collection->state;
 	fileCollection->collection = collection;
 	fileCollection->reader = reader;
@@ -9711,89 +9870,51 @@ static Collection* createFromFile(
 	return collection;
 }
 
-static Collection* createFromFilePartial(
+#endif
+
+static Collection* createFromFileToMemory(
 	FILE *file,
-	FilePool *reader,
-	CollectionHeader *header,
-	int count,
-	CollectionFileRead read) {
+	CollectionHeader header) {
 	EXCEPTION_CREATE;
-	sizeCounter counter;
+	byte * const data = (byte*)Malloc(header.length * sizeof(byte));
+	MemoryReader memory;
 
-	// Create a file collection to populate the memory collection.
-	Collection *source = createFromFile(file, reader, header, read);
-
-	// Allocate the memory for the collection and implementation.
-	Collection *collection = createCollection(sizeof(CollectionFile), header);
-	CollectionMemory *memory = (CollectionMemory*)collection->state;
-	memory->memoryToFree = NULL;
-	memory->collection = collection;
-
-	// Get the number of bytes that need to be loaded into memory.
-	counter = calculateLoadedSize(source, count, exception);
-	if (EXCEPTION_FAILED) {
-		freeMemoryCollection(collection);
-		source->freeCollection(source);
+	memory.current = data;
+	if (memory.current == NULL) {
+		Free(data);
 		return NULL;
 	}
-	memory->collection->count = counter.count;
-	memory->collection->size = counter.size;
 
-	// Allocate sufficient memory for the data to be stored in.
-	memory->firstByte = (byte*)Malloc(memory->collection->size);
-	if (memory->firstByte == NULL) {
-		freeMemoryCollection(collection);
-		source->freeCollection(source);
-		return NULL;
-	}
-	memory->memoryToFree = memory->firstByte;
+	memory.startByte = memory.current;
+	memory.length = (FileOffset)header.length;
+	memory.lastByte = memory.current + memory.length;
 
 	// Position the file reader at the start of the collection.
-	if (FileSeek(file, header->startPosition, SEEK_SET) != 0) {
-		freeMemoryCollection(collection);
-		source->freeCollection(source);
+	if (FileSeek(file, (FileOffset)header.startPosition, SEEK_SET) != 0) {
+		Free(data);
 		return NULL;
 	}
 
 	// Read the portion of the file into memory.
-	if (fread(memory->firstByte, 1, memory->collection->size, file) !=
-		memory->collection->size) {
-		freeMemoryCollection(collection);
-		source->freeCollection(source);
+	if (fread(memory.startByte, 1, header.length, file) != header.length) {
+		Free(data);
 		return NULL;
 	}
 
-	// Move the file position to the byte after the collection.
-	if (FileSeek(file, source->size - memory->collection->size, SEEK_CUR) != 0) {
-		freeMemoryCollection(collection);
-		source->freeCollection(source);
+	header.startPosition = 0;
+	Collection * const result = CollectionCreateFromMemory(&memory, header);
+
+	if (result == NULL) {
+		Free(data);
 		return NULL;
 	}
 
-	// Set the last byte to enable checking for invalid requests.
-	memory->lastByte = memory->firstByte + memory->collection->size;
+	((CollectionMemory*)result->state)->memoryToFree = data;
 
-	// Set the getter to a method that will check for another collection
-	// if the memory collection does not contain the entry.
-	if (memory->collection->elementSize != 0) {
-		collection->get = getPartialFixed;
-	}
-	else {
-		collection->get = getPartialVariable;
-	}
-	if (fiftyoneDegreesCollectionGetIsMemoryOnly()) {
-		collection->release = NULL;
-	}
-	else {
-		collection->release = releasePartial;
-	}
-	collection->freeCollection = freeMemoryCollection;
-
-	// Finally free the file collection which is no longer needed.
-	source->freeCollection(source);
-
-	return collection;
+	return result;
 }
+
+#ifndef FIFTYONE_DEGREES_MEMORY_ONLY
 
 static Collection* createFromFileCached(
 	FILE *file,
@@ -9804,7 +9925,10 @@ static Collection* createFromFileCached(
 	CollectionFileRead read) {
 
 	// Allocate the memory for the collection and implementation.
-	Collection *collection = createCollection(sizeof(CollectionFile), header);
+	Collection *collection = createCollection(
+		sizeof(CollectionFile),
+		header,
+		"CollectionCache");
 	CollectionCache *cache = (CollectionCache*)collection->state;
 	cache->cache = NULL;
 
@@ -9841,12 +9965,9 @@ static Collection* createFromFileCached(
 }
 
 /**
- * Either the first collection does not contain any in memory items, or there
- * is a need for a secondary collection to be used if the first does not
- * contain any items. Returns the second collection, or NULL if there is no
- * need for one.
+ * Creates a collection, selecting between full file mode, or adding a cache.
  */
-static Collection* createFromFileSecond(
+static Collection* createFromFileMaybeCached(
 	FILE *file,
 	FilePool *reader,
 	const CollectionConfig *config,
@@ -9923,7 +10044,8 @@ fiftyoneDegreesCollection* fiftyoneDegreesCollectionCreateFromMemory(
 	// Allocate the memory for the collection and implementation.
 	Collection *collection = createCollection(
 		sizeof(CollectionMemory),
-		&header);
+		&header,
+		"CollectionMemory");
 	CollectionMemory *memory = (CollectionMemory*)collection->state;
 
 	// Configure the fields for the collection.
@@ -9947,7 +10069,7 @@ fiftyoneDegreesCollection* fiftyoneDegreesCollectionCreateFromMemory(
 		collection->release = NULL;
 	}
 	else {
-		collection->release = releaseNothing;
+		collection->release = releaseMemory;
 	}
 	collection->freeCollection = freeMemoryCollection;
 
@@ -9986,115 +10108,33 @@ fiftyoneDegreesCollectionHeader fiftyoneDegreesCollectionHeaderFromFile(
 	}
 	else {
 		header.startPosition = 0;
+		header.length = header.count = 0;
 	}
 
 	return header;
 }
 
-#if defined(_MSC_VER) && defined(FIFTYONE_DEGREES_MEMORY_ONLY)
-#pragma warning (disable: 4100)
-#endif
 fiftyoneDegreesCollection* fiftyoneDegreesCollectionCreateFromFile(
 	FILE *file,
 	fiftyoneDegreesFilePool *reader,
 	const fiftyoneDegreesCollectionConfig *config,
 	fiftyoneDegreesCollectionHeader header,
 	fiftyoneDegreesCollectionFileRead read) {
-	Collection *result = NULL;
 
 #ifndef FIFTYONE_DEGREES_MEMORY_ONLY
-
-	Collection **next = &result;
-
-	if (config->loaded > 0) {
-
-		// If the collection should be partially loaded into memory set the
-		// first collection to be a memory collection with the relevant number
-		// of entries loaded.
-		result = createFromFilePartial(
-			file,
-			reader,
-			&header,
-			config->loaded,
-			read);
-
-		if (result == NULL) {
-			// The collection could not be created from file.
-			return NULL;
-		
-		}
-		// Point to the next collection to create.
-		next = &result->next;
+	if (!config->loaded) {
+		return createFromFileMaybeCached(file, reader, config, header, read);
 	}
-
-	if (result == NULL || (
-		result->count == config->loaded &&
-		(FileOffset)result->size < (FileTell(file) - (FileOffset)header.startPosition))) {
-
-		// Create the next collection if one is needed.
-		*next = createFromFileSecond(file, reader, config, header, read);
-
-		if (*next == NULL) {
-			// If the secondary collection could not be generated then free
-			// the primary one and return NULL to indicate that the collection
-			// could not be created.
-			if (result != NULL) {
-				 result->freeCollection(result);
-			}
-			result = NULL;
-		}
-	}
-	else {
-
-		// The partial collection supports all items so no need for secondary
-		// collections.
-		*next = NULL;
-	}
-
 #else
-
-	byte *data = (byte*)Malloc(header.length * sizeof(byte));
-	MemoryReader memory;
-
-	memory.current = data;
-	if (memory.current == NULL) {
-		Free(data);
-		return NULL;
-	}
-	
-	memory.startByte = memory.current;
-	memory.length = (FileOffset)header.length;
-	memory.lastByte = memory.current + memory.length;
-
-	// Position the file reader at the start of the collection.
-	if (FileSeek(file, header.startPosition, SEEK_SET) != 0) {
-		free(data);
-		return NULL;
-	}
-
-	// Read the portion of the file into memory.
-	if (fread(memory.startByte, 1, header.length, file) != header.length) {
-		free(data);
-		return NULL;
-	}
-
-	header.startPosition = 0;
-	result = CollectionCreateFromMemory(&memory, header);
-
-	if (result == NULL) {
-		free(data);
-		return NULL;
-	}
-
-	((CollectionMemory*)result->state)->memoryToFree = data;
-
+#	ifdef _MSC_VER
+	UNREFERENCED_PARAMETER(reader);
+	UNREFERENCED_PARAMETER(config);
+	UNREFERENCED_PARAMETER(read);
+#	endif
 #endif
 
-	return result;
+	return createFromFileToMemory(file, header);
 }
-#if defined(_MSC_VER) && defined(FIFTYONE_DEGREES_MEMORY_ONLY)
-#pragma warning (default: 4100)
-#endif
 
 fiftyoneDegreesFileHandle* fiftyoneDegreesCollectionReadFilePosition(
 	const fiftyoneDegreesCollectionFile *file,
@@ -10132,35 +10172,39 @@ fiftyoneDegreesFileHandle* fiftyoneDegreesCollectionReadFilePosition(
 
 void* fiftyoneDegreesCollectionReadFileFixed(
 	const fiftyoneDegreesCollectionFile *file,
-	uint32_t index,
+	const CollectionKey *key,
 	fiftyoneDegreesData *data,
 	fiftyoneDegreesException *exception) {
 	void *ptr = NULL;
 	FileHandle *handle = NULL;
-	uint32_t offset = index * file->collection->elementSize;
+	const uint32_t offset = key->indexOrOffset.index * file->collection->elementSize;
+	const uint32_t lengthToRead =
+		((key->keyType->initialBytesCount > file->collection->elementSize)
+			? key->keyType->initialBytesCount
+			: file->collection->elementSize);
 	
 	// Indicate that no data is being used at the start of the operation.
 	data->used = 0;
 
 	// If the index is outside the range of the collection then return NULL.
-	if (index < file->collection->count) {
+	if (key->indexOrOffset.index < file->collection->count) {
 
 		// Get the handle positioned at the start of the item to be read.
 		handle = CollectionReadFilePosition(file, offset, exception);
 		if (handle != NULL && EXCEPTION_OKAY) {
 
 			// Ensure sufficient memory is allocated for the item being read.
-			if (DataMalloc(data, file->collection->elementSize) != NULL) {
+			if (DataMalloc(data, lengthToRead) != NULL) {
 
 				// Read the record from file to the cache node's data field.
 				if (fread(
 					data->ptr,
-					file->collection->elementSize,
+					lengthToRead,
 					1,
 					handle->file) == 1) {
 
 					// Set the data structure to indicate a successful read.
-					data->used = file->collection->elementSize;
+					data->used = lengthToRead;
 					ptr = data->ptr;
 				}
 				else {
@@ -10168,6 +10212,7 @@ void* fiftyoneDegreesCollectionReadFileFixed(
 					// The read failed so free the memory allocated and set the
 					// status code.
 					Free(data->ptr);
+					DataReset(data);
 					EXCEPTION_SET(COLLECTION_FILE_READ_FAIL);
 				}
 			}
@@ -10195,7 +10240,7 @@ static void* readFileVariable(
 	uint32_t offset,
 	void *initial,
 	size_t initialSize,
-	fiftyoneDegreesCollectionGetFileVariableSizeMethod getFinalSize,
+	fiftyoneDegreesCollectionGetVariableSizeMethod getFinalSize,
 	Exception *exception) {
 	uint32_t bytesNeeded, leftToRead;
 	void *ptr = NULL;
@@ -10208,7 +10253,10 @@ static void* readFileVariable(
 		if ((!initialSize) || (fread(initial, initialSize, 1, handle->file) == 1)) {
 
 			// Calculate the number of bytes needed to store the item.
-			bytesNeeded = getFinalSize(initial);
+			bytesNeeded = getFinalSize ? getFinalSize(initial, exception) : (uint32_t)initialSize;
+			if (EXCEPTION_FAILED) {
+				return NULL;
+			}
 
 			// Ensure sufficient memory is allocated for the item being
 			// read and that the header is copied to the data buffer
@@ -10266,10 +10314,8 @@ static void* readFileVariable(
 void* fiftyoneDegreesCollectionReadFileVariable(
 	const fiftyoneDegreesCollectionFile *fileCollection,
 	fiftyoneDegreesData *data,
-	uint32_t offset,
+	const fiftyoneDegreesCollectionKey * const key,
 	void *initial,
-	size_t initialSize,
-	fiftyoneDegreesCollectionGetFileVariableSizeMethod getFinalSize,
 	fiftyoneDegreesException *exception) {
 	void *ptr = NULL;
 
@@ -10281,7 +10327,7 @@ void* fiftyoneDegreesCollectionReadFileVariable(
 	data->used = 0;
 
 	// Check that the item offset is within the range available.
-	if (offset < fileCollection->collection->size) {
+	if (key->indexOrOffset.offset < fileCollection->collection->size) {
 
 		// Get the handle for the file operation.
 		handle = FileHandleGet(fileCollection->reader, exception);
@@ -10294,10 +10340,10 @@ void* fiftyoneDegreesCollectionReadFileVariable(
 				fileCollection,
 				handle,
 				data, 
-				offset,
-				initial, 
-				initialSize,
-				getFinalSize,
+				key->indexOrOffset.offset,
+				initial,
+				key->keyType->initialBytesCount,
+				key->keyType->getFinalSizeMethod,
 				exception);
 			FileHandleRelease(handle);
 		}
@@ -10315,13 +10361,21 @@ void* fiftyoneDegreesCollectionReadFileVariable(
 #endif
 
 int32_t fiftyoneDegreesCollectionGetInteger32(
-	fiftyoneDegreesCollection *collection,
-	uint32_t indexOrOffset,
-	fiftyoneDegreesException *exception) {
+	const Collection * const collection,
+	const uint32_t indexOrOffset,
+	Exception * const exception) {
 	Item item;
 	int32_t value = 0;
 	DataReset(&item.data);
-	if (collection->get(collection, indexOrOffset, &item, exception) != NULL) {
+	const CollectionKey itemKey = {
+		indexOrOffset,
+		CollectionKeyType_Integer,
+	};
+	if (collection->get(
+		collection,
+		&itemKey,
+		&item,
+		exception) != NULL) {
 		value = *((int32_t*)item.data.ptr);
 		COLLECTION_RELEASE(collection, &item);
 	}
@@ -10329,15 +10383,16 @@ int32_t fiftyoneDegreesCollectionGetInteger32(
 }
 
 long fiftyoneDegreesCollectionBinarySearch(
-	fiftyoneDegreesCollection *collection,
+	const fiftyoneDegreesCollection *collection,
 	fiftyoneDegreesCollectionItem *item,
-	uint32_t lowerIndex,
-	uint32_t upperIndex,
+	fiftyoneDegreesCollectionIndexOrOffset lowerKey,
+	fiftyoneDegreesCollectionIndexOrOffset upperKey,
+	const fiftyoneDegreesCollectionKeyType * const keyType,
 	void *state,
 	fiftyoneDegreesCollectionItemComparer comparer,
 	fiftyoneDegreesException *exception) {
-    uint32_t upper = upperIndex,
-		lower = lowerIndex,
+    uint32_t upper = upperKey.index,
+		lower = lowerKey.index,
 		middle;
 	int comparisonResult;
 	DataReset(&item->data);
@@ -10346,15 +10401,20 @@ long fiftyoneDegreesCollectionBinarySearch(
 		// Get the middle index for the next item to be compared.
 		middle = lower + (upper - lower) / 2;
 
+		const CollectionKey middleKey = {
+			middle,
+			keyType,
+		};
+
 		// Get the item from the collection checking for NULL or an error.
-		if (collection->get(collection, middle, item, exception) == NULL ||
+		if (collection->get(collection, &middleKey, item, exception) == NULL ||
 			EXCEPTION_OKAY == false) {
 			return 0;
 		}
 		
 		// Perform the binary search using the comparer provided with the item
 		// just returned.
-		comparisonResult = comparer(state, item, middle, exception);
+		comparisonResult = comparer(state, item, middleKey, exception);
 		if (EXCEPTION_OKAY == false) {
 			return 0;
 		}
@@ -10380,13 +10440,71 @@ long fiftyoneDegreesCollectionBinarySearch(
 	// The item could not be found and no error occurred.
 	return -1;
 }
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2023 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
 
-uint32_t fiftyoneDegreesCollectionGetCount(
-	fiftyoneDegreesCollection *collection) {
-	while (collection->next != NULL) {
-		collection = collection->next;
-	}
-	return collection->count;
+
+#ifndef FIFTYONE_DEGREES_MEMORY_ONLY
+uint32_t fiftyoneDegreesThrowUnsupportedStoredValueType(
+    const void * const initial,
+    fiftyoneDegreesException * const exception) {
+#	ifdef _MSC_VER
+    UNREFERENCED_PARAMETER(initial);
+#	endif
+    FIFTYONE_DEGREES_EXCEPTION_SET(FIFTYONE_DEGREES_STATUS_UNSUPPORTED_STORED_VALUE_TYPE);
+    return 0;
+}
+#endif
+
+const fiftyoneDegreesCollectionKeyType *fiftyoneDegreesGetCollectionKeyTypeForStoredValueType(
+    const fiftyoneDegreesPropertyValueType storedValueType,
+    fiftyoneDegreesException * const exception) {
+#	ifdef _MSC_VER
+    UNREFERENCED_PARAMETER(exception);
+#	endif
+
+    switch (storedValueType) {
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_STRING:
+            return CollectionKeyType_String;
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_INTEGER:
+            return CollectionKeyType_Integer;
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_AZIMUTH:
+            return CollectionKeyType_Azimuth;
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_DECLINATION:
+            return CollectionKeyType_Declination;
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_PRECISION_FLOAT:
+            return CollectionKeyType_Float;
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_BYTE:
+            return CollectionKeyType_Byte;
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_IP_ADDRESS:
+            return CollectionKeyType_IPAddress;
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB_R:
+            return CollectionKeyType_WKB_R;
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB:
+            return CollectionKeyType_WKB;
+        default: {
+            return CollectionKeyType_Unsupported;
+        }
+    }
 }
 /* *********************************************************************
  * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
@@ -10411,7 +10529,12 @@ uint32_t fiftyoneDegreesCollectionGetCount(
  * ********************************************************************* */
 
 
-static uint32_t getFinalComponentSize(void *initial) {
+uint32_t fiftyoneDegreesComponentGetFinalSize(
+	const void *initial,
+    Exception * const exception) {
+#	ifdef _MSC_VER
+    UNREFERENCED_PARAMETER(exception);
+#	endif
 	Component *component = (Component*)initial;
 	int32_t trailing = (component->keyValuesCount - 1) * 
 		sizeof(fiftyoneDegreesComponentKeyValuePair);
@@ -10426,9 +10549,13 @@ uint32_t fiftyoneDegreesComponentGetDefaultProfileId(
 	Item profileItem;
 	Profile *profile;
 	DataReset(&profileItem.data);
+	const CollectionKey profileKey = {
+		component->defaultProfileOffset,
+		CollectionKeyType_Profile,
+	};
 	profile = (Profile*)profiles->get(
 		profiles,
-		component->defaultProfileOffset,
+		&profileKey,
 		&profileItem,
 		exception);
 	if (profile != NULL && EXCEPTION_OKAY) {
@@ -10438,7 +10565,7 @@ uint32_t fiftyoneDegreesComponentGetDefaultProfileId(
 	return profileId;
 }
 
-fiftyoneDegreesString* fiftyoneDegreesComponentGetName(
+const fiftyoneDegreesString* fiftyoneDegreesComponentGetName(
 	fiftyoneDegreesCollection *stringsCollection,
 	fiftyoneDegreesComponent *component,
 	fiftyoneDegreesCollectionItem *item,
@@ -10469,17 +10596,15 @@ fiftyoneDegreesComponentGetKeyValuePair(
 
 void* fiftyoneDegreesComponentReadFromFile(
 	const fiftyoneDegreesCollectionFile *file,
-	uint32_t offset,
+	const CollectionKey *key,
 	fiftyoneDegreesData *data,
 	fiftyoneDegreesException *exception) {
 	Component component = { 0, 0, 0, 0, { 0, 0 } };
 	return CollectionReadFileVariable(
 		file,
 		data,
-		offset,
+		key,
 		&component,
-		sizeof(Component) - sizeof(fiftyoneDegreesComponentKeyValuePair),
-		getFinalComponentSize,
 		exception);
 }
 
@@ -10494,20 +10619,32 @@ void fiftyoneDegreesComponentInitList(
 	Item item;
 	Component *component;
 	if (ListInit(list, count) == list) {
+		CollectionKeyType keyType = {
+			FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_COMPONENT,
+			0, // TBD
+			fiftyoneDegreesComponentGetFinalSize,
+		};
 		while (list->count < count && EXCEPTION_OKAY) {
 
 			// Get the component and add it to the list.
 			DataReset(&item.data);
+			keyType.initialBytesCount = sizeof(Component) - sizeof(fiftyoneDegreesComponentKeyValuePair);
+			const CollectionKey componentKey = {
+				offset,
+				&keyType,
+			};
 			component = (Component*)components->get(
 				components,
-				offset,
+				&componentKey,
 				&item,
 				exception);
 			if (component != NULL && EXCEPTION_OKAY) {
 				ListAdd(list, &item);
 
 				// Move to the next component in the collection.
-				offset += getFinalComponentSize((void*)component);
+				offset += fiftyoneDegreesComponentGetFinalSize(
+					(void*)component,
+					exception);
 			}
 		}
 	}
@@ -13392,6 +13529,7 @@ bool fiftyoneDegreesHeadersIsHttp(
  * ********************************************************************* */
 
 
+
 // Working data structure used to construct the index.
 typedef struct map_t {
 	uint32_t availableProperty; // available property index
@@ -13423,6 +13561,10 @@ static void addProfileValuesMethod(
 	uint32_t base = getProfileIdIndex(index, profile->profileId) * 
 		index->availablePropertyCount;
 
+	CollectionKey valueKey = {
+		0,
+		CollectionKeyType_Value,
+	};
 	// For each of the values associated with the profile check to see if it
 	// relates to a new property index. If it does then record the first value
 	// index and advance the current index to the next pointer.
@@ -13431,7 +13573,8 @@ static void addProfileValuesMethod(
 		p < index->availablePropertyCount &&
 		EXCEPTION_OKAY;
 		i++) {
-		value = values->get(values, *(first + i), &valueItem, exception);
+		valueKey.indexOrOffset.offset = *(first + i);
+		value = values->get(values, &valueKey, &valueItem, exception);
 		if (value != NULL && EXCEPTION_OKAY) {
 
 			// If the value doesn't relate to the next property index then 
@@ -13470,18 +13613,28 @@ static void iterateProfiles(
 	Item profileOffsetItem; // The current profile offset memory
 	DataReset(&profileItem.data);
 	DataReset(&profileOffsetItem.data);
+	CollectionKey profileOffsetKey = {
+		0,
+		CollectionKeyType_ProfileOffset,
+	};
+	CollectionKey profileKey = {
+		0,
+		CollectionKeyType_Profile,
+	};
 	for (uint32_t i = 0; 
 		i < index->profileCount && EXCEPTION_OKAY;
 		i++) {
+		profileOffsetKey.indexOrOffset.offset = i;
 		profileOffset = profileOffsets->get(
 			profileOffsets,
-			i,
+			&profileOffsetKey,
 			&profileOffsetItem,
 			exception);
 		if (profileOffset != NULL && EXCEPTION_OKAY) {
+			profileKey.indexOrOffset.offset = profileOffset->offset;
 			profile = profiles->get(
 				profiles,
-				profileOffset->offset,
+				&profileKey,
 				&profileItem,
 				exception);
 			if (profile != NULL && EXCEPTION_OKAY) {
@@ -13508,9 +13661,13 @@ static uint32_t getProfileId(
 	ProfileOffset* profileOffset; // The profile offset pointer
 	Item profileOffsetItem; // The profile offset memory
 	DataReset(&profileOffsetItem.data);
+	const CollectionKey profileOffsetKey = {
+		index,
+		CollectionKeyType_ProfileOffset,
+	};
 	profileOffset = profileOffsets->get(
 		profileOffsets,
-		index,
+		&profileOffsetKey,
 		&profileOffsetItem,
 		exception);
 	if (profileOffset != NULL && EXCEPTION_OKAY) {
@@ -14100,7 +14257,7 @@ void fiftyoneDegreesJsonPropertySeparator(fiftyoneDegreesJson* s) {
 }
 
 void fiftyoneDegreesJsonPropertyStart(fiftyoneDegreesJson* s) {
-	fiftyoneDegreesStoredBinaryValue* name;
+	const fiftyoneDegreesStoredBinaryValue* name;
 	fiftyoneDegreesCollectionItem stringItem;
 	fiftyoneDegreesException* exception = s->exception;
 
@@ -14628,11 +14785,11 @@ static const Collection dummyCollection = {
 	NULL, 
 	collectionRelease, 
 	NULL, 
-	NULL, 
-	NULL, 
+	NULL,
 	0, 
 	0, 
-	0 };
+	0,
+};
 
 /**
  * Checks if the string starts with the prefix string.
@@ -15229,22 +15386,34 @@ uint64_t fiftyoneDegreesProcessGetId() {
  * ********************************************************************* */
 
 
+
 MAP_TYPE(Collection)
 
-static uint32_t getFinalProfileSize(void *initial) {
+#ifndef FIFTYONE_DEGREES_MEMORY_ONLY
+uint32_t fiftyoneDegreesProfileGetFinalSize(
+	const void *initial,
+    fiftyoneDegreesException * const exception) {
+#	ifdef _MSC_VER
+    UNREFERENCED_PARAMETER(exception);
+#	endif
 	Profile *profile = (Profile*)initial;
 	return sizeof(Profile) +
 		(profile->valueCount * sizeof(uint32_t));
 }
+#endif
 
 static Profile* getProfileByOffset(
 	Collection *profilesCollection,
 	uint32_t offset,
 	Item *item,
 	Exception *exception) {
+	const CollectionKey profileKey = {
+		offset,
+		CollectionKeyType_Profile,
+	};
 	return (Profile*)profilesCollection->get(
 		profilesCollection,
-		offset,
+		&profileKey,
 		item,
 		exception);
 }
@@ -15252,10 +15421,10 @@ static Profile* getProfileByOffset(
 static int compareProfileId(
 	void * const profileId,
 	Item * const item,
-	const long curIndex,
+	const CollectionKey key,
 	Exception * const exception) {
 #	ifdef _MSC_VER
-	UNREFERENCED_PARAMETER(curIndex);
+	UNREFERENCED_PARAMETER(key);
 	UNREFERENCED_PARAMETER(exception);
 #	endif
 	const unsigned int a = ((ProfileOffset*)item->data.ptr)->profileId;
@@ -15274,17 +15443,21 @@ typedef struct {
 static int compareProfileIdIndirect(
 	void * const searchState,
 	Item * const profileOffsetItem,
-	const long curIndex,
+	const CollectionKey key,
 	Exception * const exception) {
 #	ifdef _MSC_VER
-	UNREFERENCED_PARAMETER(curIndex);
+	UNREFERENCED_PARAMETER(key);
 	UNREFERENCED_PARAMETER(exception);
 #	endif
 	const IndirectProfileSearch * const search = (IndirectProfileSearch*)searchState;
 	const uint32_t profileOffsetValue = *(uint32_t*)profileOffsetItem->data.ptr;
+	const CollectionKey profileKey = {
+		profileOffsetValue,
+		CollectionKeyType_ProfileOffset,
+	};
 	const Profile * const profile = (Profile*)search->profiles->get(
 		search->profiles,
-		profileOffsetValue,
+		&profileKey,
 		search->outProfileItem,
 		exception);
 	if (!(profile && EXCEPTION_OKAY)) {
@@ -15311,8 +15484,8 @@ static int compareValueToProperty(const void *p, const void *v) {
 }
 
 static uint32_t* getFirstValueForProfileAndProperty(
-	fiftyoneDegreesProfile *profile,
-	fiftyoneDegreesProperty *property) {
+	const fiftyoneDegreesProfile *profile,
+	const fiftyoneDegreesProperty *property) {
 
 	// Search to find a value that is equal to or between the first and last
 	// value indexes for the property.
@@ -15344,12 +15517,12 @@ static uint32_t* getFirstValueForProfileAndProperty(
  * responsible for freeing these items.
  */
 static uint32_t iterateValues(
-	Collection *values,
-	Property *property,
+	const Collection *values,
+	const Property *property,
 	void *state,
 	ProfileIterateMethod callback,
-	uint32_t *valIndexPtr,
-	uint32_t *maxValIndexPtr,
+	const uint32_t *valIndexPtr,
+	const uint32_t *maxValIndexPtr,
 	Exception *exception) {
 	Item valueItem;
 	uint32_t count = 0;
@@ -15372,10 +15545,19 @@ static uint32_t iterateValues(
 
 		// Get the value from the value index and call the callback. Do not 
 		// free the item as the calling function is responsible for this.
-		if (values->get(values, *valIndexPtr, &valueItem, exception) != NULL &&
+		const CollectionKey valueKey = {
+			*valIndexPtr,
+			CollectionKeyType_Value,
+		};
+		if (values->get(
+			values,
+			&valueKey,
+			&valueItem,
+			exception) != NULL &&
 			EXCEPTION_OKAY) {
 			cont = callback(state, &valueItem);
 			count++;
+			COLLECTION_RELEASE(values, &valueItem);
 		}
 
 		// Move to the next value index pointer as this might relate to another
@@ -15416,8 +15598,9 @@ uint32_t* fiftyoneDegreesProfileGetOffsetForProfileId(
 		index = CollectionBinarySearch(
 			profileOffsets,
 			&profileOffsetItem,
-			0,
-			CollectionGetCount(profileOffsets) - 1,
+			(CollectionIndexOrOffset){0},
+			(CollectionIndexOrOffset){CollectionGetCount(profileOffsets) - 1},
+			CollectionKeyType_ProfileOffset,
 			(void*)&profileId,
 			compareProfileId,
 			exception);
@@ -15466,8 +15649,9 @@ Profile * fiftyoneDegreesProfileGetByProfileIdIndirect(
 		index = CollectionBinarySearch(
 			profileOffsets,
 			&profileOffsetItem,
-			0,
-			CollectionGetCount(profileOffsets) - 1,
+			(CollectionIndexOrOffset){0},
+			(CollectionIndexOrOffset){CollectionGetCount(profileOffsets) - 1},
+			CollectionKeyType_ProfileOffset,
 			(void*)&search,
 			compareProfileIdIndirect,
 			exception);
@@ -15519,15 +15703,23 @@ fiftyoneDegreesProfile* fiftyoneDegreesProfileGetByIndex(
 
 	// Get the profile offset for the profile at the index provided using
 	// the offset collection item as the handle.
+	const CollectionKey profileOffsetKey = {
+		index,
+		CollectionKeyType_ProfileOffset,
+	};
 	ProfileOffset *profileOffset = (ProfileOffset*)profileOffsets->get(
 		profileOffsets,
-		index,
+		&profileOffsetKey,
 		&offset,
 		exception);
 	if (profileOffset != NULL && EXCEPTION_OKAY) {
+		const CollectionKey profileKey = {
+			profileOffset->offset,
+			CollectionKeyType_Profile,
+		};
 		profile = (fiftyoneDegreesProfile*)profiles->get(
 			profiles,
-			profileOffset->offset,
+			&profileKey,
 			item,
 			exception);
 		COLLECTION_RELEASE(profileOffsets, &offset);
@@ -15539,26 +15731,24 @@ fiftyoneDegreesProfile* fiftyoneDegreesProfileGetByIndex(
 
 void* fiftyoneDegreesProfileReadFromFile(
 	const fiftyoneDegreesCollectionFile *file,
-	uint32_t offset,
+	const CollectionKey * const key,
 	fiftyoneDegreesData *data,
 	fiftyoneDegreesException *exception) {
 	Profile profile = { 0, 0, 0 };
 	return CollectionReadFileVariable(
 		file,
 		data,
-		offset,
+		key,
 		&profile,
-		sizeof(Profile),
-		getFinalProfileSize,
 		exception);
 }
 
 #endif
 
 uint32_t fiftyoneDegreesProfileIterateValuesForProperty(
-	fiftyoneDegreesCollection *values,
-	fiftyoneDegreesProfile *profile,
-	fiftyoneDegreesProperty *property,
+	const fiftyoneDegreesCollection *values,
+	const fiftyoneDegreesProfile *profile,
+	const fiftyoneDegreesProperty *property,
 	void *state,
 	fiftyoneDegreesProfileIterateMethod callback,
 	fiftyoneDegreesException *exception) {
@@ -15580,11 +15770,11 @@ uint32_t fiftyoneDegreesProfileIterateValuesForProperty(
 }
 
 uint32_t fiftyoneDegreesProfileIterateValuesForPropertyWithIndex(
-	fiftyoneDegreesCollection* values,
+	const fiftyoneDegreesCollection* values,
 	fiftyoneDegreesIndicesPropertyProfile* index,
 	uint32_t availablePropertyIndex,
-	fiftyoneDegreesProfile* profile,
-	fiftyoneDegreesProperty* property,
+	const fiftyoneDegreesProfile* profile,
+	const fiftyoneDegreesProperty* property,
 	void* state,
 	fiftyoneDegreesProfileIterateMethod callback,
 	fiftyoneDegreesException* exception) {
@@ -15672,7 +15862,7 @@ uint32_t fiftyoneDegreesProfileIterateProfilesForPropertyWithTypeAndValueAndOffs
 	fiftyoneDegreesCollection * const propertyTypes,
 	fiftyoneDegreesCollection * const values,
 	fiftyoneDegreesCollection * const profiles,
-	fiftyoneDegreesCollection * const profileOffsets,
+	const fiftyoneDegreesCollection * const profileOffsets,
 	const fiftyoneDegreesProfileOffsetValueExtractor offsetValueExtractor,
 	const char * const propertyName,
 	const char * const valueName,
@@ -15682,7 +15872,7 @@ uint32_t fiftyoneDegreesProfileIterateProfilesForPropertyWithTypeAndValueAndOffs
 	uint32_t i, count = 0;
 	Item propertyItem, offsetItem, profileItem;
 	uint32_t *profileValueIndex, *maxProfileValueIndex;
-	Property *property;
+	const Property *property;
 	Profile *profile;
 	DataReset(&propertyItem.data);
 	property = PropertyGetByName(
@@ -15715,9 +15905,13 @@ uint32_t fiftyoneDegreesProfileIterateProfilesForPropertyWithTypeAndValueAndOffs
 			DataReset(&profileItem.data);
 			uint32_t profileOffsetsCount = CollectionGetCount(profileOffsets);
 			for (i = 0; i < profileOffsetsCount; i++) {
+				const CollectionKey rawOffsetKey = {
+					i,
+					CollectionKeyType_ProfileOffset,
+				};
 				const void * const rawProfileOffset = profileOffsets->get(
 					profileOffsets,
-					i,
+					&rawOffsetKey,
 					&offsetItem, 
 					exception);
 				if (rawProfileOffset != NULL && EXCEPTION_OKAY) {
@@ -15746,7 +15940,7 @@ uint32_t fiftyoneDegreesProfileIterateProfilesForPropertyWithTypeAndValueAndOffs
 								profileValueIndex++;
 							}
 						}
-						COLLECTION_RELEASE(profileOffsets, &profileItem);
+						COLLECTION_RELEASE(profiles, &profileItem);
 					}
 					COLLECTION_RELEASE(profileOffsets, &offsetItem);
 				}
@@ -15777,7 +15971,15 @@ uint32_t fiftyoneDegreesProfileIterateValueIndexes(
 
 		// Get the value to check if it relates to a required property.
 		valueIndex = *(valueIndexes + i);
-		value = values->get(values, valueIndex, &valueItem, exception);
+		const CollectionKey valueKey = {
+			valueIndex,
+			CollectionKeyType_Value,
+		};
+		value = values->get(
+			values,
+			&valueKey,
+			&valueItem,
+			exception);
 		if (value == NULL || EXCEPTION_FAILED) {
 			return count;
 		}
@@ -15908,7 +16110,7 @@ static int getPropertyIndex(
 	propertiesSource *source,
 	const char *requiredPropertyName,
 	int requiredPropertyLength) {
-	String *test;
+	const String *test;
 	Item stringItem;
 	uint32_t i = 0;
 	DataReset(&stringItem.data);
@@ -16344,12 +16546,13 @@ void fiftyoneDegreesPropertiesFree(
  * ********************************************************************* */
 
 
+
 MAP_TYPE(Collection)
 
 #ifndef FIFTYONE_DEGREES_GET_STRING_DEFINED
 #define FIFTYONE_DEGREES_GET_STRING_DEFINED
-static fiftyoneDegreesString* getString(
-	Collection *stringsCollection,
+static const fiftyoneDegreesString* getString(
+	const Collection *stringsCollection,
 	uint32_t offset,
 	Item *item,
 	Exception *exception) {
@@ -16362,9 +16565,9 @@ static fiftyoneDegreesString* getString(
 }
 #endif
 
-fiftyoneDegreesString* fiftyoneDegreesPropertyGetName(
-	fiftyoneDegreesCollection *stringsCollection,
-	fiftyoneDegreesProperty *property,
+const fiftyoneDegreesString* fiftyoneDegreesPropertyGetName(
+	const fiftyoneDegreesCollection *stringsCollection,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception) {
 	return getString(
@@ -16374,9 +16577,13 @@ fiftyoneDegreesString* fiftyoneDegreesPropertyGetName(
 		exception);
 }
 
-static int comparePropertyTypeRecordByName(void *state, Item *item, long curIndex, Exception *exception) {
+static int comparePropertyTypeRecordByName(
+	void *state,
+	Item *item,
+	const CollectionKey key,
+	Exception *exception) {
 #	ifdef _MSC_VER
-	UNREFERENCED_PARAMETER(curIndex);
+	UNREFERENCED_PARAMETER(key);
 	UNREFERENCED_PARAMETER(exception);
 #	endif
 	const uint32_t searchNameOffset = *(uint32_t*)state;
@@ -16386,31 +16593,44 @@ static int comparePropertyTypeRecordByName(void *state, Item *item, long curInde
 }
 
 PropertyValueType fiftyoneDegreesPropertyGetStoredType(
-	fiftyoneDegreesCollection * const propertyTypesCollection,
-	Property * const property,
+	const fiftyoneDegreesCollection * const propertyTypesCollection,
+	const Property * const property,
 	Exception * const exception) {
 
 	PropertyValueType result = FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_STRING; // overwritten later
 
 	Item item;
 	DataReset(&item.data);
-	CollectionBinarySearch(
-		propertyTypesCollection,
-		&item,
-		0,
-		CollectionGetCount(propertyTypesCollection),
-		(void*)&property->nameOffset,
-		comparePropertyTypeRecordByName,
-		exception);
-	if (EXCEPTION_OKAY) {
-		result = ((PropertyTypeRecord*)item.data.ptr)->storedValueType;
-		COLLECTION_RELEASE(propertyTypesCollection, &item);
+	bool found = false;
+	for (uint32_t i = 0, n = CollectionGetCount(propertyTypesCollection);
+		(!found) && (i < n);
+		i++) {
+
+		const CollectionKey propertyRecordKey = {
+			i,
+			CollectionKeyType_PropertyTypeRecord,
+		};
+		const PropertyTypeRecord * const record = (const PropertyTypeRecord*)(
+			propertyTypesCollection->get(
+				propertyTypesCollection,
+				&propertyRecordKey,
+				&item,
+				exception));
+		if (record != NULL && EXCEPTION_OKAY) {
+			if (record->nameOffset == property->nameOffset) {
+				result = record->storedValueType;
+				found = true;
+			}
+			COLLECTION_RELEASE(propertyTypesCollection, &item);
+		} else {
+			break;
+		}
 	}
 	return result;
 }
 
 PropertyValueType fiftyoneDegreesPropertyGetStoredTypeByIndex(
-	fiftyoneDegreesCollection * const propertyTypesCollection,
+	const fiftyoneDegreesCollection * const propertyTypesCollection,
 	const uint32_t propertyOffset,
 	Exception * const exception) {
 
@@ -16418,9 +16638,13 @@ PropertyValueType fiftyoneDegreesPropertyGetStoredTypeByIndex(
 
 	Item item;
 	DataReset(&item.data);
+	const CollectionKey recordKey = {
+		propertyOffset,
+		CollectionKeyType_PropertyTypeRecord,
+	};
 	const PropertyTypeRecord * const record = (PropertyTypeRecord*)propertyTypesCollection->get(
 		propertyTypesCollection,
-		propertyOffset,
+		&recordKey,
 		&item,
 		exception);
 	if (EXCEPTION_OKAY) {
@@ -16430,9 +16654,9 @@ PropertyValueType fiftyoneDegreesPropertyGetStoredTypeByIndex(
 	return result;
 }
 
-fiftyoneDegreesString* fiftyoneDegreesPropertyGetDescription(
-	fiftyoneDegreesCollection *stringsCollection,
-	fiftyoneDegreesProperty *property,
+const fiftyoneDegreesString* fiftyoneDegreesPropertyGetDescription(
+	const fiftyoneDegreesCollection *stringsCollection,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception) {
 	return getString(
@@ -16442,9 +16666,9 @@ fiftyoneDegreesString* fiftyoneDegreesPropertyGetDescription(
 		exception);
 }
 
-fiftyoneDegreesString* fiftyoneDegreesPropertyGetCategory(
-	fiftyoneDegreesCollection *stringsCollection,
-	fiftyoneDegreesProperty *property,
+const fiftyoneDegreesString* fiftyoneDegreesPropertyGetCategory(
+	const fiftyoneDegreesCollection *stringsCollection,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception) {
 	return getString(
@@ -16454,9 +16678,9 @@ fiftyoneDegreesString* fiftyoneDegreesPropertyGetCategory(
 		exception);
 }
 
-fiftyoneDegreesString* fiftyoneDegreesPropertyGetUrl(
-	fiftyoneDegreesCollection *stringsCollection,
-	fiftyoneDegreesProperty *property,
+const fiftyoneDegreesString* fiftyoneDegreesPropertyGetUrl(
+	const fiftyoneDegreesCollection *stringsCollection,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception) {
 	return getString(
@@ -16471,31 +16695,40 @@ fiftyoneDegreesProperty* fiftyoneDegreesPropertyGet(
 	uint32_t index,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception) {
+
+	const CollectionKey propertyKey = {
+		index,
+		CollectionKeyType_Property,
+	};
 	return (fiftyoneDegreesProperty*)properties->get(
 		properties,
-		index,
+		&propertyKey,
 		item,
 		exception);
 }
 
-fiftyoneDegreesProperty* fiftyoneDegreesPropertyGetByName(
+const fiftyoneDegreesProperty* fiftyoneDegreesPropertyGetByName(
 	fiftyoneDegreesCollection *properties,
 	fiftyoneDegreesCollection *strings,
 	const char *requiredPropertyName,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception) {
 	Item propertyNameItem;
-	String *name;
-	Property *property = NULL;
+	const String *name;
+	const Property *property = NULL;
 	uint32_t i = 0;
 	DataReset(&propertyNameItem.data);
 	uint32_t propertiesCount = CollectionGetCount(properties);
 	while (i < propertiesCount && property == NULL && EXCEPTION_OKAY) {
 		
 		// Get the property for this index.
-		property = (Property*)properties->get(
+		const CollectionKey propertyKey = {
+			i++,
+			CollectionKeyType_Property,
+		};
+		property = (const Property*)properties->get(
 			properties, 
-			i++, 
+			&propertyKey,
 			item, 
 			exception);
 		if (property != NULL && EXCEPTION_OKAY) {
@@ -16519,7 +16752,7 @@ fiftyoneDegreesProperty* fiftyoneDegreesPropertyGetByName(
 				}
 
 				// Release the property name as this is not needed again.
-				COLLECTION_RELEASE(properties, &propertyNameItem);
+				COLLECTION_RELEASE(strings, &propertyNameItem);
 			}
 		}
 	}
@@ -16534,7 +16767,15 @@ byte fiftyoneDegreesPropertyGetValueType(
 	Item item;
 	Property *property;
 	DataReset(&item.data);
-	property = (Property*)properties->get(properties, index, &item, exception);
+	const CollectionKey propertyKey = {
+		index,
+		CollectionKeyType_Property,
+	};
+	property = (Property*)properties->get(
+		properties,
+		&propertyKey,
+		&item,
+		exception);
 	if (property != NULL && EXCEPTION_OKAY) {
 		result = property->valueType;
 		COLLECTION_RELEASE(properties, &item);
@@ -17123,195 +17364,51 @@ const char* fiftyoneDegreesStatusGetMessage(
 
 #include <inttypes.h>
 
-static uint32_t getFinalByteArraySize(void *initial) {
-    return (uint32_t)(sizeof(int16_t) + (*(int16_t*)initial));
-}
-static uint32_t getFinalFloatSize(void *initial) {
-#	ifdef _MSC_VER
-    UNREFERENCED_PARAMETER(initial);
-#	endif
-    return sizeof(fiftyoneDegreesFloat);
-}
-static uint32_t getFinalIntegerSize(void *initial) {
-#	ifdef _MSC_VER
-    UNREFERENCED_PARAMETER(initial);
-#	endif
-    return sizeof(int32_t);
-}
-static uint32_t getFinalShortSize(void *initial) {
-#	ifdef _MSC_VER
-    UNREFERENCED_PARAMETER(initial);
-#	endif
-    return sizeof(int16_t);
-}
-static uint32_t getFinalByteSize(void* initial) {
-#	ifdef _MSC_VER
-    UNREFERENCED_PARAMETER(initial);
-#	endif
-    return sizeof(byte);
-}
+
 #ifndef FIFTYONE_DEGREES_MEMORY_ONLY
 
-/**
- * Type for temporary memory keeping the value of
- * `storedValueType`: `fiftyoneDegreesPropertyValueType`
- * for "File" and/or "Partial" collections
- * between calls from `StoredBinaryValueGet` to `StoredBinaryValueRead`.
- */
-typedef uint8_t PropertyValueTypeInData;
 
 void* fiftyoneDegreesStoredBinaryValueRead(
-    const fiftyoneDegreesCollectionFile * const file,
-    const uint32_t offset,
-    fiftyoneDegreesData * const data,
-    fiftyoneDegreesException * const exception) {
-    int16_t length;
-
-    // When collection getter is called from `StoredBinaryValueRead`,
-    // the latter will save `storedValueType` into item's Data.
-    //
-    // Otherwise -- if the data is in clear state (e.g. after DataReset),
-    // the caller is assumed to have requested a "String" value.
-    // (for compatibility with `StringRead`-initialized collections).
-
-    if (data->used < sizeof(PropertyValueTypeInData)) {
-        // stored value type not known,
-        // => assume String
-        return fiftyoneDegreesStringRead(file, offset, data, exception);
-    };
-
-    const PropertyValueType storedValueType = *(const PropertyValueTypeInData *)data->ptr;
-    switch (storedValueType) {
-        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_STRING: {
-            return fiftyoneDegreesStringRead(file, offset, data, exception);
-        }
-        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_INTEGER: {
-            return CollectionReadFileVariable(
-                file,
-                data,
-                offset,
-                &length,
-                0,
-                getFinalIntegerSize,
-                exception);
-        }
-        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_AZIMUTH:
-        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_DECLINATION: {
-            return CollectionReadFileVariable(
-                file,
-                data,
-                offset,
-                &length,
-                0,
-                getFinalShortSize,
-                exception);
-        }
-        case FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_PRECISION_FLOAT: {
-            return CollectionReadFileVariable(
-                file,
-                data,
-                offset,
-                &length,
-                0,
-                getFinalFloatSize,
-                exception);
-        }
-        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_IP_ADDRESS:
-        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB_R:
-        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB: {
-            return CollectionReadFileVariable(
-                file,
-                data,
-                offset,
-                &length,
-                sizeof(length),
-                getFinalByteArraySize,
-                exception);
-        }
-        case FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_BYTE: {
-            return CollectionReadFileVariable(
-                file,
-                data,
-                offset,
-                &length,
-                0,
-                getFinalByteSize,
-                exception);
-        }
-        default: {
-            EXCEPTION_SET(FIFTYONE_DEGREES_STATUS_UNSUPPORTED_STORED_VALUE_TYPE);
-            return NULL;
-        }
+    const CollectionFile * const file,
+    const CollectionKey * const key,
+    Data * const data,
+    Exception * const exception) {
+#   define MAX_INITIAL_BUFFER_LENGTH 8
+    if (key->keyType->initialBytesCount > MAX_INITIAL_BUFFER_LENGTH) {
+        EXCEPTION_SET(FIFTYONE_DEGREES_STATUS_INSUFFICIENT_CAPACITY);
+        return NULL;
     }
+    byte initial[MAX_INITIAL_BUFFER_LENGTH];
+#   undef MAX_INITIAL_BUFFER_LENGTH
+
+    return CollectionReadFileVariable(
+        file,
+        data,
+        key,
+        &initial,
+        exception);
 }
 
 #endif
 
-StoredBinaryValue* fiftyoneDegreesStoredBinaryValueGet(
-    fiftyoneDegreesCollection *strings,
+const StoredBinaryValue* fiftyoneDegreesStoredBinaryValueGet(
+    const fiftyoneDegreesCollection *strings,
     uint32_t offset,
     PropertyValueType storedValueType,
     fiftyoneDegreesCollectionItem *item,
     Exception *exception) {
 
-#ifndef FIFTYONE_DEGREES_MEMORY_ONLY
-    // CollectionReadFileVariable subroutine needs to know
-    // - how many bytes constitute the "header" of the variable
-    // - how to extract the remaining "length" of the variable from the "header"
-    //
-    // for that we must pass `storedValueType`
-
-    // Allocate a memory to hold `storedValueType` on stack.
-    //
-    // Use an array to prevent a warning
-    // > `pointer to a local variable potentially escaping scope`
-    //
-    // The data will either:
-    // - remain unowned
-    //   (and `ptr` won't be dereferenced),
-    // or
-    // - is already owned and considered disposable
-    //   (so `storedValueType` will be copied, and no escaping will occur).
-
-    PropertyValueTypeInData storedValueTypeInData[1] = { storedValueType };
-
-    if (!item->data.allocated) {
-        // It is assumed -- as part of the Collection-CollectionItem contract --
-        // that data of the Item passed into "get" is NOT owned by that item.
-
-        item->data.ptr = (byte *)&storedValueTypeInData[0];
-    } else {
-        // Since _this_ function _technically_ is NOT a "getter method"
-        // we might still get an Item that owns some memory.
-        //
-        // Since no collection would leave Data pointing to internal memory
-        // (past COLLECTION_RELEASE call -- mandatory for Item to be reused)
-        // assume the Data is disposable.
-        //
-        // Ensure Data is of sufficient size and copy `storedValueType` into it.
-
-        DataMalloc(&item->data, sizeof(PropertyValueTypeInData));
-        *((PropertyValueTypeInData*)item->data.ptr) = storedValueTypeInData[0];
-    }
-    item->data.used = sizeof(PropertyValueTypeInData);
-
-#else
-    // In MEMORY_ONLY mode,
-    //
-    // we only need to get the pointer to beginning of the data structure
-    // inside the whole body of the data file.
-    //
-    // `storedValueType` is not used, since we do not need to allocate
-    // a sufficient (unknown before reading starts) amount of memory
-    // to read the bytes into.
-#	ifdef _MSC_VER
-    UNREFERENCED_PARAMETER(storedValueType);
-#	endif
-#endif
-
-    StoredBinaryValue * const result = strings->get(
-        strings,
+    const CollectionKey key = {
         offset,
+        GetCollectionKeyTypeForStoredValueType(storedValueType, exception),
+    };
+    if (EXCEPTION_FAILED) {
+        return NULL;
+    }
+
+    const fiftyoneDegreesStoredBinaryValue * const result = strings->get(
+        strings,
+        &key,
         item,
         exception);
     return result;
@@ -17477,38 +17574,48 @@ bool fiftyoneDegreesStoredBinaryValueToBoolOrDefault(
 
 #include <inttypes.h>
 
-static uint32_t getFinalStringSize(void *initial) {
+
+#ifndef FIFTYONE_DEGREES_MEMORY_ONLY
+uint32_t fiftyoneDegreesStringGetFinalSize(
+	const void *initial,
+    Exception * const exception) {
+#	ifdef _MSC_VER
+    UNREFERENCED_PARAMETER(exception);
+#	endif
 	return (uint32_t)(sizeof(int16_t) + (*(int16_t*)initial));
 }
+#endif
 
 #ifndef FIFTYONE_DEGREES_MEMORY_ONLY
 
 void* fiftyoneDegreesStringRead(
-	const fiftyoneDegreesCollectionFile *file,
-	uint32_t offset,
-	fiftyoneDegreesData *data,
-	fiftyoneDegreesException *exception) {
+	const fiftyoneDegreesCollectionFile * const file,
+	const CollectionKey * const key,
+	fiftyoneDegreesData * const data,
+	fiftyoneDegreesException * const exception) {
 	int16_t length;
 	return CollectionReadFileVariable(
 		file,
 		data,
-		offset,
+		key,
 		&length,
-		sizeof(int16_t),
-		getFinalStringSize,
 		exception);
 }
 
 #endif
 
-fiftyoneDegreesString* fiftyoneDegreesStringGet(
-	fiftyoneDegreesCollection *strings,
+const fiftyoneDegreesString* fiftyoneDegreesStringGet(
+	const fiftyoneDegreesCollection *strings,
 	uint32_t offset,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception) {
+	const CollectionKey stringKey = {
+		offset,
+		CollectionKeyType_String,
+	};
 	return (String*)strings->get(
 		strings,
-		offset,
+		&stringKey,
 		item,
 		exception);
 }
@@ -18665,26 +18772,29 @@ uint32_t fiftyoneDegreesTreeCount(fiftyoneDegreesTreeRoot *root) {
  * ********************************************************************* */
 
 
+
 MAP_TYPE(Value);
 MAP_TYPE(Collection);
 MAP_TYPE(CollectionItem);
 
 typedef struct value_search_t {
-	Collection *strings;
+	const Collection *strings;
 	const char *valueName;
 	PropertyValueType valueType;
 	StringBuilder *tempBuilder;
 } valueSearch;
 
-#ifdef _MSC_VER
-// Not all parameters are used for this implementation of
-// #fiftyoneDegreesCollentionItemComparer
-#pragma warning (disable: 4100)
-#endif
-static int compareValueByName(void *state, Item *item, long curIndex, Exception *exception) {
+static int compareValueByName(
+	void *state,
+	Item *item,
+	CollectionKey key,
+	Exception *exception) {
+#	ifdef _MSC_VER
+	UNREFERENCED_PARAMETER(key);
+#	endif
 	int result = 0;
 	Item name;
-	StoredBinaryValue *value;
+	const StoredBinaryValue *value;
 	valueSearch *search = (valueSearch*)state;
 	DataReset(&name.data);
 	if (search->tempBuilder) {
@@ -18707,13 +18817,10 @@ static int compareValueByName(void *state, Item *item, long curIndex, Exception 
 	}
 	return result;
 }
-#ifdef _MSC_VER
-#pragma warning (default: 4100)
-#endif
 
-StoredBinaryValue* fiftyoneDegreesValueGetContent(
-	Collection *strings,
-	Value *value,
+const StoredBinaryValue* fiftyoneDegreesValueGetContent(
+	const Collection *strings,
+	const Value *value,
 	PropertyValueType storedValueType,
 	CollectionItem *item,
 	Exception *exception) {
@@ -18721,9 +18828,9 @@ StoredBinaryValue* fiftyoneDegreesValueGetContent(
 	return StoredBinaryValueGet(strings, value->nameOffset, storedValueType, item, exception);
 }
 
-String* fiftyoneDegreesValueGetName(
-	Collection *strings,
-	Value *value,
+const String* fiftyoneDegreesValueGetName(
+	const Collection *strings,
+	const Value *value,
 	CollectionItem *item,
 	Exception *exception) {
 	return &StoredBinaryValueGet(
@@ -18734,9 +18841,9 @@ String* fiftyoneDegreesValueGetName(
 		exception)->stringValue;
 }
 
-String* fiftyoneDegreesValueGetDescription(
-	Collection *strings,
-	Value *value,
+const String* fiftyoneDegreesValueGetDescription(
+	const Collection *strings,
+	const Value *value,
 	CollectionItem *item,
 	Exception *exception) {
 	return &StoredBinaryValueGet(
@@ -18747,9 +18854,9 @@ String* fiftyoneDegreesValueGetDescription(
 		exception)->stringValue;
 }
 
-String* fiftyoneDegreesValueGetUrl(
-	Collection *strings,
-	Value *value,
+const String* fiftyoneDegreesValueGetUrl(
+	const Collection *strings,
+	const Value *value,
 	CollectionItem *item,
 	Exception *exception) {
 	return &StoredBinaryValueGet(
@@ -18760,14 +18867,18 @@ String* fiftyoneDegreesValueGetUrl(
 		exception)->stringValue;
 }
 
-Value* fiftyoneDegreesValueGet(
-	Collection *values,
+const Value* fiftyoneDegreesValueGet(
+	const Collection *values,
 	uint32_t valueIndex,
 	CollectionItem *item,
 	Exception *exception) {
-	return (Value*)values->get(
-		values, 
-		valueIndex, 
+	const CollectionKey valueKey = {
+		valueIndex,
+		CollectionKeyType_Value,
+	};
+	return (const Value*)values->get(
+		values,
+		&valueKey,
 		item, 
 		exception);
 }
@@ -18789,9 +18900,9 @@ long fiftyoneDegreesValueGetIndexByName(
 }
 
 long fiftyoneDegreesValueGetIndexByNameAndType(
-	Collection *values,
-	Collection *strings,
-	Property *property,
+	const Collection *values,
+	const Collection *strings,
+	const Property *property,
 	fiftyoneDegreesPropertyValueType storedValueType,
 	const char *valueName,
 	Exception *exception) {
@@ -18812,8 +18923,9 @@ long fiftyoneDegreesValueGetIndexByNameAndType(
 	index = CollectionBinarySearch(
 		values,
 		&item,
-		property->firstValueIndex,
-		property->lastValueIndex,
+		(CollectionIndexOrOffset){property->firstValueIndex},
+		(CollectionIndexOrOffset){property->lastValueIndex},
+		CollectionKeyType_Value,
 		(void*)&search,
 		compareValueByName,
 		exception);
@@ -18826,10 +18938,10 @@ long fiftyoneDegreesValueGetIndexByNameAndType(
 	return index;
 }
 
-Value* fiftyoneDegreesValueGetByName(
-	Collection *values,
-	Collection *strings,
-	Property *property,
+const Value* fiftyoneDegreesValueGetByName(
+	const Collection *values,
+	const Collection *strings,
+	const Property *property,
 	const char *valueName,
 	CollectionItem *item,
 	Exception *exception) {
@@ -18844,10 +18956,10 @@ Value* fiftyoneDegreesValueGetByName(
 		exception);
 }
 
-Value* fiftyoneDegreesValueGetByNameAndType(
-	Collection * const values,
-	Collection * const strings,
-	Property * const property,
+const Value* fiftyoneDegreesValueGetByNameAndType(
+	const Collection * const values,
+	const Collection * const strings,
+	const Property * const property,
 	const fiftyoneDegreesPropertyValueType storedValueType,
 	const char * const valueName,
 	CollectionItem * const item,
@@ -18869,8 +18981,9 @@ Value* fiftyoneDegreesValueGetByNameAndType(
 		CollectionBinarySearch(
 			values,
 			item,
-			property->firstValueIndex,
-			property->lastValueIndex,
+			(CollectionIndexOrOffset){property->firstValueIndex},
+			(CollectionIndexOrOffset){property->lastValueIndex},
+			CollectionKeyType_Value,
 			(void*)&search,
 			compareValueByName,
 			exception) >= 0 &&
@@ -20140,6 +20253,7 @@ EXTERNAL fiftyoneDegreesIpiCgResult fiftyoneDegreesIpiGraphEvaluateTrace(
 
 #endif
 
+
 MAP_TYPE(IpiCg)
 MAP_TYPE(IpiCgArray)
 MAP_TYPE(IpiCgMember)
@@ -20200,6 +20314,7 @@ typedef struct cluster_t {
 typedef struct cursor_t {
 	const IpiCg* const graph; // Graph the cursor is working with
 	IpAddress const ip; // The IP address source
+	CollectionKeyType nodeBytesKeyType; // keyType for extracting node bytes
 	byte ipValue[VAR_SIZE]; // The value that should be compared to the span
 	byte bitIndex; // Current bit index from high to low in the IP address 
 				   // value array
@@ -20542,8 +20657,8 @@ static bool isExhausted(const Cursor* const cursor) {
 // Comparer used to determine if the selected cluster is higher or lower than
 // the target.
 static int setClusterComparer(
-	Cursor* cursor,
-	Item* item) {
+	Cursor* const cursor,
+	Item* const item) {
 	// Swap the ownership, so that Cursor now owns this item
 	{
 		const Item t = cursor->cluster.item;
@@ -20554,16 +20669,18 @@ static int setClusterComparer(
 
 	// If this cluster is within the require range then its the correct one
 	// to return.
-	if (cursor->index >= cursor->cluster.ptr->startIndex &&
-		cursor->index <= cursor->cluster.ptr->endIndex) {
+	const uint32_t searchIndex = cursor->index;
+	const uint32_t startIndex = cursor->cluster.ptr->startIndex;
+	if (searchIndex >= startIndex &&
+		searchIndex <= cursor->cluster.ptr->endIndex) {
 		return 0;
 	}
 
-	return cursor->cluster.ptr->startIndex - cursor->index;
+	return (startIndex > searchIndex) ? 1 : (startIndex < searchIndex) ? -1 : 0;
 }
 
 static uint32_t setClusterSearch(
-	fiftyoneDegreesCollection* const collection,
+	const fiftyoneDegreesCollection* const collection,
 	const uint32_t lowerIndex,
 	const uint32_t upperIndex,
 	Cursor* const cursor,
@@ -20571,16 +20688,27 @@ static uint32_t setClusterSearch(
 	uint32_t upper = upperIndex,
 		lower = lowerIndex,
 		middle = 0;
-	while (lower <= upper) {
-		fiftyoneDegreesCollectionItem item;
-		DataReset(&item.data);
+	const CollectionKeyType keyType = {
+		FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_GRAPH_DATA_CLUSTER,
+		collection->elementSize,
+		NULL,
+	};
 
+	fiftyoneDegreesCollectionItem item;
+	DataReset(&item.data);
+	item.collection = NULL;
+
+	while (lower <= upper) {
 		// Get the middle index for the next item to be compared.
 		middle = lower + (upper - lower) / 2;
 
 		// Get the item from the collection checking for NULL or an error.
-		if (collection->get(collection, middle, &item, exception) == NULL ||
-			EXCEPTION_OKAY == false) {
+		const CollectionKey key = {
+			middle,
+			&keyType,
+		};
+		if (!collection->get(collection, &key, &item, exception)
+			|| EXCEPTION_FAILED) {
 			return 0;
 		}
 
@@ -20600,7 +20728,7 @@ static uint32_t setClusterSearch(
 		if (item.collection) {
 			COLLECTION_RELEASE(collection, &item);
 		}
-		if (EXCEPTION_OKAY == false) {
+		if (EXCEPTION_FAILED) {
 			return 0;
 		}
 
@@ -20646,6 +20774,10 @@ static void setCluster(Cursor* cursor) {
 		cursor,
 		cursor->ex);
 
+	if (EXCEPTION_FAILED) {
+		return;
+	}
+
 	// Validate that the cluster set has a start index equal to or greater than
 	// the current cursor position.
 	if (cursor->index < cursor->cluster.ptr->startIndex) {
@@ -20676,9 +20808,20 @@ static void setSpanBytes(Cursor* cursor) {
 	// Use the current span offset to get the bytes.
 	Item cursorItem;
 	DataReset(&cursorItem.data);
+	const uint32_t totalBits = cursor->span.lengthLow + cursor->span.lengthHigh;
+	const uint32_t totalBytes = (totalBits / 8) + ((totalBits % 8) ? 1 : 0);
+	const CollectionKeyType keyType = {
+		FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_GRAPH_DATA_SPAN_BYTES,
+		totalBytes,
+		NULL,
+	};
+	const CollectionKey spanBytesKey = {
+		cursor->span.trail.offset,
+		&keyType,
+	};
 	byte* bytes = cursor->graph->spanBytes->get(
 		cursor->graph->spanBytes,
-		cursor->span.trail.offset,
+		&spanBytesKey,
 		&cursorItem,
 		cursor->ex);
 	if (EXCEPTION_FAILED) return;
@@ -20720,6 +20863,12 @@ void setSpanLimits(Cursor* cursor) {
 		cursor->span.lengthHigh);
 }
 
+static const CollectionKeyType CollectionKeyType_Span = {
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_GRAPH_DATA_SPAN,
+	sizeof(Span),
+	NULL,
+};
+
 // Sets the cursor span to the correct settings for the current node value 
 // index. Uses the binary search feature of the collection.
 static void setSpan(Cursor* cursor) {
@@ -20750,12 +20899,17 @@ static void setSpan(Cursor* cursor) {
 	// Set the span for the current span index.
 	Item cursorItem;
 	DataReset(&cursorItem.data);
-	cursor->span = *(Span*)cursor->graph->spans->get(
-		cursor->graph->spans,
+	const CollectionKey spanKey = {
 		spanIndex,
+		&CollectionKeyType_Span,
+	};
+	Span * const span = (Span*)cursor->graph->spans->get(
+		cursor->graph->spans,
+		&spanKey,
 		&cursorItem,
 		exception);
-	if (EXCEPTION_FAILED) return;
+	if (!span || EXCEPTION_FAILED) return;
+	cursor->span = *span;
 	COLLECTION_RELEASE(cursor->graph->spans, &cursorItem);
 
 	// Ensure set to 0s before the bits are copied.
@@ -20842,12 +20996,22 @@ static void cursorMove(Cursor* const cursor, const uint32_t index) {
 	// Get a pointer to that byte from the collection.
 	Item cursorItem;
 	DataReset(&cursorItem.data);
+	const uint32_t totalBits = cursor->graph->info.nodes.recordSize + bitIndex;
+	const uint32_t totalBytes = (totalBits / 8) + ((totalBits % 8) ? 1 : 0);
+	CollectionKeyType * const nodeBytesKeyType = &cursor->nodeBytesKeyType;
+	nodeBytesKeyType->initialBytesCount = totalBytes;
+	const CollectionKey nodeBytesKey = {
+		(uint32_t)byteIndex,
+		nodeBytesKeyType,
+	};
 	const byte* const ptr = (byte*)cursor->graph->nodes->get(
 		cursor->graph->nodes,
-		(uint32_t)byteIndex,
+		&nodeBytesKey,
 		&cursorItem,
 		exception);
-	if (EXCEPTION_FAILED) return;
+	if (!ptr || EXCEPTION_FAILED) {
+		return;
+	}
 
 	// Move the bits in the bytes pointed to create the unsigned 64 bit integer
 	// that contains the node value bits.
@@ -20884,7 +21048,15 @@ static Cursor cursorCreate(
 	IpAddress ip,
 	StringBuilder* sb,
 	Exception* exception) {
-	Cursor cursor = { graph, ip };
+	Cursor cursor = {
+		graph,
+		ip,
+		{ // nodeBytesKeyType
+			FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_GRAPH_DATA_NODE_BYTES,
+			0, // TBD
+			NULL,
+		},
+	};
 	bytesReset(cursor.ipValue);
 	cursor.bitIndex = 0;
 	cursor.nodeBits = 0;
@@ -20911,6 +21083,7 @@ static void cursorReleaseData(Cursor* const cursor) {
 		COLLECTION_RELEASE(
 			cursor->cluster.item.collection,
 			&cursor->cluster.item);
+		cursor->cluster.ptr = NULL;
 	}
 }
 
@@ -21160,7 +21333,9 @@ static fiftyoneDegreesIpiCgResult ipiGraphEvaluate(
 			const uint32_t profileIndex = evaluate(&cursor);
 			if (EXCEPTION_OKAY) {
 				result = toResult(profileIndex, graph, exception);
-				TRACE_RESULT(&cursor, result);
+				if (EXCEPTION_OKAY) {
+					TRACE_RESULT(&cursor, result);
+				}
 			}
 			cursorReleaseData(&cursor);
 			break;
@@ -21224,6 +21399,12 @@ static Collection* ipiGraphCreateFromMemory(
 	return collection;
 }
 
+static const CollectionKeyType CollectionKeyType_GraphInfo = {
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_GRAPH_INFO,
+	sizeof(IpiCgInfo),
+	NULL,
+};
+
 static IpiCgArray* ipiGraphCreate(
 	Collection* collection,
 	collectionCreate collectionCreate,
@@ -21247,12 +21428,16 @@ static IpiCgArray* ipiGraphCreate(
 		DataReset(&itemInfo.data);
 
 		// Get the information from the collection provided.
+		const CollectionKey infoKey = {
+			i,
+			&CollectionKeyType_GraphInfo,
+		};
 		const IpiCgInfo* const info = (IpiCgInfo*)collection->get(
 			collection, 
-			i,
+			&infoKey,
 			&itemInfo,
 			exception);
-		if (EXCEPTION_FAILED) {
+		if (!info || EXCEPTION_FAILED) {
 			fiftyoneDegreesIpiGraphFree(graphs);
 			return NULL;
 		}
@@ -21284,9 +21469,16 @@ static IpiCgArray* ipiGraphCreate(
 			graphs->items[i].spans);
 
 		// Create the collection for the span bytes.
-		graphs->items[i].spanBytes = collectionCreate(
-			graphs->items[i].info.spanBytes,
-			state);
+		{
+			const CollectionHeader spanBytesHeader = {
+				graphs->items[i].info.spanBytes.startPosition,
+				graphs->items[i].info.spanBytes.length,
+				graphs->items[i].info.spanBytes.length,
+			};
+			graphs->items[i].spanBytes = collectionCreate(
+				spanBytesHeader,
+				state);
+		}
 		if (graphs->items[i].spanBytes == NULL) {
 			EXCEPTION_SET(CORRUPT_DATA);
 			fiftyoneDegreesIpiGraphFree(graphs);
@@ -21543,7 +21735,7 @@ fiftyoneDegreesIpiCgResult fiftyoneDegreesIpiGraphEvaluateTrace(
  * collection configuration.
  */
 #ifndef FIFTYONE_DEGREES_STRING_LOADED
-#define FIFTYONE_DEGREES_STRING_LOADED 100
+#define FIFTYONE_DEGREES_STRING_LOADED true
 #endif
 /**
  * Default value for the graphs cache size used in the default collection
@@ -21557,7 +21749,7 @@ fiftyoneDegreesIpiCgResult fiftyoneDegreesIpiGraphEvaluateTrace(
  * collection configuration.
  */
 #ifndef FIFTYONE_DEGREES_IP_GRAPHS_LOADED
-#define FIFTYONE_DEGREES_IP_GRAPHS_LOADED 1000
+#define FIFTYONE_DEGREES_IP_GRAPHS_LOADED true
 #endif
 /**
  * Default value for the graphs cache size used in the default collection
@@ -21571,7 +21763,7 @@ fiftyoneDegreesIpiCgResult fiftyoneDegreesIpiGraphEvaluateTrace(
  * collection configuration.
  */
 #ifndef FIFTYONE_DEGREES_IP_GRAPH_LOADED
-#define FIFTYONE_DEGREES_IP_GRAPH_LOADED 5000
+#define FIFTYONE_DEGREES_IP_GRAPH_LOADED true
 #endif
 /**
  * Default value for the profile groups cache size used in the default 
@@ -21585,7 +21777,7 @@ fiftyoneDegreesIpiCgResult fiftyoneDegreesIpiGraphEvaluateTrace(
  * configuration.
  */
 #ifndef FIFTYONE_DEGREES_PROFILE_GROUPS_LOADED
-#define FIFTYONE_DEGREES_PROFILE_GROUPS_LOADED 100
+#define FIFTYONE_DEGREES_PROFILE_GROUPS_LOADED false
 #endif
 /**
  * Default value for the profile cache size used in the default collection
@@ -21599,7 +21791,7 @@ fiftyoneDegreesIpiCgResult fiftyoneDegreesIpiGraphEvaluateTrace(
  * collection configuration.
  */
 #ifndef FIFTYONE_DEGREES_PROFILE_LOADED
-#define FIFTYONE_DEGREES_PROFILE_LOADED 100
+#define FIFTYONE_DEGREES_PROFILE_LOADED false
 #endif
 /**
  * Default value for the value cache size used in the default collection
@@ -21613,7 +21805,7 @@ fiftyoneDegreesIpiCgResult fiftyoneDegreesIpiGraphEvaluateTrace(
  * configuration.
  */
 #ifndef FIFTYONE_DEGREES_VALUE_LOADED
-#define FIFTYONE_DEGREES_VALUE_LOADED 0
+#define FIFTYONE_DEGREES_VALUE_LOADED false
 #endif
 /**
  * Default value for the property cache size used in the default collection
@@ -21627,7 +21819,7 @@ fiftyoneDegreesIpiCgResult fiftyoneDegreesIpiGraphEvaluateTrace(
  * collection configuration.
  */
 #ifndef FIFTYONE_DEGREES_PROPERTY_LOADED
-#define FIFTYONE_DEGREES_PROPERTY_LOADED INT_MAX
+#define FIFTYONE_DEGREES_PROPERTY_LOADED true
 #endif
 
 /**
@@ -21917,14 +22109,6 @@ EXTERNAL_VAR fiftyoneDegreesConfigIpi fiftyoneDegreesIpiBalancedTempConfig;
  * a temp file.
  */
 EXTERNAL_VAR fiftyoneDegreesConfigIpi fiftyoneDegreesIpiDefaultConfig;
-
-/**
- * Configuration designed only for testing. This uses a loaded size of 1 in
- * all collections to ensure all every get and release calls can be tested for
- * items which do not exist in the root collection. This configuration is not
- * exposed through C++ intentionally as it is only used in testing.
- */
-EXTERNAL_VAR fiftyoneDegreesConfigIpi fiftyoneDegreesIpiSingleLoadedConfig;
 
 
 /**
@@ -23660,54 +23844,39 @@ FIFTYONE_DEGREES_CONFIG_ALL_IN_MEMORY_DEFAULT
 
 fiftyoneDegreesConfigIpi fiftyoneDegreesIpiHighPerformanceConfig = {
 	{ FIFTYONE_DEGREES_CONFIG_DEFAULT_WITH_INDEX },
-	{ INT_MAX, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Strings
-	{ INT_MAX, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Components
-	{ INT_MAX, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Maps
-	{ INT_MAX, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Properties
-	{ INT_MAX, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Values
-	{ INT_MAX, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Profiles
-	{ INT_MAX, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Graphs
-	{ INT_MAX, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // ProfileGroups
-	{ INT_MAX, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // PropertyTypes
-	{ INT_MAX, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // ProfileOffsets
-	{ INT_MAX, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }  // Graph
+	{ true, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Strings
+	{ true, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Components
+	{ true, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Maps
+	{ true, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Properties
+	{ true, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Values
+	{ true, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Profiles
+	{ true, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Graphs
+	{ true, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // ProfileGroups
+	{ true, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // PropertyTypes
+	{ true, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // ProfileOffsets
+	{ true, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }  // Graph
 };
 
 fiftyoneDegreesConfigIpi fiftyoneDegreesIpiLowMemoryConfig = {
 	{ FIFTYONE_DEGREES_CONFIG_DEFAULT_NO_INDEX },
-	{ 0, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Strings
-	{ 0, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Components
-	{ 0, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Maps
-	{ 0, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Properties
-	{ 0, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Values
-	{ 0, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Profiles
-	{ 0, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Graphs
-	{ 0, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // ProfileGroups
-	{ 0, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // PropertyTypes
-	{ 0, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // ProfileOffsets
-	{ 0, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }  // Graph
-};
-
-fiftyoneDegreesConfigIpi fiftyoneDegreesIpiSingleLoadedConfig = {
-	{ FIFTYONE_DEGREES_CONFIG_DEFAULT_NO_INDEX },
-	{ 1, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Strings
-	{ 1, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Components
-	{ 1, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Maps
-	{ 1, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Properties
-	{ 1, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Values
-	{ 1, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Profiles
-	{ 1, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Graphs
-	{ 1, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // ProfileGroups
-	{ 1, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // PropertyTypes
-	{ 1, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // ProfileOffsets
-	{ 1, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }  // Graph
+	{ false, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Strings
+	{ false, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Components
+	{ false, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Maps
+	{ false, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Properties
+	{ false, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Values
+	{ false, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Profiles
+	{ false, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // Graphs
+	{ false, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // ProfileGroups
+	{ false, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // PropertyTypes
+	{ false, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, // ProfileOffsets
+	{ false, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }  // Graph
 };
 
 #define FIFTYONE_DEGREES_IPI_CONFIG_BALANCED \
 { FIFTYONE_DEGREES_CONFIG_DEFAULT_WITH_INDEX }, \
 { FIFTYONE_DEGREES_STRING_LOADED, FIFTYONE_DEGREES_STRING_CACHE_SIZE, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* Strings */ \
-{ INT_MAX, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* Components */ \
-{ INT_MAX, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* Maps */ \
+{ true, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* Components */ \
+{ true, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* Maps */ \
 { FIFTYONE_DEGREES_PROPERTY_LOADED, FIFTYONE_DEGREES_PROPERTY_CACHE_SIZE, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* Properties */ \
 { FIFTYONE_DEGREES_VALUE_LOADED, FIFTYONE_DEGREES_VALUE_CACHE_SIZE, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* Values */ \
 { FIFTYONE_DEGREES_PROFILE_LOADED, FIFTYONE_DEGREES_PROFILE_CACHE_SIZE, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* Profiles */ \
@@ -23754,6 +23923,17 @@ static int compareIpAddresses(
 	return 0;
 }
 
+static CollectionKeyType CollectionKeyType_Ipv4Range = {
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_IPV4_RANGE,
+	sizeof(Ipv4Range),
+	NULL,
+};
+static CollectionKeyType CollectionKeyType_Ipv6Range = {
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_IPV6_RANGE,
+	sizeof(Ipv6Range),
+	NULL,
+};
+
 static int compareToIpv4Range(
 	const void * const state,
 	const Item* item,
@@ -23766,17 +23946,25 @@ static int compareToIpv4Range(
 	if (tempResult < 0) {
 		Item nextItem;
 		DataReset(&nextItem.data);
-		if ((uint32_t)curIndex + 1 < item->collection->count &&
-			item->collection->get(
-				item->collection,
+		if ((uint32_t)curIndex + 1 < item->collection->count) {
+			const CollectionKey curKey = {
 				(uint32_t)++curIndex,
+				&CollectionKeyType_Ipv4Range,
+			};
+			if (item->collection->get(
+				item->collection,
+				&curKey,
 				&nextItem,
 				exception) != NULL && EXCEPTION_OKAY) {
-			if (compareIpAddresses(((Ipv4Range*)nextItem.data.ptr)->start, target.value, FIFTYONE_DEGREES_IPV4_LENGTH) <= 0) {
-				result = -1;
-			}
-			COLLECTION_RELEASE(item->collection, &nextItem);
+				if (compareIpAddresses(
+					((Ipv4Range*)nextItem.data.ptr)->start,
+					target.value,
+					FIFTYONE_DEGREES_IPV4_LENGTH) <= 0) {
+					result = -1;
 				}
+				COLLECTION_RELEASE(item->collection, &nextItem);
+			}
+		}
 	}
 	else if (tempResult > 0 && curIndex > 0) {
 		// The IP address is out of range
@@ -23799,18 +23987,24 @@ static int compareToIpv6Range(
 	if (tempResult < 0) {
 		Item nextItem;
 		DataReset(&nextItem.data);
-		if ((uint32_t)curIndex + 1 < item->collection->count &&
-			item->collection->get(
-				item->collection,
+		if ((uint32_t)curIndex + 1 < item->collection->count) {
+			const CollectionKey curKey = {
 				(uint32_t)++curIndex,
+				&CollectionKeyType_Ipv6Range,
+			};
+			if (item->collection->get(
+				item->collection,
+				&curKey,
 				&nextItem,
 				exception) != NULL && EXCEPTION_OKAY) {
-			if (compareIpAddresses(((Ipv6Range*)nextItem.data.ptr)->start, target.value, FIFTYONE_DEGREES_IPV6_LENGTH) <= 0) {
-				// The IP address is not within the range
-				result = -1;
-			}
-			COLLECTION_RELEASE(item->collection, &nextItem);
+
+				if (compareIpAddresses(((Ipv6Range*)nextItem.data.ptr)->start, target.value, FIFTYONE_DEGREES_IPV6_LENGTH) <= 0) {
+					// The IP address is not within the range
+					result = -1;
 				}
+				COLLECTION_RELEASE(item->collection, &nextItem);
+			}
+		}
 	}
 	else if (tempResult > 0 && curIndex > 0) {
 		// The IP address is out of range
@@ -23917,11 +24111,11 @@ static long initGetHttpHeaderString(
 	return -1;
 }
 
-static String* initGetPropertyString(
+static const String* initGetPropertyString(
 	void* state,
 	uint32_t index,
 	Item* item) {
-	String* name = NULL;
+	const String* name = NULL;
 	Item propertyItem;
 	Property* property;
 	const DataSetIpi* dataSet = (DataSetIpi*)((stateWithException*)state)->state;
@@ -23932,9 +24126,13 @@ static String* initGetPropertyString(
 		DataReset(&propertyItem.data);
 		item->collection = NULL;
 		item->handle = NULL;
+		const CollectionKey indexKey = {
+			index,
+			CollectionKeyType_Property,
+		};
 		property = (Property*)dataSet->properties->get(
 			dataSet->properties,
-			index,
+			&indexKey,
 			&propertyItem,
 			exception);
 		if (property != NULL && EXCEPTION_OKAY) {
@@ -23994,7 +24192,7 @@ static int findPropertyIndexByName(
 	int index;
 	bool found = false;
 	Property *property;
-	String *propertyName;
+	const String *propertyName;
 	Item propertyItem, nameItem;
 	const int count = CollectionGetCount(properties);
 	DataReset(&propertyItem.data);
@@ -24025,14 +24223,14 @@ static int findPropertyIndexByName(
 }
 
 static void initGetEvidencePropertyRelated(
-	DataSetIpi* dataSet,
-	PropertyAvailable* availableProperty,
-	EvidenceProperties* evidenceProperties,
-	int* count,
-	char* suffix,
-	Exception* exception) {
-	Property* property;
-	String* name;
+	DataSetIpi* const dataSet,
+	PropertyAvailable* const availableProperty,
+	EvidenceProperties* const evidenceProperties,
+	int* const count,
+	char* const suffix,
+	Exception* const exception) {
+	const Property* property;
+	const String* name;
 	const String* availableName = (String*)availableProperty->name.data.ptr;
 	const int requiredLength = ((int)strlen(suffix)) + availableName->size - 1;
 	Item propertyItem, nameItem;
@@ -24169,18 +24367,26 @@ static void dumpProperties(
 	const uint32_t valuesCount = CollectionGetCount(dataSet->values);
 	for (uint32_t i = 0; (i < valuesCount) && EXCEPTION_OKAY; i++) {
 		DataReset(&valueItem.data);
+		const CollectionKey valueKey = {
+			i,
+			CollectionKeyType_Value,
+		};
 		const Value * const nextValue = (Value*)dataSet->values->get(
 			dataSet->values,
-			i,
+			&valueKey,
 			&valueItem,
 			exception);
 		if (!(nextValue && EXCEPTION_OKAY)) {
 			return;
 		}
 		DataReset(&propTypeItem.data);
+		const CollectionKey typeRecordKey = {
+			nextValue->propertyIndex,
+			CollectionKeyType_PropertyTypeRecord,
+		};
 		const PropertyTypeRecord * const nextPropType = (PropertyTypeRecord*)dataSet->propertyTypes->get(
 			dataSet->propertyTypes,
-			nextValue->propertyIndex,
+			&typeRecordKey,
 			&propTypeItem,
 			exception);
 		if (!(nextPropType && EXCEPTION_OKAY)) {
@@ -25322,9 +25528,13 @@ static uint32_t addValuesFromSingleProfile(
 	Profile *profile = NULL;
 	if (profileOffset != NULL_PROFILE_OFFSET) {
 		DataReset(&profileItem.data);
+		const CollectionKey profileKey = {
+			profileOffset,
+			CollectionKeyType_Profile,
+		};
 		profile = (Profile*)dataSet->profiles->get(
 			dataSet->profiles,
-			profileOffset,
+			&profileKey,
 			&profileItem,
 			exception);
 		// If profile is found
@@ -25342,44 +25552,55 @@ static uint32_t addValuesFromSingleProfile(
 	return count;
 }
 
-static uint32_t addValuesFromProfileGroup(
-	ResultsIpi* results,
-	Property *property,
-	uint32_t profileGroupOffset,
-	Exception* exception) {
-	uint32_t count = 0;
-	Item profileGroupItem;
-	const DataSetIpi* dataSet = (DataSetIpi*)results->b.dataSet;
+static const CollectionKeyType CollectionKeyType_OffsetPercentage = {
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_OFFSET_PERCENTAGE,
+	sizeof(offsetPercentage),
+	NULL,
+};
 
-	if (profileGroupOffset != NULL_PROFILE_OFFSET) {
-		DataReset(&profileGroupItem.data);
-		const offsetPercentage* const firstWeightedProfileOffset = (offsetPercentage*)dataSet->profileGroups->get(
-			dataSet->profileGroups,
-			profileGroupOffset,
+static uint32_t addValuesFromProfileGroup(
+	ResultsIpi * const results,
+	Property * const property,
+	const uint32_t profileGroupOffset,
+	Exception * const exception) {
+	uint32_t count = 0;
+	const DataSetIpi * const dataSet = (const DataSetIpi*)results->b.dataSet;
+
+	if (profileGroupOffset == NULL_PROFILE_OFFSET) {
+		return 0;
+	}
+	Item profileGroupItem;
+	DataReset(&profileGroupItem.data);
+
+	const Collection * const profileGroups = dataSet->profileGroups;
+	for (uint32_t totalWeight = 0, nextOffset = profileGroupOffset;
+		(totalWeight < FULL_RAW_WEIGHTING) && EXCEPTION_OKAY;
+		++nextOffset) {
+		const CollectionKey profileGroupKey = {
+			nextOffset,
+			&CollectionKeyType_OffsetPercentage,
+		};
+		const offsetPercentage* const nextWeightedProfileOffset = (const offsetPercentage*)profileGroups->get(
+			profileGroups,
+			&profileGroupKey,
 			&profileGroupItem,
 			exception);
-		if (firstWeightedProfileOffset != NULL && EXCEPTION_OKAY) {
-			// FIXME: Do not rely on pointer arithmetic -- collection could be 'File'
-			const offsetPercentage *weightedProfileOffset = firstWeightedProfileOffset;
-			for (uint32_t totalWeight = 0;
-				totalWeight < FULL_RAW_WEIGHTING;
-				++weightedProfileOffset) {
-				totalWeight += weightedProfileOffset->rawWeighting;
-				if (totalWeight > FULL_RAW_WEIGHTING) {
-					EXCEPTION_SET(FIFTYONE_DEGREES_STATUS_CORRUPT_DATA);
-					break;
-				}
-				count += addValuesFromSingleProfile(
-					results,
-					property,
-					weightedProfileOffset->offset,
-					weightedProfileOffset->rawWeighting,
-					exception);
-			}
-			COLLECTION_RELEASE(dataSet->profiles, &profileGroupItem);
+		if (!(nextWeightedProfileOffset && EXCEPTION_OKAY)) {
+			break;
 		}
+		totalWeight += nextWeightedProfileOffset->rawWeighting;
+		if (totalWeight <= FULL_RAW_WEIGHTING) {
+			count += addValuesFromSingleProfile(
+				results,
+				property,
+				nextWeightedProfileOffset->offset,
+				nextWeightedProfileOffset->rawWeighting,
+				exception);
+		} else {
+			EXCEPTION_SET(FIFTYONE_DEGREES_STATUS_CORRUPT_DATA);
+		}
+		COLLECTION_RELEASE(dataSet->profileGroups, &profileGroupItem);
 	}
-
 	return count;
 }
 
@@ -25390,9 +25611,13 @@ static uint32_t getProfileOffset(
 
 	Item item;
 	DataReset(&item.data);
+	const CollectionKey resultKey = {
+		offsetIndex,
+		CollectionKeyType_Integer,
+	};
 	const uint32_t * const resultRef = (uint32_t*)profileOffsets->get(
 		profileOffsets,
-		offsetIndex,
+		&resultKey,
 		&item,
 		exception);
 	if (!(resultRef && EXCEPTION_OKAY)) {
@@ -25528,9 +25753,13 @@ static bool profileHasValidPropertyValue(
 
 	if (profileOffset != NULL_PROFILE_OFFSET) {
 		DataReset(&profileItem.data);
+		const CollectionKey profileKey = {
+			profileOffset,
+			CollectionKeyType_Profile,
+		};
 		profile = (Profile*)dataSet->profiles->get(
 			dataSet->profiles,
-			profileOffset,
+			&profileKey,
 			&profileItem,
 			exception);
 		// If profile is found
@@ -25594,25 +25823,31 @@ static bool resultGetHasValidPropertyValueOffset(
 							exception);
 					}
 				} else {
-					const offsetPercentage *weightedProfileOffset =
-						(offsetPercentage*)dataSet->profileGroups->get(
-							dataSet->profileGroups,
-							result->graphResult.offset,
+					const Collection * const profileGroups = dataSet->profileGroups;
+					for (uint32_t totalWeight = 0,
+						nextOffset = result->graphResult.offset;
+						(!hasValidOffset) && (totalWeight < FULL_RAW_WEIGHTING) && EXCEPTION_OKAY;
+						++nextOffset) {
+						const CollectionKey profileGroupKey = {
+							nextOffset,
+							&CollectionKeyType_OffsetPercentage,
+						};
+						const offsetPercentage* const nextWeightedProfileOffset = (const offsetPercentage*)profileGroups->get(
+							profileGroups,
+							&profileGroupKey,
 							&item,
 							exception);
-					if (weightedProfileOffset && EXCEPTION_OKAY) {
-						for (uint32_t totalWeight = 0;
-							!hasValidOffset && totalWeight < FULL_RAW_WEIGHTING;
-							++weightedProfileOffset) {
-							totalWeight += weightedProfileOffset->rawWeighting;
-							if (totalWeight > FULL_RAW_WEIGHTING) {
-								EXCEPTION_SET(FIFTYONE_DEGREES_STATUS_CORRUPT_DATA);
-								break;
-							}
+						if (!(nextWeightedProfileOffset && EXCEPTION_OKAY)) {
+							break;
+						}
+						totalWeight += nextWeightedProfileOffset->rawWeighting;
+						if (totalWeight <= FULL_RAW_WEIGHTING) {
 							hasValidOffset = profileHasValidPropertyValue(
-								dataSet, weightedProfileOffset->offset, property, exception);
-							}
-						COLLECTION_RELEASE(dataSet->profiles, &item);
+								dataSet, nextWeightedProfileOffset->offset, property, exception);
+						} else {
+							EXCEPTION_SET(FIFTYONE_DEGREES_STATUS_CORRUPT_DATA);
+						}
+						COLLECTION_RELEASE(profileGroups, &item);
 					}
 				}
 			}
@@ -25704,6 +25939,8 @@ const char* fiftyoneDegreesResultsIpiGetNoValueReasonMessage(
 	case FIFTYONE_DEGREES_RESULTS_NO_VALUE_REASON_NULL_PROFILE:
 		return "The results contained a null profile for the component which "
 			"the required property belongs to.";
+	case FIFTYONE_DEGREES_RESULTS_NO_VALUE_REASON_INVALID_PROPERTY:
+		return "The requested property does not exist, or is not a required property";
 	case FIFTYONE_DEGREES_RESULTS_NO_VALUE_REASON_UNKNOWN:
 	default:
 		return "The reason for missing values is unknown.";
@@ -25778,9 +26015,13 @@ static void fiftyoneDegreesResultsIpiGetValuesStringInternal(
 			return;
 		}
 		DataReset(&propertyItem.data);
+		const CollectionKey propertyKey = {
+			propertyIndex,
+			CollectionKeyType_Property,
+		};
 		property = (Property*)dataSet->properties->get(
 				dataSet->properties,
-				propertyIndex,
+				&propertyKey,
 				&propertyItem,
 				exception);
 		if (property != NULL && EXCEPTION_OKAY) {

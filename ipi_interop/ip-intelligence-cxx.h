@@ -2582,6 +2582,158 @@ EXTERNAL const char* fiftyoneDegreesFileGetFileName(const char *filePath);
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+#ifndef FIFTYONE_DEGREES_COLLECTION_KEY_H_INCLUDED
+#define FIFTYONE_DEGREES_COLLECTION_KEY_H_INCLUDED
+
+/**
+ * @ingroup FiftyOneDegreesCommon
+ * @defgroup FiftyOneDegreesCollectionKey CollectionKey
+ *
+ * Group of related items such as keys.
+ *
+ * @{
+ */
+
+#include <stdint.h>
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2023 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+#ifndef FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_H_INCLUDED
+#define FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_H_INCLUDED
+
+/**
+ * Enum of property types.
+ */
+typedef enum e_fiftyone_degrees_property_value_type {
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_STRING = 0, /**< String */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_INTEGER = 1, /**< Integer */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_DOUBLE = 2, /**< Double */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_BOOLEAN = 3, /**< Boolean */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_JAVASCRIPT = 4, /**< JavaScript string */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_PRECISION_FLOAT = 5, /**< Single precision floating point value */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_BYTE = 6, /**< Single byte value */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_COORDINATE = 7, /**< Coordinate */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_IP_ADDRESS = 8, /**< Ip Range */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB = 9, /**< Well-known binary for geometry */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_OBJECT = 10, /**<  Mainly this is used for nested AspectData. */
+	/**
+	 * Angle north (positive) or south (negative) of the [celestial] equator,
+	 * [-90;90] saved as short (int16_t),
+	 * i.e. projected onto [-INT16_MAX;INT16_MAX]
+	 */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_DECLINATION = 11,
+	/**
+	 * Horizontal angle from a cardinal direction (e.g. 0 meridian),
+	 * [-180;180] saved as short (int16_t),
+	 * i.e. projected onto [-INT16_MAX;INT16_MAX]
+	 */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_AZIMUTH = 12,
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB_R = 13, /**< Well-known binary (reduced) for geometry */
+
+	// Non-Property Collection Value Types
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_CUSTOM = 1000, /**< Reservation start. Should not be used. */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_VALUE, /**< fiftyoneDegreesValue */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_PROFILE, /**< fiftyoneDegreesProfile */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_PROFILE_OFFSET, /**< fiftyoneDegreesProfileOffset */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_COMPONENT, /**< fiftyoneDegreesComponent */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_PROPERTY, /**< fiftyoneDegreesProperty */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_PROPERTY_TYPE_RECORD, /**< fiftyoneDegreesPropertyTypeRecord */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_IPV4_RANGE, /**< fiftyoneDegreesIpv4Range */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_IPV6_RANGE, /**< fiftyoneDegreesIpv6Range */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_OFFSET_PERCENTAGE, /**< offsetPercentage (in ipi.c) */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_GRAPH_DATA_CLUSTER, /**< Cluster (in graph.c) */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_GRAPH_DATA_SPAN, /**< Span (in graph.c) */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_GRAPH_DATA_SPAN_BYTES, /**< bytes of Span (in graph.c) */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_GRAPH_DATA_NODE_BYTES, /**< bytes of node (in graph.c) */
+	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_GRAPH_INFO, /**< fiftyoneDegreesIpiCgInfo */
+} fiftyoneDegreesPropertyValueType;
+
+#endif
+
+/**
+ * Passed a pointer to the first part of a variable size item and returns
+ * the size of the entire item.
+ * @param initial pointer to the start of the item
+ * @return size of the item in bytes
+ */
+typedef uint32_t (*fiftyoneDegreesCollectionGetVariableSizeMethod)(
+	const void *initial,
+	fiftyoneDegreesException *exception);
+
+/**
+ * Location of the item within the Collection.
+ */
+typedef union fiftyone_degrees_collection_index_or_offset_t {
+	uint32_t index;  /**< index of the item in the collection. */
+	uint32_t offset;  /**< byte offset of the item from the start of collection. */
+} fiftyoneDegreesCollectionIndexOrOffset;
+
+static const fiftyoneDegreesCollectionIndexOrOffset
+	fiftyoneDegreesCollectionIndexOrOffset_Zero = { 0 };
+
+/**
+ * Explains to a collection how to properly extract the requested value.
+ */
+typedef struct fiftyone_degrees_collection_key_type_t {
+	const fiftyoneDegreesPropertyValueType valueType;  /**< Size of known-length "head" of the item. */
+	uint32_t initialBytesCount; /**< Size of known-length "head" of the item. */
+	const fiftyoneDegreesCollectionGetVariableSizeMethod getFinalSizeMethod; /**< Size of unknown-length "tail" of the item. */
+} fiftyoneDegreesCollectionKeyType;
+
+/**
+ * Explains to a collection (or cache) what the consumer is looking for.
+ */
+typedef struct fiftyone_degrees_collection_key_t {
+	fiftyoneDegreesCollectionIndexOrOffset indexOrOffset; /**< Where to look for the item. */
+	const fiftyoneDegreesCollectionKeyType *keyType;  /**< Not used if collection is fixed width. */
+} fiftyoneDegreesCollectionKey;
+
+/**
+ * @}
+ */
+
+#endif
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2023 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
 /**
  * @ingroup FiftyOneDegreesCommon
  * @defgroup FiftyOneDegreesCache Cache
@@ -2836,6 +2988,7 @@ EXTERNAL int64_t fiftyoneDegreesCacheHash64(const void *key);
 #include <stdio.h>
 #include <string.h>
 
+
 /**
  * Free a collection by checking if it is NULL first.
  * @param c collection to free
@@ -2851,7 +3004,7 @@ if (c != NULL) { c->freeCollection(c); }
  * @param i item to release
  */
 #ifndef FIFTYONE_DEGREES_MEMORY_ONLY
-#define FIFTYONE_DEGREES_COLLECTION_RELEASE(c, i) c->release(i)
+#define FIFTYONE_DEGREES_COLLECTION_RELEASE(c, i) { assert(!((i)->collection) || (c == (i)->collection)); c->release(i); };
 #else
 #define FIFTYONE_DEGREES_COLLECTION_RELEASE(c, i)
 #endif
@@ -2873,8 +3026,7 @@ typedef struct fiftyone_degrees_collection_header_t {
  * be created by the create methods.
  */
 typedef struct fiftyone_degrees_collection_config_t {
-	uint32_t loaded; /**< Number of items to load into memory from the start of
-					     the collection */
+	bool loaded; /**< Collection is loaded entirely into memory */
 	uint32_t capacity; /**< Number of items the cache should store, 0 for no
 	                       cache */
 	uint16_t concurrency; /**< Expected number of concurrent requests, 1 or
@@ -2896,10 +3048,12 @@ typedef struct fiftyone_degrees_collection_file_t fiftyoneDegreesCollectionFile;
 typedef struct fiftyone_degrees_collection_item_t {
 	fiftyoneDegreesData data; /**< Item data including allocated memory */
 	void *handle; /**< A handle that relates to the data. i.e. a cache node */
-	fiftyoneDegreesCollection *collection; /**< Collection the item came from
-	                                           which may not have been set.
-	                                           Should not be used by external
-	                                           code */
+
+	/**
+	 * Collection the item came from which may not have been set.
+	 * Should not be used by external code.
+	 */
+	const fiftyoneDegreesCollection *collection;
 } fiftyoneDegreesCollectionItem;
 
 /**
@@ -2907,32 +3061,23 @@ typedef struct fiftyone_degrees_collection_item_t {
  * if the item could not be loaded. The exception parameter is set to the 
  * status code to indicate the failure.
  * @param collection pointer to the file collection
- * @param indexOrOffset index or offset to the item in the data structure
+ * @param key key of the item in the data structure
  * @param item pointer to the item structure to place the result in
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h.
  * @return the value in the data->ptr field, or NULL if not successful
  */
 typedef void* (*fiftyoneDegreesCollectionGetMethod)(
-	fiftyoneDegreesCollection *collection,
-	uint32_t indexOrOffset,
+	const fiftyoneDegreesCollection *collection,
+	const fiftyoneDegreesCollectionKey *key,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
-
-/**
- * Passed a pointer to the first part of a variable size item and returns
- * the size of the entire item.
- * @param initial pointer to the start of the item
- * @return size of the item in bytes
- */
-typedef uint32_t (*fiftyoneDegreesCollectionGetFileVariableSizeMethod)(
-	void *initial);
 
 /**
  * Reads the item from the underlying data file. Used by the file related
  * collection methods.
  * @param collection pointer to the file collection
- * @param offsetOrIndex index or offset to the item in the data structure
+ * @param key key of the item in the data structure
  * @param data pointer to the data structure to store the item
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h.
@@ -2940,7 +3085,7 @@ typedef uint32_t (*fiftyoneDegreesCollectionGetFileVariableSizeMethod)(
  */
 typedef void* (*fiftyoneDegreesCollectionFileRead)(
 	const fiftyoneDegreesCollectionFile *collection,
-	uint32_t offsetOrIndex,
+	const fiftyoneDegreesCollectionKey *key,
 	fiftyoneDegreesData *data,
 	fiftyoneDegreesException *exception);
 
@@ -2949,7 +3094,7 @@ typedef void* (*fiftyoneDegreesCollectionFileRead)(
  * of a binary search of ordering operation.
  * @param state to be used for the comparison
  * @param item the value to compare against the state
- * @param curIndex the index of the current item in the collection
+ * @param key key of the item in the data structure
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h
  * @return negative if a is lower than b, positive if a is higher than b or 0 
@@ -2958,7 +3103,7 @@ typedef void* (*fiftyoneDegreesCollectionFileRead)(
 typedef int(*fiftyoneDegreesCollectionItemComparer)(
 	void *state,
 	fiftyoneDegreesCollectionItem *item,
-	long curIndex,
+	fiftyoneDegreesCollectionKey key,
 	fiftyoneDegreesException *exception);
 
 /**
@@ -3008,12 +3153,11 @@ typedef struct fiftyone_degrees_collection_t {
 	                #fiftyoneDegreesCollectionMemory,
 	                #fiftyoneDegreesCollectionFile or 
 	                #fiftyoneDegreesCollectionCache */
-	fiftyoneDegreesCollection *next; /**< The next collection implementation or
-	                                    NULL */
 	uint32_t count; /**< The number of items, or 0 if not available */
 	uint32_t elementSize; /**< The size of each entry, or 0 if variable length */
 	uint32_t size; /**< Number of bytes in the source data structure containing
 					  the collection's data */
+	const char *typeName; /**< Name of collection type (vtable). */
 } fiftyoneDegreesCollection;
 
 /**
@@ -3070,7 +3214,7 @@ EXTERNAL bool fiftyoneDegreesCollectionGetIsMemoryOnly();
  * @return the 32 bit integer at the index or offset provided
  */
 EXTERNAL int32_t fiftyoneDegreesCollectionGetInteger32(
-	fiftyoneDegreesCollection *collection,
+	const fiftyoneDegreesCollection *collection,
 	uint32_t indexOrOffset,
 	fiftyoneDegreesException *exception);
 
@@ -3136,7 +3280,7 @@ EXTERNAL fiftyoneDegreesFileHandle* fiftyoneDegreesCollectionReadFilePosition(
  * @param file pointer to the #fiftyoneDegreesCollectionFile to use for the
  * read
  * @param data structure to populate with a reference to the item
- * @param index zero based index of the item required in the fixed with data 
+ * @param key zero based index of the item required in the fixed with data
  * structure
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h.
@@ -3145,7 +3289,7 @@ EXTERNAL fiftyoneDegreesFileHandle* fiftyoneDegreesCollectionReadFilePosition(
  */
 EXTERNAL void* fiftyoneDegreesCollectionReadFileFixed(
 	const fiftyoneDegreesCollectionFile *file,
-	uint32_t index,
+	const fiftyoneDegreesCollectionKey *key,
 	fiftyoneDegreesData *data,
 	fiftyoneDegreesException *exception);
 
@@ -3173,10 +3317,8 @@ fiftyoneDegreesCollectionHeaderFromFile(
  * @param file pointer to the #fiftyoneDegreesCollectionFile to use for the
  * read
  * @param data structure to populate with a reference to the item
- * @param offset zero based offset to the item within the data structure
+ * @param key key of the item in the data structure
  * @param initial pointer to enough memory to store the initial data
- * @param initialSize amount of initial data to read
- * @param getFinalSize method pass the initial pointer to get the final size
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h.
  * @return a pointer to the item in the data structure or NULL if can't be
@@ -3185,10 +3327,8 @@ fiftyoneDegreesCollectionHeaderFromFile(
 EXTERNAL void* fiftyoneDegreesCollectionReadFileVariable(
 	const fiftyoneDegreesCollectionFile *file,
 	fiftyoneDegreesData *data,
-	uint32_t offset,
+	const fiftyoneDegreesCollectionKey *key,
 	void *initial,
-	size_t initialSize,
-	fiftyoneDegreesCollectionGetFileVariableSizeMethod getFinalSize,
 	fiftyoneDegreesException *exception);
 
 /**
@@ -3221,8 +3361,9 @@ fiftyoneDegreesCollectionHeaderFromMemory(
  * @param item memory to be used to store the current value being compared. 
  * Will have a lock on the item at the index returned if an item is found.
  * The caller should release the item when finished with it.
- * @param lowerIndex to start the search at
- * @param upperIndex to end the search at
+ * @param lowerKey to start the search at
+ * @param upperKey to end the search at
+ * @param keyType type of lower/upper keys
  * @param state used with the compare method when comparing items
  * @param comparer method used to perform the comparison
  * @param exception pointer to an exception data structure to be used if an
@@ -3230,10 +3371,11 @@ fiftyoneDegreesCollectionHeaderFromMemory(
  * @return the index of the item if found, otherwise -1.
  */
 EXTERNAL long fiftyoneDegreesCollectionBinarySearch(
-	fiftyoneDegreesCollection *collection,
+	const fiftyoneDegreesCollection *collection,
 	fiftyoneDegreesCollectionItem *item,
-	uint32_t lowerIndex,
-	uint32_t upperIndex,
+	fiftyoneDegreesCollectionIndexOrOffset lowerKey,
+	fiftyoneDegreesCollectionIndexOrOffset upperKey,
+	const fiftyoneDegreesCollectionKeyType *keyType,
 	void *state,
 	fiftyoneDegreesCollectionItemComparer comparer,
 	fiftyoneDegreesException *exception);
@@ -3251,8 +3393,7 @@ EXTERNAL long fiftyoneDegreesCollectionBinarySearch(
  * @param collection to get the count for
  * @return the number of items in the collection
  */
-EXTERNAL uint32_t fiftyoneDegreesCollectionGetCount(
-	fiftyoneDegreesCollection *collection);
+#define fiftyoneDegreesCollectionGetCount(collection) ((collection)->count)
 
 /**
  * @}
@@ -3766,62 +3907,6 @@ typedef fiftyoneDegreesFloatInternal fiftyoneDegreesFloat;
  */
 
 #endif
-/* *********************************************************************
- * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
- * Copyright 2023 51 Degrees Mobile Experts Limited, Davidson House,
- * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
- *
- * This Original Work is licensed under the European Union Public Licence
- * (EUPL) v.1.2 and is subject to its terms as set out below.
- *
- * If a copy of the EUPL was not distributed with this file, You can obtain
- * one at https://opensource.org/licenses/EUPL-1.2.
- *
- * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
- * amended by the European Commission) shall be deemed incompatible for
- * the purposes of the Work and the provisions of the compatibility
- * clause in Article 5 of the EUPL shall not apply.
- *
- * If using the Work as, or as part of, a network application, by
- * including the attribution notice(s) required under Article 5 of the EUPL
- * in the end user terms of the application under an appropriate heading,
- * such notice(s) shall fulfill the requirements of that article.
- * ********************************************************************* */
-
-#ifndef FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_H_INCLUDED
-#define FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_H_INCLUDED
-
-/**
- * Enum of property types.
- */
-typedef enum e_fiftyone_degrees_property_value_type {
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_STRING = 0, /**< String */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_INTEGER = 1, /**< Integer */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_DOUBLE = 2, /**< Double */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_BOOLEAN = 3, /**< Boolean */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_JAVASCRIPT = 4, /**< JavaScript string */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_PRECISION_FLOAT = 5, /**< Single precision floating point value */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_BYTE = 6, /**< Single byte value */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_COORDINATE = 7, /**< Coordinate */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_IP_ADDRESS = 8, /**< Ip Range */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB = 9, /**< Well-known binary for geometry */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_OBJECT = 10, /**<  Mainly this is used for nested AspectData. */
-	/**
-	 * Angle north (positive) or south (negative) of the [celestial] equator,
-	 * [-90;90] saved as short (int16_t),
-	 * i.e. projected onto [-INT16_MAX;INT16_MAX]
-	 */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_DECLINATION = 11,
-	/**
-	 * Horizontal angle from a cardinal direction (e.g. 0 meridian),
-	 * [-180;180] saved as short (int16_t),
-	 * i.e. projected onto [-INT16_MAX;INT16_MAX]
-	 */
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_AZIMUTH = 12,
-	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB_R = 13, /**< Well-known binary (reduced) for geometry */
-} fiftyoneDegreesPropertyValueType;
-
-#endif
 
 /**
  * Macro used to check for NULL before returning the string as a const char *.
@@ -3847,13 +3932,26 @@ typedef struct fiftyone_degrees_string_t {
 } fiftyoneDegreesString;
 #pragma pack(pop)
 
+/**
+ * Gets size of String with trailing characters.
+ * @param initial pointer to string "head"
+ * @return full (with tail) struct size
+ */
 #ifndef FIFTYONE_DEGREES_MEMORY_ONLY
+EXTERNAL uint32_t fiftyoneDegreesStringGetFinalSize(
+	const void *initial,
+	fiftyoneDegreesException *exception);
+#else
+#define fiftyoneDegreesStringGetFinalSize NULL
+#endif
 
+
+#ifndef FIFTYONE_DEGREES_MEMORY_ONLY
 /**
  * Reads a string from the source file at the offset within the string
  * structure.
  * @param file collection to read from
- * @param offset of the string in the collection
+ * @param key of the string in the collection
  * @param data to store the new string in
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h.
@@ -3861,7 +3959,7 @@ typedef struct fiftyone_degrees_string_t {
  */
 EXTERNAL void* fiftyoneDegreesStringRead(
 	const fiftyoneDegreesCollectionFile *file,
-	uint32_t offset,
+	const fiftyoneDegreesCollectionKey *key,
 	fiftyoneDegreesData *data,
 	fiftyoneDegreesException *exception);
 
@@ -3876,8 +3974,8 @@ EXTERNAL void* fiftyoneDegreesStringRead(
  * exception occurs. See exceptions.h.
  * @return a pointer to string of NULL if the offset is not valid
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesStringGet(
-	fiftyoneDegreesCollection *strings,
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesStringGet(
+	const fiftyoneDegreesCollection *strings,
 	uint32_t offset,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
@@ -5269,7 +5367,7 @@ EXTERNAL typedef struct fiftyone_degrees_properties_required_t {
  * @param item used to obtain a handle to the string
  * @return pointer to the string or NULL if no property available
  */
-typedef fiftyoneDegreesString*(*fiftyoneDegreesPropertiesGetMethod)(
+typedef const fiftyoneDegreesString*(*fiftyoneDegreesPropertiesGetMethod)(
 	void *state,
 	uint32_t index,
 	fiftyoneDegreesCollectionItem *item);
@@ -5544,6 +5642,14 @@ typedef struct fiftyoneDegrees_component_t {
 #pragma pack(pop)
 
 /**
+ * Gets size of Component with trailing key-value pair.
+ * @param initial pointer to component "head"
+ * @return full (with tail) struct size
+ */
+EXTERNAL uint32_t fiftyoneDegreesComponentGetFinalSize(
+	const void *initial,
+	fiftyoneDegreesException *exception);
+/**
  * Returns the string name of the component using the item provided. The
  * collection item must be released when the caller is finished with the
  * string.
@@ -5554,7 +5660,7 @@ typedef struct fiftyoneDegrees_component_t {
  * exception occurs. See exceptions.h
  * @return a pointer to a string in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesComponentGetName(
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesComponentGetName(
 	fiftyoneDegreesCollection *stringsCollection,
 	fiftyoneDegreesComponent *component,
 	fiftyoneDegreesCollectionItem *item,
@@ -5597,15 +5703,15 @@ void fiftyoneDegreesComponentInitList(
  * Read a component from the file collection provided and store in the data
  * pointer. This method is used when creating a collection from file.
  * @param file collection to read from
- * @param offset of the component in the collection
+ * @param key of the component in the collection
  * @param data to store the resulting component in
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h
  * @return pointer to the component allocated within the data structure
  */
-void* fiftyoneDegreesComponentReadFromFile(
+EXTERNAL void* fiftyoneDegreesComponentReadFromFile(
 	const fiftyoneDegreesCollectionFile *file,
-	uint32_t offset,
+	const fiftyoneDegreesCollectionKey *key,
 	fiftyoneDegreesData *data,
 	fiftyoneDegreesException *exception);
 
@@ -5759,9 +5865,9 @@ typedef struct property_type_record_t {
  * exception occurs. See exceptions.h.
  * @return a pointer to a string in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesPropertyGetName(
-	fiftyoneDegreesCollection *stringsCollection,
-	fiftyoneDegreesProperty *property,
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesPropertyGetName(
+	const fiftyoneDegreesCollection *stringsCollection,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
 
@@ -5774,8 +5880,8 @@ EXTERNAL fiftyoneDegreesString* fiftyoneDegreesPropertyGetName(
  * @return a type the property is stored as.
  */
 EXTERNAL fiftyoneDegreesPropertyValueType fiftyoneDegreesPropertyGetStoredType(
-	fiftyoneDegreesCollection *propertyTypesCollection,
-	fiftyoneDegreesProperty *property,
+	const fiftyoneDegreesCollection *propertyTypesCollection,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesException *exception);
 
 /**
@@ -5787,7 +5893,7 @@ EXTERNAL fiftyoneDegreesPropertyValueType fiftyoneDegreesPropertyGetStoredType(
  * @return a type the property is stored as.
  */
 EXTERNAL fiftyoneDegreesPropertyValueType fiftyoneDegreesPropertyGetStoredTypeByIndex(
-	fiftyoneDegreesCollection *propertyTypesCollection,
+	const fiftyoneDegreesCollection *propertyTypesCollection,
 	uint32_t index,
 	fiftyoneDegreesException *exception);
 
@@ -5802,9 +5908,9 @@ EXTERNAL fiftyoneDegreesPropertyValueType fiftyoneDegreesPropertyGetStoredTypeBy
  * exception occurs. See exceptions.h.
  * @return a pointer to a string in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesPropertyGetDescription(
-	fiftyoneDegreesCollection *stringsCollection,
-	fiftyoneDegreesProperty *property,
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesPropertyGetDescription(
+	const fiftyoneDegreesCollection *stringsCollection,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
 
@@ -5819,9 +5925,9 @@ EXTERNAL fiftyoneDegreesString* fiftyoneDegreesPropertyGetDescription(
  * exception occurs. See exceptions.h.
  * @return a pointer to a string in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesPropertyGetCategory(
-	fiftyoneDegreesCollection *stringsCollection,
-	fiftyoneDegreesProperty *property,
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesPropertyGetCategory(
+	const fiftyoneDegreesCollection *stringsCollection,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
 
@@ -5836,9 +5942,9 @@ EXTERNAL fiftyoneDegreesString* fiftyoneDegreesPropertyGetCategory(
  * exception occurs. See exceptions.h.
  * @return a pointer to a string in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesPropertyGetUrl(
-	fiftyoneDegreesCollection *stringsCollection,
-	fiftyoneDegreesProperty *property,
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesPropertyGetUrl(
+	const fiftyoneDegreesCollection *stringsCollection,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
 
@@ -5882,7 +5988,7 @@ EXTERNAL fiftyoneDegreesProperty* fiftyoneDegreesPropertyGet(
  * exception occurs. See exceptions.h.
  * @return the property requested or NULL
  */
-EXTERNAL fiftyoneDegreesProperty* fiftyoneDegreesPropertyGetByName(
+EXTERNAL const fiftyoneDegreesProperty* fiftyoneDegreesPropertyGetByName(
 	fiftyoneDegreesCollection *properties,
 	fiftyoneDegreesCollection *strings,
 	const char *requiredPropertyName,
@@ -6044,7 +6150,7 @@ typedef union fiftyone_degrees_stored_binary_value_t {
  * Reads a binary value from the source file at the offset within the string
  * structure.
  * @param file collection to read from
- * @param offset of the string in the collection
+ * @param key of the binary value in the collection
  * @param data to store the new string in
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h.
@@ -6054,7 +6160,7 @@ typedef union fiftyone_degrees_stored_binary_value_t {
  */
 EXTERNAL void* fiftyoneDegreesStoredBinaryValueRead(
  const fiftyoneDegreesCollectionFile *file,
- uint32_t offset,
+ const fiftyoneDegreesCollectionKey *key,
  fiftyoneDegreesData *data,
  fiftyoneDegreesException *exception);
 
@@ -6063,15 +6169,15 @@ EXTERNAL void* fiftyoneDegreesStoredBinaryValueRead(
 /**
  * Gets the binary value at the required offset from the collection provided.
  * @param strings collection to get the string from
- * @param offset of the string in the collection
+ * @param offset of the binary value in the collection
  * @param storedValueType format of byte array representation
  * @param item to store the string in
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h.
  * @return a pointer to binary value or NULL if the offset is not valid
  */
-EXTERNAL fiftyoneDegreesStoredBinaryValue* fiftyoneDegreesStoredBinaryValueGet(
- fiftyoneDegreesCollection *strings,
+EXTERNAL const fiftyoneDegreesStoredBinaryValue* fiftyoneDegreesStoredBinaryValueGet(
+ const fiftyoneDegreesCollection *strings,
  uint32_t offset,
  fiftyoneDegreesPropertyValueType storedValueType,
  fiftyoneDegreesCollectionItem *item,
@@ -6449,6 +6555,19 @@ typedef bool(*fiftyoneDegreesProfileIterateValueIndexesMethod)(
 	uint32_t valueIndex);
 
 /**
+ * Gets size of Profile with trailing values.
+ * @param initial pointer to profile "head"
+ * @return full (with tail) struct size
+ */
+#ifndef FIFTYONE_DEGREES_MEMORY_ONLY
+EXTERNAL uint32_t fiftyoneDegreesProfileGetFinalSize(
+	const void *initial,
+	fiftyoneDegreesException * const exception);
+#else
+#define fiftyoneDegreesProfileGetFinalSize NULL
+#endif
+
+/**
  * Gets the profile associated with the profileId or NULL if there is no
  * corresponding profile.
  * @param profileOffsets collection containing the profile offsets (with profile ID)
@@ -6494,15 +6613,15 @@ EXTERNAL fiftyoneDegreesProfile* fiftyoneDegreesProfileGetByIndex(
  * Read a profile from the file collection provided and store in the data
  * pointer. This method is used when creating a collection from file.
  * @param file collection to read from
- * @param offset of the profile in the collection
+ * @param key of the profile in the collection
  * @param data to store the resulting profile in
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h
  * @return pointer to the profile allocated within the data structure
  */
-void* fiftyoneDegreesProfileReadFromFile(
+EXTERNAL void* fiftyoneDegreesProfileReadFromFile(
 	const fiftyoneDegreesCollectionFile *file,
-	uint32_t offset,
+	const fiftyoneDegreesCollectionKey *key,
 	fiftyoneDegreesData *data,
 	fiftyoneDegreesException *exception);
 #endif
@@ -6520,9 +6639,9 @@ void* fiftyoneDegreesProfileReadFromFile(
  * @return the number of matching values which have been iterated
  */
 EXTERNAL uint32_t fiftyoneDegreesProfileIterateValuesForProperty(
-	fiftyoneDegreesCollection *values,
-	fiftyoneDegreesProfile *profile,
-	fiftyoneDegreesProperty *property,
+	const fiftyoneDegreesCollection *values,
+	const fiftyoneDegreesProfile *profile,
+	const fiftyoneDegreesProperty *property,
 	void *state,
 	fiftyoneDegreesProfileIterateMethod callback,
 	fiftyoneDegreesException *exception);
@@ -6542,11 +6661,11 @@ EXTERNAL uint32_t fiftyoneDegreesProfileIterateValuesForProperty(
  * @return the number of matching values which have been iterated
  */
 EXTERNAL uint32_t fiftyoneDegreesProfileIterateValuesForPropertyWithIndex(
-	fiftyoneDegreesCollection* values,
+	const fiftyoneDegreesCollection* values,
 	fiftyoneDegreesIndicesPropertyProfile* index,
 	uint32_t availablePropertyIndex,
-	fiftyoneDegreesProfile* profile,
-	fiftyoneDegreesProperty* property,
+	const fiftyoneDegreesProfile* profile,
+	const fiftyoneDegreesProperty* property,
 	void* state,
 	fiftyoneDegreesProfileIterateMethod callback,
 	fiftyoneDegreesException* exception);
@@ -6609,7 +6728,7 @@ EXTERNAL uint32_t fiftyoneDegreesProfileIterateProfilesForPropertyWithTypeAndVal
 	fiftyoneDegreesCollection *propertyTypes,
 	fiftyoneDegreesCollection *values,
 	fiftyoneDegreesCollection *profiles,
-	fiftyoneDegreesCollection *profileOffsets,
+	const fiftyoneDegreesCollection *profileOffsets,
 	fiftyoneDegreesProfileOffsetValueExtractor offsetValueExtractor,
 	const char *propertyName,
 	const char* valueName,
@@ -6732,9 +6851,9 @@ typedef struct fiftyoneDegrees_value_t {
  * exception occurs. See exceptions.h.
  * @return a pointer to a contents in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesStoredBinaryValue* fiftyoneDegreesValueGetContent(
-	fiftyoneDegreesCollection *strings,
-	fiftyoneDegreesValue *value,
+EXTERNAL const fiftyoneDegreesStoredBinaryValue* fiftyoneDegreesValueGetContent(
+	const fiftyoneDegreesCollection *strings,
+	const fiftyoneDegreesValue *value,
 	fiftyoneDegreesPropertyValueType storedValueType,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
@@ -6750,9 +6869,9 @@ EXTERNAL fiftyoneDegreesStoredBinaryValue* fiftyoneDegreesValueGetContent(
  * exception occurs. See exceptions.h.
  * @return a pointer to a string in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesValueGetName(
-	fiftyoneDegreesCollection *strings,
-	fiftyoneDegreesValue *value,
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesValueGetName(
+	const fiftyoneDegreesCollection *strings,
+	const fiftyoneDegreesValue *value,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
 
@@ -6767,9 +6886,9 @@ EXTERNAL fiftyoneDegreesString* fiftyoneDegreesValueGetName(
  * exception occurs. See exceptions.h.
  * @return a pointer to a string in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesValueGetDescription(
-	fiftyoneDegreesCollection *strings,
-	fiftyoneDegreesValue *value,
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesValueGetDescription(
+	const fiftyoneDegreesCollection *strings,
+	const fiftyoneDegreesValue *value,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
 
@@ -6784,9 +6903,9 @@ EXTERNAL fiftyoneDegreesString* fiftyoneDegreesValueGetDescription(
  * exception occurs. See exceptions.h.
  * @return a pointer to a string in the collection item data structure.
  */
-EXTERNAL fiftyoneDegreesString* fiftyoneDegreesValueGetUrl(
-	fiftyoneDegreesCollection *strings,
-	fiftyoneDegreesValue *value,
+EXTERNAL const fiftyoneDegreesString* fiftyoneDegreesValueGetUrl(
+	const fiftyoneDegreesCollection *strings,
+	const fiftyoneDegreesValue *value,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
 
@@ -6799,8 +6918,8 @@ EXTERNAL fiftyoneDegreesString* fiftyoneDegreesValueGetUrl(
  * exception occurs. See exceptions.h.
  * @return pointer to the value or NULL
  */
-EXTERNAL fiftyoneDegreesValue* fiftyoneDegreesValueGet(
-	fiftyoneDegreesCollection *values,
+EXTERNAL const fiftyoneDegreesValue* fiftyoneDegreesValueGet(
+	const fiftyoneDegreesCollection *values,
 	uint32_t valueIndex,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
@@ -6817,10 +6936,10 @@ EXTERNAL fiftyoneDegreesValue* fiftyoneDegreesValueGet(
  * exception occurs. See exceptions.h
  * @return pointer to the value or NULL if it does not exist
  */
-EXTERNAL fiftyoneDegreesValue* fiftyoneDegreesValueGetByNameAndType(
-	fiftyoneDegreesCollection *values,
-	fiftyoneDegreesCollection *strings,
-	fiftyoneDegreesProperty *property,
+EXTERNAL const fiftyoneDegreesValue* fiftyoneDegreesValueGetByNameAndType(
+	const fiftyoneDegreesCollection *values,
+	const fiftyoneDegreesCollection *strings,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesPropertyValueType storedValueType,
 	const char *valueName,
 	fiftyoneDegreesCollectionItem *item,
@@ -6837,10 +6956,10 @@ EXTERNAL fiftyoneDegreesValue* fiftyoneDegreesValueGetByNameAndType(
  * exception occurs. See exceptions.h
  * @return pointer to the value or NULL if it does not exist
  */
-EXTERNAL fiftyoneDegreesValue* fiftyoneDegreesValueGetByName(
-	fiftyoneDegreesCollection *values,
-	fiftyoneDegreesCollection *strings,
-	fiftyoneDegreesProperty *property,
+EXTERNAL const fiftyoneDegreesValue* fiftyoneDegreesValueGetByName(
+	const fiftyoneDegreesCollection *values,
+	const fiftyoneDegreesCollection *strings,
+	const fiftyoneDegreesProperty *property,
 	const char *valueName,
 	fiftyoneDegreesCollectionItem *item,
 	fiftyoneDegreesException *exception);
@@ -6857,9 +6976,9 @@ EXTERNAL fiftyoneDegreesValue* fiftyoneDegreesValueGetByName(
  * @return the 0 based index of the item if found, otherwise -1
  */
 EXTERNAL long fiftyoneDegreesValueGetIndexByNameAndType(
-	fiftyoneDegreesCollection *values,
-	fiftyoneDegreesCollection *strings,
-	fiftyoneDegreesProperty *property,
+	const fiftyoneDegreesCollection *values,
+	const fiftyoneDegreesCollection *strings,
+	const fiftyoneDegreesProperty *property,
 	fiftyoneDegreesPropertyValueType storedValueType,
 	const char *valueName,
 	fiftyoneDegreesException *exception);
@@ -8126,7 +8245,7 @@ EXTERNAL fiftyoneDegreesIpiCgResult fiftyoneDegreesIpiGraphEvaluateTrace(
  * collection configuration.
  */
 #ifndef FIFTYONE_DEGREES_STRING_LOADED
-#define FIFTYONE_DEGREES_STRING_LOADED 100
+#define FIFTYONE_DEGREES_STRING_LOADED true
 #endif
 /**
  * Default value for the graphs cache size used in the default collection
@@ -8140,7 +8259,7 @@ EXTERNAL fiftyoneDegreesIpiCgResult fiftyoneDegreesIpiGraphEvaluateTrace(
  * collection configuration.
  */
 #ifndef FIFTYONE_DEGREES_IP_GRAPHS_LOADED
-#define FIFTYONE_DEGREES_IP_GRAPHS_LOADED 1000
+#define FIFTYONE_DEGREES_IP_GRAPHS_LOADED true
 #endif
 /**
  * Default value for the graphs cache size used in the default collection
@@ -8154,7 +8273,7 @@ EXTERNAL fiftyoneDegreesIpiCgResult fiftyoneDegreesIpiGraphEvaluateTrace(
  * collection configuration.
  */
 #ifndef FIFTYONE_DEGREES_IP_GRAPH_LOADED
-#define FIFTYONE_DEGREES_IP_GRAPH_LOADED 5000
+#define FIFTYONE_DEGREES_IP_GRAPH_LOADED true
 #endif
 /**
  * Default value for the profile groups cache size used in the default 
@@ -8168,7 +8287,7 @@ EXTERNAL fiftyoneDegreesIpiCgResult fiftyoneDegreesIpiGraphEvaluateTrace(
  * configuration.
  */
 #ifndef FIFTYONE_DEGREES_PROFILE_GROUPS_LOADED
-#define FIFTYONE_DEGREES_PROFILE_GROUPS_LOADED 100
+#define FIFTYONE_DEGREES_PROFILE_GROUPS_LOADED false
 #endif
 /**
  * Default value for the profile cache size used in the default collection
@@ -8182,7 +8301,7 @@ EXTERNAL fiftyoneDegreesIpiCgResult fiftyoneDegreesIpiGraphEvaluateTrace(
  * collection configuration.
  */
 #ifndef FIFTYONE_DEGREES_PROFILE_LOADED
-#define FIFTYONE_DEGREES_PROFILE_LOADED 100
+#define FIFTYONE_DEGREES_PROFILE_LOADED false
 #endif
 /**
  * Default value for the value cache size used in the default collection
@@ -8196,7 +8315,7 @@ EXTERNAL fiftyoneDegreesIpiCgResult fiftyoneDegreesIpiGraphEvaluateTrace(
  * configuration.
  */
 #ifndef FIFTYONE_DEGREES_VALUE_LOADED
-#define FIFTYONE_DEGREES_VALUE_LOADED 0
+#define FIFTYONE_DEGREES_VALUE_LOADED false
 #endif
 /**
  * Default value for the property cache size used in the default collection
@@ -8210,7 +8329,7 @@ EXTERNAL fiftyoneDegreesIpiCgResult fiftyoneDegreesIpiGraphEvaluateTrace(
  * collection configuration.
  */
 #ifndef FIFTYONE_DEGREES_PROPERTY_LOADED
-#define FIFTYONE_DEGREES_PROPERTY_LOADED INT_MAX
+#define FIFTYONE_DEGREES_PROPERTY_LOADED true
 #endif
 
 /**
@@ -8500,14 +8619,6 @@ EXTERNAL_VAR fiftyoneDegreesConfigIpi fiftyoneDegreesIpiBalancedTempConfig;
  * a temp file.
  */
 EXTERNAL_VAR fiftyoneDegreesConfigIpi fiftyoneDegreesIpiDefaultConfig;
-
-/**
- * Configuration designed only for testing. This uses a loaded size of 1 in
- * all collections to ensure all every get and release calls can be tested for
- * items which do not exist in the root collection. This configuration is not
- * exposed through C++ intentionally as it is only used in testing.
- */
-EXTERNAL_VAR fiftyoneDegreesConfigIpi fiftyoneDegreesIpiSingleLoadedConfig;
 
 
 /**
@@ -9726,6 +9837,9 @@ typedef fiftyoneDegreesCollectionItem Item; /**< Synonym for #fiftyoneDegreesCol
  */
 
 MAP_TYPE(Exception);
+MAP_TYPE(CollectionIndexOrOffset)
+MAP_TYPE(CollectionKey)
+MAP_TYPE(CollectionKeyType)
 MAP_TYPE(CollectionIterateMethod)
 MAP_TYPE(CollectionMemory)
 #ifndef FIFTYONE_DEGREES_MEMORY_ONLY
@@ -9811,6 +9925,7 @@ MAP_TYPE(IpAddress)
 MAP_TYPE(WkbtotResult)
 MAP_TYPE(WkbtotReductionMode)
 
+#define ProfileGetFinalSize fiftyoneDegreesProfileGetFinalSize /**< Synonym for #fiftyoneDegreesProfileGetFinalSize function. */
 #define ProfileGetOffsetForProfileId fiftyoneDegreesProfileGetOffsetForProfileId /**< Synonym for #fiftyoneDegreesProfileGetOffsetForProfileId function. */
 #define OverrideValuesAdd fiftyoneDegreesOverrideValuesAdd /**< Synonym for #fiftyoneDegreesOverrideValuesAdd function. */
 #define ExceptionGetMessage fiftyoneDegreesExceptionGetMessage /**< Synonym for #fiftyoneDegreesExceptionGetMessage function. */
@@ -9821,6 +9936,7 @@ MAP_TYPE(WkbtotReductionMode)
 #define OverrideProfileIds fiftyoneDegreesOverrideProfileIds /**< Synonym for #fiftyoneDegreesOverrideProfileIds function. */
 #define OverridePropertiesFree fiftyoneDegreesOverridePropertiesFree /**< Synonym for #fiftyoneDegreesOverridePropertiesFree function. */
 #define ComponentInitList fiftyoneDegreesComponentInitList /**< Synonym for #fiftyoneDegreesComponentInitList function. */
+#define ComponentGetFinalSize fiftyoneDegreesComponentGetFinalSize /**< Synonym for #fiftyoneDegreesComponentGetFinalSize function. */
 #define ComponentGetHeaders fiftyoneDegreesComponentGetHeaders /**< Synonym for #fiftyoneDegreesComponentGetHeaders function. */
 #define CollectionGetInteger32 fiftyoneDegreesCollectionGetInteger32 /**< Synonym for #fiftyoneDegreesCollectionGetInteger32 function. */
 #define PropertyGet fiftyoneDegreesPropertyGet /**< Synonym for #fiftyoneDegreesPropertyGet function. */
@@ -9915,6 +10031,7 @@ MAP_TYPE(WkbtotReductionMode)
 #define MemoryStandardFreeAligned fiftyoneDegreesMemoryStandardFreeAligned /**< Synonym for #fiftyoneDegreesMemoryStandardFreeAligned function. */
 #define ResourceManagerFree fiftyoneDegreesResourceManagerFree /**< Synonym for #fiftyoneDegreesResourceManagerFree function. */
 #define StringGet fiftyoneDegreesStringGet /**< Synonym for #fiftyoneDegreesStringGet function. */
+#define StringGetFinalSize fiftyoneDegreesStringGetFinalSize /**< Synonym for #fiftyoneDegreesStringGetFinalSize function. */
 #define StoredBinaryValueGet fiftyoneDegreesStoredBinaryValueGet /**< Synonym for #fiftyoneDegreesStoredBinaryValueGet function. */
 #define StoredBinaryValueRead fiftyoneDegreesStoredBinaryValueRead /**< Synonym for #fiftyoneDegreesStoredBinaryValueRead function. */
 #define StoredBinaryValueCompareWithString fiftyoneDegreesStoredBinaryValueCompareWithString /**< Synonym for #fiftyoneDegreesStoredBinaryValueCompareWithString function. */
