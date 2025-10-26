@@ -11783,7 +11783,7 @@ static StatusCode fileOpen(
 }
 
 static StatusCode fileCopy(FILE *source, FILE *destination) {
-	unsigned char buffer[8192];
+	unsigned char buffer[65536]; // Increased from 8KB to 64KB for better performance, especially on Windows
 	size_t lengthRead, lengthWritten = 0;
 	if (FileSeek(source, 0L, SEEK_END) == 0) {
 		FileSeek(source, 0L, SEEK_SET);
@@ -22772,7 +22772,26 @@ EXTERNAL void fiftyoneDegreesWeightedValuesCollectionRelease(
 
 #include <stdint.h>
 
-static const uint8_t fiftyoneDegreesDefaultWktDecimalPlaces = 16;
+/**
+ * @def FIFTYONE_DEGREES_WKT_DECIMAL_PLACES
+ * Defines the number of decimal places to use when formatting WKT
+ * (Well-Known Text) coordinate values. This can be overridden at compile time
+ * by defining this macro before including this header or via compiler flags.
+ * Range: 0-15 (limited by FIFTYONE_DEGREES_MAX_DOUBLE_DECIMAL_PLACES)
+ *
+ * Example: `-DFIFTYONE_DEGREES_WKT_DECIMAL_PLACES=4`
+ *
+ * Full command:
+ * ```
+ * cmake . -DCMAKE_C_FLAGS="-DFIFTYONE_DEGREES_WKT_DECIMAL_PLACES=4" \
+ * -DCMAKE_CXX_FLAGS="-DFIFTYONE_DEGREES_WKT_DECIMAL_PLACES=4"
+ * ```
+ */
+#ifndef FIFTYONE_DEGREES_WKT_DECIMAL_PLACES
+#define FIFTYONE_DEGREES_WKT_DECIMAL_PLACES 3
+#endif
+
+static const uint8_t fiftyoneDegreesDefaultWktDecimalPlaces = FIFTYONE_DEGREES_WKT_DECIMAL_PLACES;
 
 #endif //FIFTYONE_DEGREES_CONSTANTSIPI_H
 
@@ -23896,8 +23915,32 @@ fiftyoneDegreesConfigIpi fiftyoneDegreesIpiDefaultConfig = {
 
 #undef FIFTYONE_DEGREES_CONFIG_USE_TEMP_FILE
 #define FIFTYONE_DEGREES_CONFIG_USE_TEMP_FILE true
+
+// BalancedTemp config with reuseTempFile enabled to avoid copying the
+// data file for every test. This significantly improves performance on
+// Windows where file I/O is slower.
 fiftyoneDegreesConfigIpi fiftyoneDegreesIpiBalancedTempConfig = {
-	FIFTYONE_DEGREES_IPI_CONFIG_BALANCED
+	{
+		FIFTYONE_DEGREES_CONFIG_ALL_IN_MEMORY, /* allInMemory */
+		true, /* usesUpperPrefixedHeaders */
+		false, /* freeData */
+		true, /* useTempFile */
+		true, /* reuseTempFile - ENABLED for better performance */
+		NULL, /* tempDirs */
+		0, /* tempDirCount */
+		true /* propertyValueIndex */
+	},
+	{ FIFTYONE_DEGREES_STRING_LOADED, FIFTYONE_DEGREES_STRING_CACHE_SIZE, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* Strings */
+	{ true, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* Components */
+	{ true, 0, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* Maps */
+	{ FIFTYONE_DEGREES_PROPERTY_LOADED, FIFTYONE_DEGREES_PROPERTY_CACHE_SIZE, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* Properties */
+	{ FIFTYONE_DEGREES_VALUE_LOADED, FIFTYONE_DEGREES_VALUE_CACHE_SIZE, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* Values */
+	{ FIFTYONE_DEGREES_PROFILE_LOADED, FIFTYONE_DEGREES_PROFILE_CACHE_SIZE, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* Profiles */
+	{ FIFTYONE_DEGREES_IP_GRAPHS_LOADED, FIFTYONE_DEGREES_IP_GRAPHS_CACHE_SIZE, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* Graphs */
+	{ FIFTYONE_DEGREES_PROFILE_GROUPS_LOADED, FIFTYONE_DEGREES_PROFILE_GROUPS_CACHE_SIZE, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* ProfileGroups */
+	{ FIFTYONE_DEGREES_PROPERTY_LOADED, FIFTYONE_DEGREES_PROPERTY_CACHE_SIZE, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* Property Types */
+	{ FIFTYONE_DEGREES_PROFILE_LOADED, FIFTYONE_DEGREES_PROFILE_CACHE_SIZE, FIFTYONE_DEGREES_CACHE_CONCURRENCY }, /* ProfileOffsets */
+	{ FIFTYONE_DEGREES_IP_GRAPH_LOADED, FIFTYONE_DEGREES_IP_GRAPH_CACHE_SIZE, FIFTYONE_DEGREES_CACHE_CONCURRENCY } /* Graph */
 };
 #undef FIFTYONE_DEGREES_CONFIG_USE_TEMP_FILE
 #define FIFTYONE_DEGREES_CONFIG_USE_TEMP_FILE \
