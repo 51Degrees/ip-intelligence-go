@@ -1947,7 +1947,17 @@ typedef enum e_fiftyone_degrees_property_value_type {
 	 */
 	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_AZIMUTH = 12,
 	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB_R = 13, /**< Well-known binary (reduced) for geometry */
-
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_STRING = 14, /**< Weighted list of String values. */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_INT = 15, /**< Weighted list of Int values. */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_DOUBLE = 16, /**< Weighted list of Double values. */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_BOOL = 17, /**< Weighted list of Bool values. */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_SINGLE = 18, /**< Weighted list of Single values. */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_BYTE = 19, /**< Weighted list of Byte values. */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_IP_ADDRESS= 20, /**< Weighted list of Ip range values. */
+	/**
+	 * Weighted list of Well-known binary for geometry (reduced) values.
+	 */
+	FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_WKB_R = 21,
 	// Non-Property Collection Value Types
 	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_CUSTOM = 1000, /**< Reservation start. Should not be used. */
 	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_VALUE, /**< fiftyoneDegreesValue */
@@ -17827,7 +17837,7 @@ StringBuilder* fiftyoneDegreesStringBuilderAddDouble(
 
 	if (!fracPart || remDigits <= 0) {
 		if (fracPart >= 0.5) {
-			if (intPart < 0) {
+			if (value < 0) {
 				intPart--;
 			} else {
 				intPart++;
@@ -17859,7 +17869,7 @@ StringBuilder* fiftyoneDegreesStringBuilderAddDouble(
 				break;
 			} else {
 				// tail collapsed into 1
-				if (intPart < 0) {
+				if (value < 0) {
 					intPart--;
 				} else {
 					intPart++;
