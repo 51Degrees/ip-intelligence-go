@@ -1,12 +1,13 @@
 package ipi_onpremise
 
 import (
-	common_go "github.com/51Degrees/common-go/v4"
-	"github.com/51Degrees/ip-intelligence-go/v4/ipi_interop"
 	"os"
 	"strings"
 	"sync"
 	"testing"
+
+	common_go "github.com/51Degrees/common-go/v4"
+	"github.com/51Degrees/ip-intelligence-go/v4/ipi_interop"
 )
 
 // Mock implementations for testing
@@ -406,7 +407,7 @@ func TestEngine_GetPropertyNameByIndex(t *testing.T) {
 
 func TestDefaultProperties(t *testing.T) {
 	expectedProperties := []string{
-		"IpRangeStart", "IpRangeEnd", "AccuracyRadius", "RegisteredCountry",
+		"IpRangeStart", "IpRangeEnd", "AccuracyRadiusMin", "AccuracyRadiusMax", "RegisteredCountry",
 		"RegisteredName", "Longitude", "Latitude", "Areas", "Mcc",
 	}
 

@@ -49,7 +49,7 @@ const (
 
 var (
 	defaultProperties = []string{
-		"IpRangeStart", "IpRangeEnd", "AccuracyRadius", "RegisteredCountry", "RegisteredName", "Longitude", "Latitude", "Areas", "Mcc",
+		"IpRangeStart", "IpRangeEnd", "AccuracyRadiusMin", "AccuracyRadiusMax", "RegisteredCountry", "RegisteredName", "Longitude", "Latitude", "Areas", "Mcc",
 	}
 )
 
