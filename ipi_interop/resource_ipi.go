@@ -36,6 +36,7 @@ import (
 // fiftyoneDegreesIpiInitManagerFromFile.
 func InitManagerFromFile(manager *ResourceManager, config ConfigIpi, properties string, filePath string) error {
 	exp := NewException()
+	defer exp.Free()
 
 	cPath := C.CString(filePath)
 	defer C.free(unsafe.Pointer(cPath))
@@ -71,6 +72,7 @@ func InitManagerFromFile(manager *ResourceManager, config ConfigIpi, properties 
 // fiftyoneDegreesIpiReloadManagerFromFile.
 func (manager *ResourceManager) ReloadFromFile(config ConfigIpi, properties string, filePath string) error {
 	exp := NewException()
+	defer exp.Free()
 
 	cPath := C.CString(filePath)
 	defer C.free(unsafe.Pointer(cPath))
@@ -107,6 +109,8 @@ func (manager *ResourceManager) ReloadFromFile(config ConfigIpi, properties stri
 // fiftyoneDegreesIpiReloadManagerFromOriginalFile
 func (manager *ResourceManager) ReloadFromOriginalFile() error {
 	exp := NewException()
+	defer exp.Free()
+
 	C.IpiReloadManagerFromOriginalFile(
 		manager.CPtr,
 		exp.CPtr,

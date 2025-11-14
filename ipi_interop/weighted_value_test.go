@@ -233,125 +233,87 @@ func TestValues_Append(t *testing.T) {
 		initialValues  Values
 		property       string
 		value          interface{}
-		weight         float64
 		expectedLength int
 		expectedValue  interface{}
-		expectedWeight float64
 	}{
 		{
 			name:           "append to empty values",
 			initialValues:  make(Values),
 			property:       "browser",
 			value:          "Chrome",
-			weight:         0.9,
 			expectedLength: 1,
 			expectedValue:  "Chrome",
-			expectedWeight: 0.9,
 		},
 		{
 			name: "append to existing property",
 			initialValues: Values{
 				"browser": []*WeightedValue{
-					{Value: "Firefox", Weight: 0.8},
+					{Value: "Firefox", Weight: 0.0},
 				},
 			},
 			property:       "browser",
 			value:          "Chrome",
-			weight:         0.9,
 			expectedLength: 2,
 			expectedValue:  "Chrome",
-			expectedWeight: 0.9,
 		},
 		{
 			name: "append to new property in existing values",
 			initialValues: Values{
 				"os": []*WeightedValue{
-					{Value: "Windows", Weight: 0.7},
+					{Value: "Windows", Weight: 0.0},
 				},
 			},
 			property:       "browser",
 			value:          "Safari",
-			weight:         0.6,
 			expectedLength: 1,
 			expectedValue:  "Safari",
-			expectedWeight: 0.6,
 		},
 		{
 			name:           "append integer value",
 			initialValues:  make(Values),
 			property:       "version",
 			value:          42,
-			weight:         1.0,
 			expectedLength: 1,
 			expectedValue:  42,
-			expectedWeight: 1.0,
 		},
 		{
 			name:           "append boolean value",
 			initialValues:  make(Values),
 			property:       "mobile",
 			value:          true,
-			weight:         0.95,
 			expectedLength: 1,
 			expectedValue:  true,
-			expectedWeight: 0.95,
 		},
 		{
 			name:           "append float64 value",
 			initialValues:  make(Values),
 			property:       "score",
 			value:          3.14159,
-			weight:         0.5,
 			expectedLength: 1,
 			expectedValue:  3.14159,
-			expectedWeight: 0.5,
 		},
 		{
 			name:           "append nil value",
 			initialValues:  make(Values),
 			property:       "nullable",
 			value:          nil,
-			weight:         0.0,
 			expectedLength: 1,
 			expectedValue:  nil,
-			expectedWeight: 0.0,
 		},
 		{
 			name:           "append with empty string property",
 			initialValues:  make(Values),
 			property:       "",
 			value:          "empty_key",
-			weight:         1.0,
 			expectedLength: 1,
 			expectedValue:  "empty_key",
-			expectedWeight: 1.0,
-		},
-		{
-			name:           "append with zero weight",
-			initialValues:  make(Values),
-			property:       "zero_weight",
-			value:          "test",
-			weight:         0.0,
-			expectedLength: 1,
-			expectedValue:  "test",
-			expectedWeight: 0.0,
-		},
-		{
-			name:           "append with negative weight",
-			initialValues:  make(Values),
-			property:       "negative",
-			value:          "test",
-			weight:         -0.5,
-			expectedLength: 1,
-			expectedValue:  "test",
-			expectedWeight: -0.5,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			values := tt.initialValues
-			values.Append(tt.property, tt.value, tt.weight)
+			values.Append(tt.property, tt.value)
 
 			// Check if property exists
 			propertyValues, exists := values[tt.property]
@@ -377,8 +339,9 @@ func TestValues_Append(t *testing.T) {
 				t.Errorf("Append() value = %v, want %v", lastValue.Value, tt.expectedValue)
 			}
 
-			if lastValue.Weight != tt.expectedWeight {
-				t.Errorf("Append() weight = %v, want %v", lastValue.Weight, tt.expectedWeight)
+			// Weight should be 0.0 for non-weighted append
+			if lastValue.Weight != 0.0 {
+				t.Errorf("Append() weight = %v, want 0.0", lastValue.Weight)
 			}
 		})
 	}
@@ -485,8 +448,8 @@ func TestValues_AppendAfterInit(t *testing.T) {
 	}
 
 	// Append some values
-	values.Append(property, "value1", 0.8)
-	values.Append(property, "value2", 0.6)
+	values.Append(property, "value1")
+	values.Append(property, "value2")
 
 	// Verify append worked correctly
 	if len(values[property]) != 2 {
@@ -494,12 +457,12 @@ func TestValues_AppendAfterInit(t *testing.T) {
 	}
 
 	// Verify values are in correct order
-	if values[property][0].Value != "value1" || values[property][0].Weight != 0.8 {
+	if values[property][0].Value != "value1" || values[property][0].Weight != 0.0 {
 		t.Errorf("First appended value incorrect: got %v with weight %v",
 			values[property][0].Value, values[property][0].Weight)
 	}
 
-	if values[property][1].Value != "value2" || values[property][1].Weight != 0.6 {
+	if values[property][1].Value != "value2" || values[property][1].Weight != 0.0 {
 		t.Errorf("Second appended value incorrect: got %v with weight %v",
 			values[property][1].Value, values[property][1].Weight)
 	}
@@ -511,19 +474,16 @@ func TestValues_MultipleAppendsOrder(t *testing.T) {
 	property := "order_test"
 
 	// Append multiple values
-	testValues := []struct {
-		value  interface{}
-		weight float64
-	}{
-		{"first", 1.0},
-		{"second", 0.9},
-		{"third", 0.8},
-		{42, 0.7},
-		{true, 0.6},
+	testValues := []interface{}{
+		"first",
+		"second",
+		"third",
+		42,
+		true,
 	}
 
 	for _, tv := range testValues {
-		values.Append(property, tv.value, tv.weight)
+		values.Append(property, tv)
 	}
 
 	// Verify all values are present in correct order
@@ -532,13 +492,153 @@ func TestValues_MultipleAppendsOrder(t *testing.T) {
 	}
 
 	for i, tv := range testValues {
-		if !reflect.DeepEqual(values[property][i].Value, tv.value) {
+		if !reflect.DeepEqual(values[property][i].Value, tv) {
 			t.Errorf("MultipleAppendsOrder() value at index %d = %v, want %v",
-				i, values[property][i].Value, tv.value)
+				i, values[property][i].Value, tv)
 		}
-		if values[property][i].Weight != tv.weight {
-			t.Errorf("MultipleAppendsOrder() weight at index %d = %v, want %v",
-				i, values[property][i].Weight, tv.weight)
+		if values[property][i].Weight != 0.0 {
+			t.Errorf("MultipleAppendsOrder() weight at index %d = %v, want 0.0",
+				i, values[property][i].Weight)
 		}
+	}
+}
+
+func TestValues_AppendWithWeight(t *testing.T) {
+	// Test AppendWithWeight specifically for MCC property
+	tests := []struct {
+		name           string
+		initialValues  Values
+		property       string
+		value          interface{}
+		weight         float64
+		expectedLength int
+		expectedValue  interface{}
+		expectedWeight float64
+	}{
+		{
+			name:           "append MCC with weight",
+			initialValues:  make(Values),
+			property:       "Mcc",
+			value:          "310",
+			weight:         0.95,
+			expectedLength: 1,
+			expectedValue:  "310",
+			expectedWeight: 0.95,
+		},
+		{
+			name: "append MCC with weight to existing",
+			initialValues: Values{
+				"Mcc": []*WeightedValue{
+					{Value: "250", Weight: 0.8},
+				},
+			},
+			property:       "Mcc",
+			value:          "310",
+			weight:         0.9,
+			expectedLength: 2,
+			expectedValue:  "310",
+			expectedWeight: 0.9,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			values := tt.initialValues
+			values.AppendWithWeight(tt.property, tt.value, tt.weight)
+
+			// Check if property exists
+			propertyValues, exists := values[tt.property]
+			if !exists {
+				t.Errorf("AppendWithWeight() property %s was not created", tt.property)
+				return
+			}
+
+			// Check length
+			if len(propertyValues) != tt.expectedLength {
+				t.Errorf("AppendWithWeight() length = %d, want %d", len(propertyValues), tt.expectedLength)
+			}
+
+			// Check the last added value (should be at the end)
+			lastIndex := len(propertyValues) - 1
+			if lastIndex < 0 {
+				t.Errorf("AppendWithWeight() no values found in property %s", tt.property)
+				return
+			}
+
+			lastValue := propertyValues[lastIndex]
+			if !reflect.DeepEqual(lastValue.Value, tt.expectedValue) {
+				t.Errorf("AppendWithWeight() value = %v, want %v", lastValue.Value, tt.expectedValue)
+			}
+
+			if lastValue.Weight != tt.expectedWeight {
+				t.Errorf("AppendWithWeight() weight = %v, want %v", lastValue.Weight, tt.expectedWeight)
+			}
+		})
+	}
+}
+
+func TestValues_GetValueByProperty(t *testing.T) {
+	tests := []struct {
+		name        string
+		values      Values
+		property    string
+		wantValue   interface{}
+		wantSuccess bool
+	}{
+		{
+			name: "existing property with single value",
+			values: Values{
+				"browser": []*WeightedValue{
+					{Value: "Chrome", Weight: 0.0},
+				},
+			},
+			property:    "browser",
+			wantValue:   "Chrome",
+			wantSuccess: true,
+		},
+		{
+			name: "existing property with multiple values",
+			values: Values{
+				"platform": []*WeightedValue{
+					{Value: "Windows", Weight: 0.0},
+					{Value: "Linux", Weight: 0.0},
+				},
+			},
+			property:    "platform",
+			wantValue:   "Windows",
+			wantSuccess: true,
+		},
+		{
+			name: "non-existing property",
+			values: Values{
+				"os": []*WeightedValue{
+					{Value: "Android", Weight: 0.0},
+				},
+			},
+			property:    "browser",
+			wantValue:   "",
+			wantSuccess: false,
+		},
+		{
+			name:        "empty values map",
+			values:      Values{},
+			property:    "anything",
+			wantValue:   "",
+			wantSuccess: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotValue, gotSuccess := tt.values.GetValueByProperty(tt.property)
+
+			if gotSuccess != tt.wantSuccess {
+				t.Errorf("GetValueByProperty() success = %v, want %v", gotSuccess, tt.wantSuccess)
+			}
+
+			if !reflect.DeepEqual(gotValue, tt.wantValue) {
+				t.Errorf("GetValueByProperty() value = %v, want %v", gotValue, tt.wantValue)
+			}
+		})
 	}
 }
