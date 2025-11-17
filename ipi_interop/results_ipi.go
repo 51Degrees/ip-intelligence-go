@@ -50,8 +50,8 @@ func NewResultsIpi(manager *ResourceManager) *ResultsIpi {
 	var cResults interface{} = (*[math.MaxInt32 / int(C.sizeof_ResultIpi)]C.ResultIpi)(unsafe.Pointer(r.items))[:r.capacity:r.capacity]
 
 	res := &ResultsIpi{
-		CPtr:             r,
-		CResults:         &cResults,
+		CPtr:     r,
+		CResults: &cResults,
 	}
 	runtime.SetFinalizer(res, resultsFinalizer)
 
@@ -62,6 +62,7 @@ func NewResultsIpi(manager *ResourceManager) *ResultsIpi {
 // Returns an error if the operation fails.
 func (r *ResultsIpi) ResultsIpiFromIpAddress(ipAddress string) error {
 	exception := NewException()
+	defer exception.Free()
 
 	char := C.CString(ipAddress)
 	defer C.free(unsafe.Pointer(char))
@@ -113,7 +114,6 @@ func (r *ResultsIpi) GetPropertyIndexByName(propertyName string) int {
 	return int(i)
 }
 
-
 // getPropertyNameSafe retrieves the property name associated with a required index from the given dataset safely.
 // Returns an empty string if the required index is invalid or out of bounds.
 func (r *ResultsIpi) getPropertyNameSafe(dataSet *C.DataSetIpi, requiredIndex C.int) string {
@@ -136,14 +136,13 @@ type header struct {
 	rawWeighting          C.uint16_t
 }
 
-
-
 // GetWeightedValuesByIndexes retrieves weighted values using pre-computed property indexes
 // and a property name resolver function to avoid expensive CGO calls for name resolution.
 // The resolver function should provide fast index→name mapping (e.g., from Engine's cache).
 func (r *ResultsIpi) GetWeightedValuesByIndexes(indexes []int, propertyNameResolver func(int) string) (Values, error) {
 	dataSet := (*C.DataSetIpi)(r.CPtr.b.dataSet)
 	exception := NewException()
+	defer exception.Free()
 
 	var cIndexes *C.int
 	var cIndexesCount C.uint
@@ -151,6 +150,10 @@ func (r *ResultsIpi) GetWeightedValuesByIndexes(indexes []int, propertyNameResol
 	if len(indexes) > 0 {
 		// Allocate C memory for the array
 		cIndexes = (*C.int)(C.malloc(C.size_t(len(indexes)) * C.size_t(unsafe.Sizeof(C.int(0)))))
+		if cIndexes == nil {
+			return nil, fmt.Errorf("failed to allocate memory for indexes")
+		}
+
 		defer C.free(unsafe.Pointer(cIndexes))
 
 		// Copy Go slice elements to C array
@@ -168,12 +171,12 @@ func (r *ResultsIpi) GetWeightedValuesByIndexes(indexes []int, propertyNameResol
 		cIndexesCount,
 		nil, exception.CPtr,
 	)
+	// Release the collection
+	defer C.fiftyoneDegreesWeightedValuesCollectionRelease(&collection)
+
 	if !exception.IsOkay() {
 		return nil, fmt.Errorf(C.GoString(C.ExceptionGetMessage(exception.CPtr)))
 	}
-	
-	// Release the collection
-	defer C.fiftyoneDegreesWeightedValuesCollectionRelease(&collection)
 
 	values := make(Values, collection.itemsCount)
 
@@ -226,11 +229,14 @@ func (r *ResultsIpi) GetWeightedValuesByIndexes(indexes []int, propertyNameResol
 			val = C.GoString(weightedString.value)
 		}
 
-		// Calculate weight
-		weight := float64(nextHeader.rawWeighting) / uint16Max
-
 		// append values to the map
-		values.Append(propName, val, weight)
+		// For MCC property, append with weight; for all others, append without weight
+		if propName == "Mcc" {
+			weight := float64(nextHeader.rawWeighting) / uint16Max
+			values.AppendWithWeight(propName, val, weight)
+		} else {
+			values.Append(propName, val)
+		}
 	}
 
 	return values, nil
