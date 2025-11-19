@@ -7,7 +7,7 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: '0 2 * * *'
+    - cron: "0 2 * * *"
 
 jobs:
   PackageUpdate:
@@ -31,7 +31,7 @@ jobs:
       cache-assets: true
     secrets:
       token: ${{ secrets.ACCESS_TOKEN }}
-      DeviceDetectionUrl: ${{ secrets.IPI_DATA_FILE_URL }}
+      DeviceDetectionUrl: ${{ secrets.IPI_DATA_FILE_SAMPLE_URL }} # TODO: Do not merge PR untill you see this line IPI_DATA_FILE_URL
 
   Publish:
     if: ${{ !cancelled() }}
@@ -45,4 +45,4 @@ jobs:
       cache-assets: true
     secrets:
       token: ${{ secrets.ACCESS_TOKEN }}
-      DeviceDetectionUrl: ${{ secrets.IPI_DATA_FILE_URL }}
+      DeviceDetectionUrl: ${{ secrets.IPI_DATA_FILE_SAMPLE_URL }} # TODO: Do not merge PR untill you see this line IPI_DATA_FILE_URL

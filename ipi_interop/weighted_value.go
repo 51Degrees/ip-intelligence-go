@@ -21,7 +21,8 @@
  * ********************************************************************* */
 package ipi_interop
 
-// WeightedValue represents a value paired with a specific weight for use in weighted calculations or prioritization.
+// WeightedValue represents a value that may include a weight (used for MCC property).
+// For non-weighted properties, Weight will be 0.0.
 type WeightedValue struct {
 	Value  interface{}
 	Weight float64
@@ -29,6 +30,16 @@ type WeightedValue struct {
 
 // Values is a map where each key is a string representing a property, and the value is a slice of WeightedValue pointers.
 type Values map[string][]*WeightedValue
+
+// GetValueByProperty retrieves the first value for the specified property (ignoring weight).
+// This is the recommended method for all properties except MCC.
+// Returns the value and a boolean indicating success or failure.
+func (v Values) GetValueByProperty(property string) (interface{}, bool) {
+	if val, ok := v[property]; ok && len(val) > 0 {
+		return val[0].Value, true
+	}
+	return "", false
+}
 
 // GetValueWeightByProperty retrieves the first value and its weight for the specified property.
 // Returns the value, weight, and a boolean indicating success or failure.
@@ -39,7 +50,18 @@ func (v Values) GetValueWeightByProperty(property string) (interface{}, float64,
 	return "", 0, false
 }
 
-func (v Values) Append(property string, value interface{}, weight float64) {
+// Append adds a value without weight (Weight will be set to 0.0).
+// Use this for all properties except MCC.
+func (v Values) Append(property string, value interface{}) {
+	v[property] = append(v[property], &WeightedValue{
+		Value:  value,
+		Weight: 0.0,
+	})
+}
+
+// AppendWithWeight adds a value with a specific weight.
+// This should only be used for MCC property.
+func (v Values) AppendWithWeight(property string, value interface{}, weight float64) {
 	v[property] = append(v[property], &WeightedValue{
 		Value:  value,
 		Weight: weight,
