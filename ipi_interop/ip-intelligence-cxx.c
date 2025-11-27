@@ -23647,7 +23647,7 @@ WeightedValuesCollection fiftyoneDegreesResultsIpiGetValuesCollection(
         0.0,
         false,
         0x00,
-        MAX_DOUBLE_DECIMAL_PLACES,
+        DefaultWktDecimalPlaces,
     };
 
     WeightedValuesCollection result;
