@@ -3,11 +3,12 @@ package ipi_onpremise
 import (
 	"errors"
 	"fmt"
-	common_go "github.com/51Degrees/common-go/v4"
-	"github.com/51Degrees/ip-intelligence-go/v4/ipi_interop"
 	"net/url"
 	"os"
 	"path/filepath"
+
+	common_go "github.com/51Degrees/common-go/v4"
+	"github.com/51Degrees/ip-intelligence-go/v4/ipi_interop"
 )
 
 type EngineOptions func(cfg *Engine) error
@@ -185,7 +186,10 @@ func WithRandomization(seconds int) EngineOptions {
 	}
 }
 
-// WithProperties configures an Engine with a comma-separated list of manager properties derived from the provided slice.
+// WithProperties sets the list of properties the engine will load and return.
+// Passing an empty slice (or omitting this option entirely) signals the engine
+// to load and return all available properties — the C library interprets an
+// empty properties string as "all properties required".
 func WithProperties(properties []string) EngineOptions {
 	return func(cfg *Engine) error {
 		if properties != nil {
