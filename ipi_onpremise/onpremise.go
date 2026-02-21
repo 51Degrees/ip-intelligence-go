@@ -47,11 +47,16 @@ const (
 	defaultDataFileUrl = "" // TODO: set default file path url (when it will be available)
 )
 
-var (
-	defaultProperties = []string{
-		"IpRangeStart", "IpRangeEnd", "AccuracyRadius", "RegisteredCountry", "RegisteredName", "Longitude", "Latitude", "Areas", "Mcc",
-	}
-)
+// availablePropertyNamesProvider is the function used to enumerate all
+// property names from a loaded dataset. It is a package-level variable so that
+// tests can inject a mock without requiring a real ResourceManager or CGO.
+var availablePropertyNamesProvider = ipi_interop.GetAvailablePropertyNames
+
+// resultsPropertyIndexer is the subset of ResultsIpi needed to resolve a
+// property name to its required-property index in the current dataset.
+type resultsPropertyIndexer interface {
+	GetPropertyIndexByName(string) int
+}
 
 // New creates an instance of the on-premise device detection engine.  WithDataFile must be provided
 // to specify the path to the data file, otherwise initialization will fail
@@ -66,7 +71,7 @@ func New(opts ...EngineOptions) (*Engine, error) {
 		config:             nil,
 		stopCh:             make(chan *sync.WaitGroup),
 		reloadFileEvents:   make(chan struct{}),
-		managerProperties:  defaultProperties,
+		managerProperties:  nil, // nil means "all properties"
 		propertyIndexCache: make(map[string]int),
 		propertyNameCache:  make(map[int]string),
 	}
@@ -379,31 +384,56 @@ func (e *Engine) appendLicenceKey() error {
 	return nil
 }
 
-// initPropertyIndexes pre-computes and caches bidirectional property index↔name mappings
+// initPropertyIndexes pre-computes bidirectional property index↔name caches.
+// It creates a temporary ResultsIpi to resolve property names to their numeric
+// required-property indexes, then delegates to initPropertyIndexesWithIndexer.
 func (e *Engine) initPropertyIndexes() {
+	r := ipi_interop.NewResultsIpi(e.manager)
+	defer r.Free()
+	e.initPropertyIndexesWithIndexer(r)
+}
+
+// initPropertyIndexesWithIndexer seeds the engine's bidirectional name↔index
+// caches using the provided indexer to resolve each property name.
+//
+// Two modes of operation:
+//
+//   - Empty managerProperties (nil or zero-length): the C engine was initialized
+//     with an empty properties string, which signals "load all properties".
+//     This function enumerates every available property from the live dataset via
+//     availablePropertyNamesProvider and populates only the name caches.
+//     propertyIndexes is left nil so that ProcessWithResults passes a NULL index
+//     array to the C layer, which responds by returning all available properties.
+//
+//   - Explicit managerProperties: builds the propertyIndexes slice used to
+//     request exactly those properties from the C layer, and seeds the caches for
+//     fast index→name resolution during result assembly.
+func (e *Engine) initPropertyIndexesWithIndexer(indexer resultsPropertyIndexer) {
+	if len(e.managerProperties) == 0 {
+		// All-properties mode: enumerate the dataset to seed the name cache so
+		// GetPropertyNameByIndex can resolve every index the C engine returns.
+		for _, prop := range availablePropertyNamesProvider(e.manager) {
+			idx := indexer.GetPropertyIndexByName(prop)
+			e.propertyIndexCache[prop] = idx
+			e.propertyNameCache[idx] = prop
+		}
+		// propertyIndexes stays nil → C gets NULL → all available properties returned.
+		return
+	}
+
+	// Explicit-properties mode: build the index list for targeted C queries.
 	e.propertyIndexes = make([]int, len(e.managerProperties))
-
-	// Create a temporary results object to get property indexes
-	tempResults := ipi_interop.NewResultsIpi(e.manager)
-	defer tempResults.Free()
-
 	for i, prop := range e.managerProperties {
-		idx := e.getPropertyIndex(tempResults, prop)
+		idx := indexer.GetPropertyIndexByName(prop)
 		e.propertyIndexes[i] = idx
-		// Cache bidirectional mappings: name ↔ index
 		e.propertyIndexCache[prop] = idx
 		e.propertyNameCache[idx] = prop
 	}
 }
 
-// getPropertyIndex gets the property index from results
-func (e *Engine) getPropertyIndex(results *ipi_interop.ResultsIpi, propertyName string) int {
-	// Use the existing method from results_ipi.go
-	return results.GetPropertyIndexByName(propertyName)
-}
-
-// GetPropertyNameByIndex retrieves the property name for a given index from the engine's cache
-// This is thread-safe as the cache is readonly after initialization
+// GetPropertyNameByIndex returns the property name for the given required-property
+// index from the engine's read-only post-init cache. Returns an empty string for
+// unknown indexes; the caller falls back to a CGO lookup in that case.
 func (e *Engine) GetPropertyNameByIndex(index int) string {
 	if name, exists := e.propertyNameCache[index]; exists {
 		return name
