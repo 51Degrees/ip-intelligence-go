@@ -27,7 +27,7 @@ package ipi_interop
 import "C"
 import "unsafe"
 
-type EvidencePrefix C.fiftyoneDegreesEvidencePrefix
+type EvidencePrefix C.fiftyoneDegreesIpiEvidencePrefix
 
 // Header Key required by engine
 type EvidenceKey struct {
