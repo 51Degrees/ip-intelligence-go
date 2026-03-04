@@ -43,7 +43,7 @@ func GetAvailablePropertyNames(manager *ResourceManager) []string {
 	count := int(cDataSet.b.b.available.count)
 	names := make([]string, 0, count)
 	for i := 0; i < count; i++ {
-		res := C.fiftyoneDegreesPropertiesGetNameFromRequiredIndex(
+		res := C.fiftyoneDegreesIpiPropertiesGetNameFromRequiredIndex(
 			cDataSet.b.b.available, C.int(i),
 		)
 		if res != nil {

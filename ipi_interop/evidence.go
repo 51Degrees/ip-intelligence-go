@@ -90,7 +90,7 @@ func (evidence *Evidence) Add(
 	evidence.cEvidence = append(evidence.cEvidence, CEvidence{cKey, cValue})
 	C.EvidenceAddString(
 		evidence.CPtr,
-		C.fiftyoneDegreesEvidencePrefix(prefix),
+		C.fiftyoneDegreesIpiEvidencePrefix(prefix),
 		cKey,
 		cValue,
 	)

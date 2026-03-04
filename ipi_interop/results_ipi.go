@@ -50,8 +50,8 @@ func NewResultsIpi(manager *ResourceManager) *ResultsIpi {
 	var cResults interface{} = (*[math.MaxInt32 / int(C.sizeof_ResultIpi)]C.ResultIpi)(unsafe.Pointer(r.items))[:r.capacity:r.capacity]
 
 	res := &ResultsIpi{
-		CPtr:             r,
-		CResults:         &cResults,
+		CPtr:     r,
+		CResults: &cResults,
 	}
 	runtime.SetFinalizer(res, resultsFinalizer)
 
@@ -113,7 +113,6 @@ func (r *ResultsIpi) GetPropertyIndexByName(propertyName string) int {
 	return int(i)
 }
 
-
 // getPropertyNameSafe retrieves the property name associated with a required index from the given dataset safely.
 // Returns an empty string if the required index is invalid or out of bounds.
 func (r *ResultsIpi) getPropertyNameSafe(dataSet *C.DataSetIpi, requiredIndex C.int) string {
@@ -121,7 +120,7 @@ func (r *ResultsIpi) getPropertyNameSafe(dataSet *C.DataSetIpi, requiredIndex C.
 		return ""
 	}
 
-	res := C.fiftyoneDegreesPropertiesGetNameFromRequiredIndex(dataSet.b.b.available, requiredIndex)
+	res := C.fiftyoneDegreesIpiPropertiesGetNameFromRequiredIndex(dataSet.b.b.available, requiredIndex)
 	if res != nil {
 		return C.GoString(&res.value)
 	}
@@ -131,12 +130,10 @@ func (r *ResultsIpi) getPropertyNameSafe(dataSet *C.DataSetIpi, requiredIndex C.
 
 // header represents the structure holding type, required property index, and raw weighting for a weighted value.
 type header struct {
-	valueType             C.fiftyoneDegreesPropertyValueType
+	valueType             C.fiftyoneDegreesIpiPropertyValueType
 	requiredPropertyIndex C.int
 	rawWeighting          C.uint16_t
 }
-
-
 
 // GetWeightedValuesByIndexes retrieves weighted values using pre-computed property indexes
 // and a property name resolver function to avoid expensive CGO calls for name resolution.
@@ -162,7 +159,7 @@ func (r *ResultsIpi) GetWeightedValuesByIndexes(indexes []int, propertyNameResol
 		cIndexesCount = C.uint(len(indexes))
 	}
 
-	collection := C.fiftyoneDegreesResultsIpiGetValuesCollection(
+	collection := C.fiftyoneDegreesIpiResultsIpiGetValuesCollection(
 		r.CPtr,
 		cIndexes,
 		cIndexesCount,
@@ -171,9 +168,9 @@ func (r *ResultsIpi) GetWeightedValuesByIndexes(indexes []int, propertyNameResol
 	if !exception.IsOkay() {
 		return nil, fmt.Errorf(C.GoString(C.ExceptionGetMessage(exception.CPtr)))
 	}
-	
+
 	// Release the collection
-	defer C.fiftyoneDegreesWeightedValuesCollectionRelease(&collection)
+	defer C.fiftyoneDegreesIpiWeightedValuesCollectionRelease(&collection)
 
 	values := make(Values, collection.itemsCount)
 
@@ -199,30 +196,30 @@ func (r *ResultsIpi) GetWeightedValuesByIndexes(indexes []int, propertyNameResol
 		switch PropertyValueType(nextHeader.valueType) {
 		case IntegerValueType:
 			// Cast to weighted integer and get value
-			weightedInt := (*C.fiftyoneDegreesWeightedInt)(unsafe.Pointer(nextHeader))
+			weightedInt := (*C.fiftyoneDegreesIpiWeightedInt)(unsafe.Pointer(nextHeader))
 			val = int(weightedInt.value)
 
 		case FloatValueType:
 		case DoubleValueType:
 			// Cast to weighted double and get value
-			weightedDouble := (*C.fiftyoneDegreesWeightedDouble)(unsafe.Pointer(nextHeader))
+			weightedDouble := (*C.fiftyoneDegreesIpiWeightedDouble)(unsafe.Pointer(nextHeader))
 			val = float64(weightedDouble.value)
 
 		case BooleanValueType:
 			// Cast to weighted boolean and get value
-			weightedBool := (*C.fiftyoneDegreesWeightedBool)(unsafe.Pointer(nextHeader))
+			weightedBool := (*C.fiftyoneDegreesIpiWeightedBool)(unsafe.Pointer(nextHeader))
 			val = weightedBool.value
 
 		case ByteValueType:
 			// Cast to weighted byte and get value
-			weightedByte := (*C.fiftyoneDegreesWeightedByte)(unsafe.Pointer(nextHeader))
+			weightedByte := (*C.fiftyoneDegreesIpiWeightedByte)(unsafe.Pointer(nextHeader))
 			val = int(weightedByte.value)
 
 		case StringValueType:
 			fallthrough
 		default:
 			// Cast to weighted string and get value
-			weightedString := (*C.fiftyoneDegreesWeightedString)(unsafe.Pointer(nextHeader))
+			weightedString := (*C.fiftyoneDegreesIpiWeightedString)(unsafe.Pointer(nextHeader))
 			val = C.GoString(weightedString.value)
 		}
 
