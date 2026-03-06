@@ -28,7 +28,7 @@ package ipi_interop
  */
 
 /*
-#cgo CFLAGS: -DFIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT=1
+#cgo CFLAGS: -DFIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT=1 -include mangle.h
 #cgo CFLAGS: -fcommon
 #cgo LDFLAGS: -lm
 #cgo !darwin LDFLAGS: -latomic
