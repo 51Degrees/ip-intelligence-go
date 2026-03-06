@@ -68,5 +68,5 @@ go doc -all
 
 ### Examples
 
-Examples are included in a separate repository at [ip-intelligence-go-examples](https://github.com/51Degrees/ip-intelligence-go-examples).
-Users can follow its README.md for details and comments in each examples for how to run them.
+Examples can be found in the [examples](examples) directory.
+Users can follow its [README.md](examples/README.md) for details and comments in each examples for how to run them.
