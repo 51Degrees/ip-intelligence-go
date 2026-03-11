@@ -9,7 +9,7 @@ $env:DATA_FILE = "$PWD/assets/51Degrees-EnterpriseIpiV41.ipi"
 Push-Location $PSScriptRoot/..
 try {
     Write-Host "Running performance test..."
-    go run examples/performance
+    go run ./examples/performance
 
     switch -File performance_report.log -Regex {
         'Average ([^ ]+) ms per' { $MsPerDetection = [double]$matches.1 }

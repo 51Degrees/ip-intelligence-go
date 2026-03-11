@@ -1,26 +1,20 @@
 param (
-    [Parameter(Mandatory)][string]$IpIntelligence
+    [Parameter(Mandatory)][string]$IpIntelligence,
+    [Parameter(Mandatory)][string]$IpIntelligenceUrl
 )
-
 $ErrorActionPreference = 'Stop'
+$PSNativeCommandUseErrorActionPreference = $true
+
+$results = New-Item -ItemType directory -Force -Path "$PSScriptRoot/../test-results/integration"
 
 $env:IPI_KEY = $IpIntelligence
+$env:IPI_DATA_FILE_URL = $IpIntelligenceUrl
 $env:DATA_FILE = "$PWD/assets/51Degrees-EnterpriseIpiV41.ipi"
 $env:EVIDENCE_YAML = "$PWD/assets/ip-intelligence-evidence.yml"
 
-$examples = Get-ChildItem -Directory -Depth 1 -Exclude 'common', 'performance' $PSScriptRoot/../examples
-
 Push-Location "$PSScriptRoot/.."
 try {
-    $failed = foreach ($example in $examples) {
-        Write-Host "Running example $($example.Name)..."
-        go run $example || $example.Name
-    }
+    go test -v ./examples 2>&1 | go-junit-report -set-exit-code -iocopy -out "$results/results.xml"
 } finally {
     Pop-Location
-}
-
-if ($failed) {
-    Write-Host "Failed: $failed"
-    exit 1
 }
