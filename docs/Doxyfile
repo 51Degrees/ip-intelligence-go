@@ -821,7 +821,7 @@ WARN_LOGFILE           =
 INPUT                  = ../ipi_interop \
                          ../ipi_onpremise \
                          ../README.md \
-                         ../ip-intelligence-go-examples
+                         ../examples
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses
@@ -895,7 +895,7 @@ EXCLUDE_SYMBOLS        =
 # that contain example code fragments that are included (see the \include
 # command).
 
-EXAMPLE_PATH           = ../ip-intelligence-go-examples \
+EXAMPLE_PATH           = ../examples \
                          ../../documentation/src/snippets
 
 # If the value of the EXAMPLE_PATH tag contains directories, you can use the
