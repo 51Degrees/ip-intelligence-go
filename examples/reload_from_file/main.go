@@ -143,7 +143,7 @@ func executeTest(engine *ipi_onpremise.Engine, wg *sync.WaitGroup, report *commo
 	for _, property := range common.Properties {
 		value, weight, found := res.GetValueWeightByProperty(property)
 		if !found {
-			log.Printf("Not found values for the next property %s for address %s", property, ipAddress)
+			continue
 		}
 
 		fmt.Fprintf(&actual, "%s: %+v:%.2f\n", property, value, weight)

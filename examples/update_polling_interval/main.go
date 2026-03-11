@@ -222,7 +222,7 @@ func main() {
 				ipi_onpremise.WithUpdateOnStart(false),
 
 				// Optionally provide your own file URL
-				ipi_onpremise.WithDataUpdateUrl("<custom URL>"),
+				ipi_onpremise.WithDataUpdateUrl(params.DataFileUrl),
 
 				// By default a temp copy should be created, unless you are using InMemory performance profile
 				// ipi_onpremise.WithTempDataCopy(false),

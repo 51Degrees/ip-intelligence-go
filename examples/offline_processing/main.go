@@ -123,9 +123,6 @@ defer func() {
 
 ```
 value, weight, found := result.GetValueWeightByProperty(property)
-if !found {
-	log.Printf("Not found values for the next property %s for address %s", property, IpAddress)
-}
 ```
 */
 
@@ -173,7 +170,7 @@ func getIpi(engine *ipi_onpremise.Engine, IpAddress string) (*PropertiesData, ya
 	for _, property := range common.Properties {
 		value, weight, found := result.GetValueWeightByProperty(property)
 		if !found {
-			log.Printf("Not found values for the next property %s for address %s", property, IpAddress)
+			continue
 		}
 
 		switch property {

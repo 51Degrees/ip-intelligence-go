@@ -8,6 +8,7 @@ type ExampleParams struct {
 	LicenseKey     string
 	Product        string
 	DataFile       string
+	DataFileUrl    string
 	IterationCount int
 	EvidenceYaml   string
 }
@@ -30,9 +31,12 @@ func RunExample(exampleFunc ExampleFunc) {
 		evidenceYaml = "20000_ipi_evidence_records.yml"
 	}
 
+	dataFileUrl := os.Getenv("IPI_DATA_FILE_URL")
+
 	params := &ExampleParams{
 		LicenseKey:   licenseKey,
 		DataFile:     dataFile,
+		DataFileUrl:  dataFileUrl,
 		EvidenceYaml: evidenceYaml,
 	}
 
