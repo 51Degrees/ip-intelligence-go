@@ -3,4 +3,4 @@ param (
 )
 $ErrorActionPreference = "Stop"
 
-./steps/fetch-assets.ps1 -IpIntelligenceUrl:$IpIntelligenceUrl -Assets "51Degrees-EnterpriseIpiV41.ipi"
+./steps/fetch-assets.ps1 -IpIntelligenceUrl:$IpIntelligenceUrl -Assets "51Degrees-EnterpriseIpiV41.ipi", "ip-intelligence-evidence.yml"
