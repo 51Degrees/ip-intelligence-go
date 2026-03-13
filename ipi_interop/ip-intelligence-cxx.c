@@ -1919,6 +1919,7 @@ EXTERNAL int64_t fiftyoneDegreesCacheHash64(const void *key);
 #ifndef FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_H_INCLUDED
 #define FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_H_INCLUDED
 
+
 /**
  * Enum of property types.
  */
@@ -1975,6 +1976,18 @@ typedef enum e_fiftyone_degrees_property_value_type {
 	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_GRAPH_DATA_NODE_BYTES, /**< bytes of node (in graph.c) */
 	FIFTYONE_DEGREES_COLLECTION_ENTRY_TYPE_GRAPH_INFO, /**< fiftyoneDegreesIpiCgInfo */
 } fiftyoneDegreesPropertyValueType;
+
+/**
+ * Returns the underlying (non-weighted) stored value type for a given
+ * property value type. For weighted types (e.g., WeightedString), returns
+ * the base type (e.g., String). For non-weighted types, returns the input
+ * unchanged.
+ * @param type the property value type to get the underlying type for
+ * @return the underlying type, or the input type if not weighted
+ */
+EXTERNAL fiftyoneDegreesPropertyValueType
+fiftyoneDegreesPropertyValueTypeGetUnderlyingType(
+    fiftyoneDegreesPropertyValueType type);
 
 #endif
 
@@ -7851,6 +7864,15 @@ EXTERNAL uint32_t fiftyoneDegreesProfileIterateValueIndexes(
 
 #endif
 
+/**
+ * Macro to check if a Value's urlOffsetOrWeight field carries a masked weight.
+ * A value is weighted when (urlOffsetOrWeight & 0xFFFF0000) == 0xFF000000.
+ * This is distinct from -1 (0xFFFFFFFF, "no URL" sentinel) and from
+ * valid non-negative URL offsets.
+ */
+#define FIFTYONE_DEGREES_VALUE_IS_MASKED(v) \
+	(((v)->urlOffsetOrWeight & 0xFFFF0000) == (int32_t)0xFF000000)
+
 /** Value structure containing meta data relating to the value. */
 #pragma pack(push, 2)
 typedef struct fiftyoneDegrees_value_t {
@@ -7859,8 +7881,12 @@ typedef struct fiftyoneDegrees_value_t {
 	                              value name */
 	const int32_t descriptionOffset; /**< The offset in the strings structure to
 	                                     the value description */
-	const int32_t urlOffset; /**< The offset in the strings structure to the 
-	                             value URL */
+	const int32_t urlOffsetOrWeight; /**< The offset in the strings structure to
+	                                     the value URL, or a masked weight if
+	                                     upper 2 bytes == 0xFF00 (i.e. value
+	                                     has a form of `0xFF00****` where
+	                                     `****` are weight value bits).
+	                                     See fiftyoneDegreesValueIsWeighted(). */
 } fiftyoneDegreesValue;
 #pragma pack(pop)
 
@@ -8024,6 +8050,29 @@ EXTERNAL long fiftyoneDegreesValueGetIndexByName(
 	fiftyoneDegreesProperty *property,
 	const char *valueName,
 	fiftyoneDegreesException *exception);
+
+/**
+ * Returns true if the value carries a masked weight.
+ * A value is weighted when (urlOffsetOrWeight & 0xFFFF0000) == 0xFF000000.
+ * This is distinct from -1 (0xFFFFFFFF, "no URL" sentinel) and from
+ * valid non-negative URL offsets.
+ * @param value the value to check
+ * @return true if the value carries a masked weight, false otherwise
+ */
+EXTERNAL bool fiftyoneDegreesValueIsWeighted(
+	const fiftyoneDegreesValue *value);
+
+/**
+ * Gets the weight from a Value record as a uint16_t (0–65535),
+ * or 0 if the value is not weighted.
+ * The weight is stored in the lower 2 bytes of urlOffsetOrWeight
+ * when the upper 2 bytes match the 0xFF00 mask.
+ * To convert to a proportion: (double)weight / UINT16_MAX
+ * @param value the value to get the weight from
+ * @return the weight (0–65535 range), or 0 if not weighted
+ */
+EXTERNAL uint16_t fiftyoneDegreesValueGetWeight(
+	const fiftyoneDegreesValue *value);
 
 /**
  * @}
@@ -8454,6 +8503,152 @@ static const uint8_t fiftyoneDegreesIpAddressStringMaxLength = 50;
 #define FIFTYONE_DEGREES_MAX_DOUBLE_DECIMAL_PLACES 15
 
 #endif //FIFTYONE_DEGREES_CONSTANTS_H
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+#ifndef FIFTYONE_DEGREES_WEIGHTED_ITEM_H_INCLUDED
+#define FIFTYONE_DEGREES_WEIGHTED_ITEM_H_INCLUDED
+
+/**
+ * @ingroup FiftyOneDegreesCommon
+ * @defgroup FiftyOneDegreesWeightedItem Weighted Items
+ *
+ * A weighted collection item with an associated weight value.
+ *
+ * ## Introduction
+ *
+ * A WeightedItem represents a value retrieved from the dataset together with
+ * a weight indicating the proportion or confidence of this value (out of 65535).
+ * Used for profile-level weighting (from profile groups) where the weight
+ * indicates the proportion of the matched IP range attributable to this profile,
+ * or for value-level weighting where the weight is stored in the Value record.
+ *
+ * ## List Management
+ *
+ * WeightedItemList provides a resizable array of WeightedItem structures with
+ * functions for initialization, release, extension, and adding items.
+ *
+ * @{
+ */
+
+#include <stdint.h>
+
+/**
+ * Default resize factor for WeightedItemList when extending capacity.
+ */
+#define FIFTYONE_DEGREES_WEIGHTED_ITEM_LIST_RESIZE_FACTOR 2
+
+/**
+ * Default load factor for WeightedItemList initial capacity calculation.
+ */
+#define FIFTYONE_DEGREES_WEIGHTED_ITEM_LIST_DEFAULT_LOAD_FACTOR 4
+
+/**
+ * A weighted collection item. Represents a value retrieved from the
+ * dataset together with a weight indicating the proportion or
+ * confidence of this value (out of 65535^2). Used for profile-level
+ * weighting (from profile groups) where the weight indicates the
+ * proportion of the matched IP range attributable to this profile,
+ * or for value-level weighting stored in the Value record, or both.
+ */
+typedef struct fiftyone_degrees_weighted_item_t {
+	fiftyoneDegreesCollectionItem item; /**< The collection item containing the value */
+	uint32_t rawWeighting; /**< Weight as uint32_t (0-65535^2, representing 0.0-1.0).
+						   Final/effective weight after multiplying weights
+						   from both profile group (or "1") and value (or "1").*/
+} fiftyoneDegreesWeightedItem;
+
+/// Max value for WeightedItem.rawWeighting
+#define FIFTYONE_DEGREES_WEIGHTED_ITEM_MAX_WEIGHT \
+	((uint32_t)(((uint32_t)65535)*((uint32_t)65535)))
+
+/**
+ * A resizable list of weighted items.
+ */
+typedef struct fiftyone_degrees_weighted_item_list_t {
+	fiftyoneDegreesWeightedItem *items; /**< Array of weighted items */
+	uint32_t count; /**< Number of items currently in use */
+	uint32_t capacity; /**< Allocated capacity of the items array */
+	float loadFactor; /**< Load factor threshold for auto-extension */
+} fiftyoneDegreesWeightedItemList;
+
+/**
+ * Initializes a weighted item list with the specified initial capacity.
+ * @param list pointer to the list to initialize
+ * @param initialCapacity the initial capacity to allocate
+ * @param loadFactor the load factor threshold for auto-extension (0.0-1.0)
+ */
+EXTERNAL void fiftyoneDegreesWeightedItemListInit(
+	fiftyoneDegreesWeightedItemList *list,
+	uint32_t initialCapacity,
+	float loadFactor);
+
+/**
+ * Releases all collection items in the list and resets the count to zero.
+ * Does not free the items array itself. Each item's collection is obtained
+ * from the item itself.
+ * @param list pointer to the list to release
+ */
+EXTERNAL void fiftyoneDegreesWeightedItemListRelease(
+	fiftyoneDegreesWeightedItemList *list);
+
+/**
+ * Frees the items array and resets the list to empty state.
+ * Releases all items first.
+ * @param list pointer to the list to free
+ */
+EXTERNAL void fiftyoneDegreesWeightedItemListFree(
+	fiftyoneDegreesWeightedItemList *list);
+
+/**
+ * Extends the capacity of the list to the new capacity.
+ * @param list pointer to the list to extend
+ * @param newCapacity the new capacity (must be greater than current)
+ * @param exception pointer to an exception data structure to be used if an
+ * exception occurs. See exceptions.h.
+ */
+EXTERNAL void fiftyoneDegreesWeightedItemListExtend(
+	fiftyoneDegreesWeightedItemList *list,
+	uint32_t newCapacity,
+	fiftyoneDegreesException *exception);
+
+/**
+ * Adds a copy of the item to the list, extending capacity if needed based
+ * on the load factor.
+ * @param list pointer to the list to add to
+ * @param item pointer to the item to copy into the list
+ * @param exception pointer to an exception data structure to be used if an
+ * exception occurs. See exceptions.h.
+ */
+EXTERNAL void fiftyoneDegreesWeightedItemListAdd(
+	fiftyoneDegreesWeightedItemList *list,
+	const fiftyoneDegreesWeightedItem *item,
+	fiftyoneDegreesException *exception);
+
+/**
+ * @}
+ */
+
+#endif
 
 /**
  * Macro used to support synonym implementation. Creates a typedef which 
@@ -8562,6 +8757,8 @@ MAP_TYPE(IpType)
 MAP_TYPE(IpAddress)
 MAP_TYPE(WkbtotResult)
 MAP_TYPE(WkbtotReductionMode)
+MAP_TYPE(WeightedItem)
+MAP_TYPE(WeightedItemList)
 
 #define ProfileGetFinalSize fiftyoneDegreesProfileGetFinalSize /**< Synonym for #fiftyoneDegreesProfileGetFinalSize function. */
 #define ProfileGetOffsetForProfileId fiftyoneDegreesProfileGetOffsetForProfileId /**< Synonym for #fiftyoneDegreesProfileGetOffsetForProfileId function. */
@@ -8766,6 +8963,14 @@ MAP_TYPE(WkbtotReductionMode)
 #define IpAddressesCompare fiftyoneDegreesIpAddressesCompare /**< Synonym for fiftyoneDegreesIpAddressesCompare */
 #define ConvertWkbToWkt fiftyoneDegreesConvertWkbToWkt /**< Synonym for fiftyoneDegreesConvertWkbToWkt */
 #define WriteWkbAsWktToStringBuilder fiftyoneDegreesWriteWkbAsWktToStringBuilder /**< Synonym for fiftyoneDegreesWriteWkbAsWktToStringBuilder */
+#define WeightedItemListInit fiftyoneDegreesWeightedItemListInit /**< Synonym for fiftyoneDegreesWeightedItemListInit */
+#define WeightedItemListRelease fiftyoneDegreesWeightedItemListRelease /**< Synonym for fiftyoneDegreesWeightedItemListRelease */
+#define WeightedItemListFree fiftyoneDegreesWeightedItemListFree /**< Synonym for fiftyoneDegreesWeightedItemListFree */
+#define WeightedItemListExtend fiftyoneDegreesWeightedItemListExtend /**< Synonym for fiftyoneDegreesWeightedItemListExtend */
+#define WeightedItemListAdd fiftyoneDegreesWeightedItemListAdd /**< Synonym for fiftyoneDegreesWeightedItemListAdd */
+#define ValueGetWeight fiftyoneDegreesValueGetWeight /**< Synonym for fiftyoneDegreesValueGetWeight */
+#define ValueIsWeighted fiftyoneDegreesValueIsWeighted /**< Synonym for fiftyoneDegreesValueIsWeighted */
+#define PropertyValueTypeGetUnderlyingType fiftyoneDegreesPropertyValueTypeGetUnderlyingType /**< Synonym for fiftyoneDegreesPropertyValueTypeGetUnderlyingType */
 
 /* <-- only one asterisk to avoid inclusion in documentation
  * Shortened constants.
@@ -16817,6 +17022,53 @@ byte fiftyoneDegreesPropertyGetValueType(
  * ********************************************************************* */
 
 
+fiftyoneDegreesPropertyValueType
+fiftyoneDegreesPropertyValueTypeGetUnderlyingType(
+    fiftyoneDegreesPropertyValueType type) {
+    switch (type) {
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_STRING:
+            return FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_STRING;
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_INT:
+            return FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_INTEGER;
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_DOUBLE:
+            return FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_DOUBLE;
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_BOOL:
+            return FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_BOOLEAN;
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_SINGLE:
+            return FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_PRECISION_FLOAT;
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_BYTE:
+            return FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_BYTE;
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_IP_ADDRESS:
+            return FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_IP_ADDRESS;
+        case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_WKB_R:
+            return FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB_R;
+        default:
+            return type;
+    }
+}
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+
 /**
  * Macro used to ensure that local variables are aligned to memory boundaries
  * to support interlocked operations that require double width data structures
@@ -18879,9 +19131,12 @@ const String* fiftyoneDegreesValueGetUrl(
 	const Value *value,
 	CollectionItem *item,
 	Exception *exception) {
+	if (value->urlOffsetOrWeight < 0) {
+		return NULL;
+	}
 	return &StoredBinaryValueGet(
 		strings,
-		value->urlOffset,
+		value->urlOffsetOrWeight,
 		FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_STRING, // URL is string
 		item,
 		exception)->stringValue;
@@ -19014,6 +19269,118 @@ const Value* fiftyoneDegreesValueGetByNameAndType(
 		Free(buffer);
 	}
 	return value;
+}
+
+bool fiftyoneDegreesValueIsWeighted(
+	const Value *value) {
+	return FIFTYONE_DEGREES_VALUE_IS_MASKED(value);
+}
+
+uint16_t fiftyoneDegreesValueGetWeight(
+	const Value *value) {
+	if (FIFTYONE_DEGREES_VALUE_IS_MASKED(value)) {
+		return (uint16_t)(value->urlOffsetOrWeight & 0xFFFF);
+	}
+	return 0;
+}
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+
+void fiftyoneDegreesWeightedItemListInit(
+	WeightedItemList * const list,
+	const uint32_t initialCapacity,
+	const float loadFactor) {
+	list->count = 0;
+	list->capacity = initialCapacity;
+	list->loadFactor = loadFactor;
+	if (initialCapacity > 0) {
+		list->items = (WeightedItem*)Malloc(
+			sizeof(WeightedItem) * initialCapacity);
+	}
+	else {
+		list->items = NULL;
+	}
+}
+
+void fiftyoneDegreesWeightedItemListRelease(
+	WeightedItemList * const list) {
+	uint32_t i;
+	for (i = 0; i < list->count; i++) {
+		FIFTYONE_DEGREES_COLLECTION_RELEASE(list->items[i].item.collection, &list->items[i].item);
+	}
+	list->count = 0;
+}
+
+void fiftyoneDegreesWeightedItemListFree(
+	WeightedItemList * const list) {
+	WeightedItemListRelease(list);
+	if (list->items != NULL) {
+		Free(list->items);
+		list->items = NULL;
+	}
+	list->capacity = 0;
+}
+
+void fiftyoneDegreesWeightedItemListExtend(
+	WeightedItemList * const list,
+	const uint32_t newCapacity,
+	Exception * const exception) {
+	// Allocate new list
+	if (newCapacity > list->capacity) {
+		const size_t newSize = newCapacity * sizeof(WeightedItem);
+		WeightedItem * const newItems = Malloc(newSize);
+
+		if (newItems == NULL) {
+			EXCEPTION_SET(INSUFFICIENT_MEMORY);
+			return;
+		}
+
+		WeightedItem * const oldItems = list->items;
+		if (oldItems != NULL) {
+			const size_t oldSize = list->count * sizeof(WeightedItem);
+			memcpy(newItems, oldItems, oldSize);
+			Free(oldItems);
+		}
+		list->items = newItems;
+		list->capacity = newCapacity;
+	}
+}
+
+void fiftyoneDegreesWeightedItemListAdd(
+	WeightedItemList * const list,
+	const WeightedItem * const item,
+	Exception * const exception) {
+	assert(list->count < list->capacity);
+	assert(item->item.collection != NULL);
+	list->items[list->count++] = *item;
+	// Check if the list has reached its load factor
+	if (list->capacity > 0 && 
+		(float)(list->count) / (float)(list->capacity) > list->loadFactor) {
+		// Get new capacity
+		const uint32_t newCapacity = 
+			list->capacity * FIFTYONE_DEGREES_WEIGHTED_ITEM_LIST_RESIZE_FACTOR;
+		WeightedItemListExtend(list, newCapacity, exception);
+	}
 }
 /* *********************************************************************
  * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
@@ -21976,41 +22343,16 @@ typedef struct fiftyone_degrees_dataset_ipi_t {
 
 
 /**
- * The structure to hold a pair of result item and its percentage
- * When getting values for a property from the result
- * the values will be a list of potential matching items
- * and their weights to indicate the proportion of this item
- * for the matched IP range in our data. This structure represents
- * an item in the list.
+ * Backward compatibility typedef for ProfilePercentage.
+ * @deprecated Use fiftyoneDegreesWeightedItem instead.
  */
-typedef struct fiftyone_degrees_profile_percentage_t {
-	fiftyoneDegreesCollectionItem item; /**< A collection item which contains the value */
-	uint16_t rawWeighting; /**< The proportion of the item in the returned values (out of 65535) */
-} fiftyoneDegreesProfilePercentage;
+typedef fiftyoneDegreesWeightedItem fiftyoneDegreesProfilePercentage;
 
 /**
- * When the load factor in the list is reached
- * the list will resize to this factor of the current capacity
+ * Backward compatibility typedef for IpiList.
+ * @deprecated Use fiftyoneDegreesWeightedItemList instead.
  */
-#define IPI_LIST_RESIZE_FACTOR 1.5f
-/**
- * Default load factor for IP intelligence list
- */
-#define IPI_LIST_DEFAULT_LOAD_FACTOR 0.7f
-
-/**
- * The structure which represents the list of values
- * returned for the required property from the results.
- * This is a dynamic list which will be resized when
- * the loadFactor is reached.
- */
-typedef struct fiftyone_degrees_ipi_list_t {
-	fiftyoneDegreesProfilePercentage *items; /**< List of items and their percentages */
-	uint32_t capacity; /**< The capacity of the list */
-	uint32_t count; /**< The current number of item in the list*/
-	float loadFactor; /**< The load factor to determine when the list
-							should be resized*/
-} fiftyoneDegreesIpiList;
+typedef fiftyoneDegreesWeightedItemList fiftyoneDegreesIpiList;
 
 /**
  * Singular IP address result returned by a detection process method.
@@ -22638,7 +22980,7 @@ EXTERNAL size_t fiftyoneDegreesIpiGetIpAddressAsString(
 typedef struct fiftyone_degrees_weighted_value_header_t {
  fiftyoneDegreesPropertyValueType valueType; /**< The type of the property value */
  int requiredPropertyIndex;                  /**< Index of the required property */
- uint16_t rawWeighting;                      /**< Raw confidence weighting value */
+ uint32_t rawWeighting;                      /**< Raw confidence weighting value */
 } fiftyoneDegreesWeightedValueHeader;
 
 
@@ -22816,7 +23158,8 @@ static const uint8_t fiftyoneDegreesDefaultWktDecimalPlaces = FIFTYONE_DEGREES_W
 #endif //FIFTYONE_DEGREES_CONSTANTSIPI_H
 
 // Data types
-MAP_TYPE(ProfilePercentage)
+MAP_TYPE(WeightedItem)
+MAP_TYPE(WeightedItemList)
 MAP_TYPE(ResultIpi)
 MAP_TYPE(ResultsIpi)
 MAP_TYPE(ResultIpiArray)
@@ -23325,7 +23668,7 @@ static const PropValuesConverter * PropValuesConverterFor(
  */
 typedef struct {
     PropValuesChunk * const chunk;                  /**< Pointer to the chunk to populate */
-    const ProfilePercentage * const valuesItems;    /**< Array of profile percentages */
+    const WeightedItem * const valuesItems;         /**< Array of weighted items */
     const uint32_t valuesCount;                     /**< Number of values */
     const PropertyValueType storedValueType;        /**< Type of the stored values */
     Exception * const exception;                    /**< Pointer to exception structure */
@@ -23517,7 +23860,7 @@ static void PropValuesChunkInit(
     }
 
     // Get a pointer to the first value item for the property.
-    const ProfilePercentage * const valuesItems = ResultsIpiGetValues(
+    const WeightedItem * const valuesItems = ResultsIpiGetValues(
         results,
         chunk->requiredPropertyIndex,
         exception);
@@ -23815,10 +24158,10 @@ typedef struct state_with_exception_t {
 	Exception* exception; /* Pointer to the exception structure */
 } stateWithException;
 
-typedef struct state_with_percentage_t {
+typedef struct state_with_weighting_t {
 	void* subState; /* Pointer to a data set or other information */
 	uint16_t rawWeighting;
-} stateWithPercentage;
+} stateWithWeighting;
 
 /**
  * Used to pass a state together with an unique header index which
@@ -24419,130 +24762,6 @@ static StatusCode checkVersion(DataSetIpi* dataSet) {
 	return SUCCESS;
 }
 
-// FIXME: Remove debug method
-static void dumpProperties(
-	const DataSetIpi * const dataSet,
-	Exception * const exception) {
-
-	Item valueItem, propNameItem, propTypeItem, propContentItem;
-	char buffer[4096];
-
-	const uint32_t valuesCount = CollectionGetCount(dataSet->values);
-	for (uint32_t i = 0; (i < valuesCount) && EXCEPTION_OKAY; i++) {
-		DataReset(&valueItem.data);
-		const CollectionKey valueKey = {
-			i,
-			CollectionKeyType_Value,
-		};
-		const Value * const nextValue = (Value*)dataSet->values->get(
-			dataSet->values,
-			&valueKey,
-			&valueItem,
-			exception);
-		if (!(nextValue && EXCEPTION_OKAY)) {
-			return;
-		}
-		DataReset(&propTypeItem.data);
-		const CollectionKey typeRecordKey = {
-			nextValue->propertyIndex,
-			CollectionKeyType_PropertyTypeRecord,
-		};
-		const PropertyTypeRecord * const nextPropType = (PropertyTypeRecord*)dataSet->propertyTypes->get(
-			dataSet->propertyTypes,
-			&typeRecordKey,
-			&propTypeItem,
-			exception);
-		if (!(nextPropType && EXCEPTION_OKAY)) {
-			COLLECTION_RELEASE(dataSet->values, &valueItem);
-			return;
-		}
-		DataReset(&propNameItem.data);
-		const String * const nextPropName = &StoredBinaryValueGet(
-			dataSet->strings,
-			nextPropType->nameOffset,
-			FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_STRING, // name is string
-			&propNameItem,
-			exception)->stringValue;
-		if (!(nextPropName && EXCEPTION_OKAY)) {
-			COLLECTION_RELEASE(dataSet->values, &valueItem);
-			COLLECTION_RELEASE(dataSet->propertyTypes, &propTypeItem);
-			return;
-		}
-		const PropertyValueType storedValueType = nextPropType->storedValueType;
-		DataReset(&propContentItem.data);
-		const StoredBinaryValue * const storedValue = StoredBinaryValueGet(
-			dataSet->strings,
-			nextValue->nameOffset,
-			storedValueType,
-			&propContentItem,
-			exception);
-		if (!(storedValue && EXCEPTION_OKAY)) {
-			COLLECTION_RELEASE(dataSet->values, &valueItem);
-			COLLECTION_RELEASE(dataSet->propertyTypes, &propTypeItem);
-			COLLECTION_RELEASE(dataSet->strings, &propNameItem);
-			return;
-		}
-		StringBuilder builder = { buffer, sizeof(buffer) };
-		StringBuilderInit(&builder);
-		StringBuilderAddStringValue(
-			&builder,
-			storedValue,
-			storedValueType,
-			MAX_DOUBLE_DECIMAL_PLACES,
-			exception);
-		if (!(EXCEPTION_OKAY)) {
-			COLLECTION_RELEASE(dataSet->values, &valueItem);
-			COLLECTION_RELEASE(dataSet->propertyTypes, &propTypeItem);
-			COLLECTION_RELEASE(dataSet->strings, &propNameItem);
-			COLLECTION_RELEASE(dataSet->strings, &propContentItem);
-			return;
-		}
-		StringBuilderComplete(&builder);
-		const char *propTypeText = "";
-		switch (storedValueType) {
-			case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_STRING: {
-				propTypeText = "String";
-				break;
-			}
-			case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_INTEGER: {
-				propTypeText = "Integer";
-				break;
-			}
-			case FIFTYONE_DEGREES_PROPERTY_VALUE_SINGLE_PRECISION_FLOAT: {
-				propTypeText = "Float";
-				break;
-			}
-			case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_JAVASCRIPT: {
-				propTypeText = "Javascript";
-				break;
-			}
-			case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB: {
-				propTypeText = "WKB";
-				break;
-			}
-			case FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_IP_ADDRESS: {
-				propTypeText = "IP";
-				break;
-			}
-			default: {
-				break;
-			}
-		}
-		printf("- [val. %lld - prop. %lld, %s] '%s' (%s, offset = %llu/0x%llx)\n",
-			(long long)i,
-			(long long)nextValue->propertyIndex,
-			&nextPropName->value,
-			buffer,
-			propTypeText,
-			(unsigned long long)nextValue->nameOffset,
-			(unsigned long long)nextValue->nameOffset + (unsigned long long)dataSet->header.strings.startPosition);
-		COLLECTION_RELEASE(dataSet->values, &valueItem);
-		COLLECTION_RELEASE(dataSet->propertyTypes, &propTypeItem);
-		COLLECTION_RELEASE(dataSet->strings, &propNameItem);
-		COLLECTION_RELEASE(dataSet->strings, &propContentItem);
-	}
-}
-
 static void initDataSetPost(
 	DataSetIpi* dataSet,
 	Exception* exception) {
@@ -24568,7 +24787,6 @@ static void initDataSetPost(
 		(char*)dataSet->componentsAvailable,
 		0,
 		sizeof(bool) * dataSet->componentsList.count);
-	// dumpProperties(dataSet, exception);
 }
 
 static StatusCode initWithMemory(
@@ -25149,88 +25367,15 @@ FIFTYONE_DEGREES_DATASET_RELOAD(Ipi)
  */
 
 
-/**
- * Methods to manipulate the profile percentage list
- * This is mainly used in the values returned in the results
- * for particular property.
+/* 
+ * Note: WeightedItemList functions are now provided by common-cxx/weightedItem.h
+ * The local list functions have been removed in favor of:
+ * - WeightedItemListInit() 
+ * - WeightedItemListRelease()
+ * - WeightedItemListFree()
+ * - WeightedItemListExtend()
+ * - WeightedItemListAdd()
  */
-static fiftyoneDegreesIpiList* initIpiList(
-	fiftyoneDegreesIpiList* list,
-	uint32_t capacity,
-	const float loadFactor) {
-	list->items = (ProfilePercentage*)Malloc(capacity * sizeof(ProfilePercentage));
-	if (list->items == NULL) {
-		return NULL;
-	}
-	list->capacity = capacity;
-	list->count = 0;
-	list->loadFactor = loadFactor;
-	return list;
-}
-
-static void releaseIpiList(fiftyoneDegreesIpiList* list) {
-	uint32_t i;
-	for (i = 0; i < list->count; i++) {
-		COLLECTION_RELEASE(list->items[i].item.collection, &list->items[i].item);
-	}
-	list->count = 0;
-}
-
-static void freeIpiList(fiftyoneDegreesIpiList* list) {
-	releaseIpiList(list);
-	if (list->items != NULL) {
-		Free(list->items);
-	}
-	list->items = NULL;
-	list->capacity = 0;
-}
-
-/*
- * Extend the size of the current list.
- * This should ever be used by the addIpiListItem
- * @param list the current list
- * @param newCapacity which should be bigger
- * than the current capacity else now
- * change will be made
- */
-static void extendIpiList(
-	fiftyoneDegreesIpiList* list,
-	uint32_t newCapacity) {
-	// Allocate new list
-	if (newCapacity > list->capacity) {
-		const size_t newSize = newCapacity * sizeof(ProfilePercentage);
-		ProfilePercentage * const newItems = (ProfilePercentage*)Malloc(newSize);
-
-		if (newItems == NULL) {
-			return;
-		}
-
-		ProfilePercentage * const oldItems = list->items;
-		if (oldItems != NULL) {
-			const size_t oldSize = list->count * sizeof(ProfilePercentage);
-			memcpy(newItems, oldItems, oldSize);
-			Free(oldItems);
-		}
-		list->items = newItems;
-		list->capacity = newCapacity;
-	}
-}
-
-static void addIpiListItem(
-	fiftyoneDegreesIpiList* const list,
-	const fiftyoneDegreesProfilePercentage* const item) {
-	assert(list->count < list->capacity);
-	assert(item->item.collection != NULL);
-	list->items[list->count++] = *item;
-	// Check if the list has reached its load factor
-	if ((float)(list->count / list->capacity) > list->loadFactor) {
-		// Get new capacity
-		const uint32_t newCapacity =
-			(uint32_t)ceilf(list->capacity * IPI_LIST_RESIZE_FACTOR);
-
-		extendIpiList(list, newCapacity);
-	}
-}
 
 /**
  * Results methods
@@ -25258,7 +25403,7 @@ fiftyoneDegreesResultsIpi* fiftyoneDegreesResultsIpiCreate(
 
 		// Reset the property and values list ready for first use sized for 
 		// a single value to be returned.
-		initIpiList(&results->values, 1, IPI_LIST_DEFAULT_LOAD_FACTOR);
+		WeightedItemListInit(&results->values, 1, FIFTYONE_DEGREES_WEIGHTED_ITEM_LIST_DEFAULT_LOAD_FACTOR);
 		DataReset(&results->propertyItem.data);
 	}
 	else {
@@ -25275,12 +25420,12 @@ static void resultsIpiRelease(ResultsIpi* results) {
 			results->propertyItem.collection,
 			&results->propertyItem);
 	}
-	releaseIpiList(&results->values);
+	WeightedItemListRelease(&results->values);
 }
 
 void fiftyoneDegreesResultsIpiFree(fiftyoneDegreesResultsIpi* results) {
 	resultsIpiRelease(results);
-	freeIpiList(&results->values);
+	WeightedItemListFree(&results->values);
 	DataSetRelease((DataSetBase*)results->b.dataSet);
 	Free(results);
 }
@@ -25502,36 +25647,49 @@ void fiftyoneDegreesResultsIpiFromEvidence(
 	}
 }
 
-static bool addValueWithPercentage(void* state, Item* item) {
+static bool addWeightedValue(void* state, Item* item) {
 	Item valueItem;
-	ProfilePercentage profilePercentageItem;
+	WeightedItem weightedItem;
 	/**
-	 * The results values are a list of collection items and their percentage
-	 * The percentage cannot be passed along with Item as this is the profile
-	 * standard in common-cxx. Thus the percentage is passed along with the state
+	 * The results values are a list of collection items and their weighting.
+	 * The weighting cannot be passed along with Item as this is the profile
+	 * standard in common-cxx. Thus the weighting is passed along with the state.
 	 */
-	const stateWithPercentage* percentageState = (stateWithPercentage*)((stateWithException*)state)->state;
+	const stateWithWeighting* weightingState = (stateWithWeighting*)((stateWithException*)state)->state;
 	ResultsIpi* results =
-		(ResultsIpi*)percentageState->subState;
-	Exception* exception = ((stateWithException*)state)->exception;
+		(ResultsIpi*)weightingState->subState;
+	Exception* const exception = ((stateWithException*)state)->exception;
 	const DataSetIpi* dataSet = (DataSetIpi*)results->b.dataSet;
 	const Value* value = (Value*)item->data.ptr;
-	if (value != NULL && results->values.count < results->values.capacity) {
+	if (value != NULL) {
+		if (results->values.count == results->values.capacity) {
+			WeightedItemListExtend(
+				&results->values,
+				results->values.capacity
+				* FIFTYONE_DEGREES_WEIGHTED_ITEM_LIST_RESIZE_FACTOR,
+				exception);
+			if (EXCEPTION_FAILED) {
+				COLLECTION_RELEASE(dataSet->values, item);
+				return false;
+			}
+		}
 		PropertyValueType const storedValueType = PropertyGetStoredTypeByIndex(
 			dataSet->propertyTypes,
 			value->propertyIndex,
 			exception);
 		if (EXCEPTION_OKAY) {
 			DataReset(&valueItem.data);
+			const uint16_t valueRawWeight = ValueGetWeight(value);
+			const uint16_t valueWeight = valueRawWeight ? valueRawWeight : 0xFFFFU;
 			if (StoredBinaryValueGet(
 				dataSet->strings,
 				value->nameOffset,
 				storedValueType,
 				&valueItem,
 				exception) != NULL && EXCEPTION_OKAY) {
-				profilePercentageItem.item = valueItem;
-				profilePercentageItem.rawWeighting = percentageState->rawWeighting;
-				addIpiListItem(&results->values, &profilePercentageItem);
+				weightedItem.item = valueItem;
+				weightedItem.rawWeighting = ((uint32_t)weightingState->rawWeighting)*(uint32_t)valueWeight;
+				WeightedItemListAdd(&results->values, &weightedItem, exception);
 			}
 		}
 	}
@@ -25550,10 +25708,10 @@ static uint32_t addValuesFromProfile(
 
 	// Set the state for the callbacks.
 	stateWithException state;
-	stateWithPercentage percentageState;
-	percentageState.subState = results;
-	percentageState.rawWeighting = rawWeighting;
-	state.state = &percentageState;
+	stateWithWeighting weightingState;
+	weightingState.subState = results;
+	weightingState.rawWeighting = rawWeighting;
+	state.state = &weightingState;
 	state.exception = exception;
 
 	// Iterate over the values associated with the property adding them
@@ -25565,7 +25723,7 @@ static uint32_t addValuesFromProfile(
 		profile,
 		property,
 		&state,
-		addValueWithPercentage,
+		addWeightedValue,
 		exception);
 	EXCEPTION_THROW;
 
@@ -25727,7 +25885,7 @@ static uint32_t addValuesFromResult(
 	return count;
 }
 
-static ProfilePercentage* getValuesFromResult(
+static WeightedItem* getValuesFromResult(
 	ResultsIpi* results,
 	ResultIpi* result,
 	Property* property,
@@ -25740,13 +25898,13 @@ static ProfilePercentage* getValuesFromResult(
 	return results->values.items;
 }
 
-const fiftyoneDegreesProfilePercentage* fiftyoneDegreesResultsIpiGetValues(
+const fiftyoneDegreesWeightedItem* fiftyoneDegreesResultsIpiGetValues(
 	fiftyoneDegreesResultsIpi* const results,
 	int const requiredPropertyIndex,
 	fiftyoneDegreesException* const exception) {
 	Property* property;
 	DataSetIpi* dataSet;
-	const ProfilePercentage* firstValue = NULL;
+	const WeightedItem* firstValue = NULL;
 
 	// Ensure any previous uses of the results to get values are released.
 	resultsIpiRelease(results);
@@ -25789,7 +25947,7 @@ const fiftyoneDegreesProfilePercentage* fiftyoneDegreesResultsIpiGetValues(
 	if (firstValue == NULL) {
 		// There are no values for the property requested. Reset the values 
 		// list to zero count.
-		releaseIpiList(&results->values);
+		WeightedItemListRelease(&results->values);
 	}
 	return firstValue;
 }
@@ -26011,7 +26169,7 @@ const char* fiftyoneDegreesResultsIpiGetNoValueReasonMessage(
 }
 
 static void pushValues(
-	const ProfilePercentage * const profilePercentage,
+	const WeightedItem * const weightedItem,
 	const uint32_t count,
 	StringBuilder * const builder,
 	const char * const separator,
@@ -26033,7 +26191,7 @@ static void pushValues(
 
 		// Get the string for the value index.
 		const StoredBinaryValue * const binaryValue =
-			(const StoredBinaryValue*)profilePercentage[i].item.data.ptr;
+			(const StoredBinaryValue*)weightedItem[i].item.data.ptr;
 
 		// Add the string to the output buffer recording the number
 		// of characters added.
@@ -26049,7 +26207,7 @@ static void pushValues(
 		StringBuilderAddChar(builder, ':');
 		StringBuilderAddDouble(
 			builder,
-			(float)profilePercentage[i].rawWeighting / 65535.f,
+			(double)weightedItem[i].rawWeighting / (double)FIFTYONE_DEGREES_WEIGHTED_ITEM_MAX_WEIGHT,
 			decimalPlaces);
 	}
 }
@@ -26060,7 +26218,7 @@ static void fiftyoneDegreesResultsIpiGetValuesStringInternal(
 	StringBuilder * const builder,
 	const char* separator,
 	fiftyoneDegreesException* exception) {
-	const ProfilePercentage *profilePercentage;
+	const WeightedItem *weightedItem;
 	Item propertyItem;
 	Property *property;
 	const DataSetIpi *dataSet = (DataSetIpi *)results->b.dataSet;
@@ -26089,13 +26247,13 @@ static void fiftyoneDegreesResultsIpiGetValuesStringInternal(
 				exception);
 		if (property != NULL && EXCEPTION_OKAY) {
 			if (requiredPropertyIndex >= 0) {
-				profilePercentage = fiftyoneDegreesResultsIpiGetValues(
+				weightedItem = fiftyoneDegreesResultsIpiGetValues(
 					results,
 					requiredPropertyIndex,
 					exception);
-				if (profilePercentage != NULL && EXCEPTION_OKAY) {
+				if (weightedItem != NULL && EXCEPTION_OKAY) {
 					pushValues(
-							profilePercentage,
+							weightedItem,
 							results->values.count,
 							builder,
 							separator,
