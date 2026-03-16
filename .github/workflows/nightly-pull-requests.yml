@@ -20,3 +20,5 @@ jobs:
       token: ${{ secrets.ACCESS_TOKEN }}
       IpIntelligence: ${{ secrets.IP_INTELLIGENCE_KEY }}
       IpIntelligenceUrl: ${{ secrets.IPI_DATA_FILE_URL }}
+      DeviceDetection: ${{ secrets.DEVICE_DETECTION_KEY }}
+      DeviceDetectionUrl: ${{ secrets.DEVICE_DETECTION_URL }}

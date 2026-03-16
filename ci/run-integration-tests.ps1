@@ -11,6 +11,7 @@ $env:IPI_KEY = $IpIntelligence
 $env:IPI_DATA_FILE_URL = $IpIntelligenceUrl
 $env:DATA_FILE = "$PWD/assets/51Degrees-EnterpriseIpiV41.ipi"
 $env:EVIDENCE_YAML = "$PWD/assets/ip-intelligence-evidence.yml"
+$env:DD_DATA_FILE = "$PWD/assets/TAC-HashV41.hash"
 
 Push-Location "$PSScriptRoot/.."
 try {
