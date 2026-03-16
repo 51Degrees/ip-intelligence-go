@@ -15,7 +15,7 @@ $env:DD_DATA_FILE = "$PWD/assets/TAC-HashV41.hash"
 
 Push-Location "$PSScriptRoot/.."
 try {
-    go test -v ./examples 2>&1 | go-junit-report -set-exit-code -iocopy -out "$results/results.xml"
+    go test -v ./examples/... 2>&1 | go-junit-report -set-exit-code -iocopy -out "$results/results.xml"
 } finally {
     Pop-Location
 }
