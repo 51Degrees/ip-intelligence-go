@@ -13,6 +13,12 @@ $env:DATA_FILE = "$PWD/assets/51Degrees-EnterpriseIpiV41.ipi"
 $env:EVIDENCE_YAML = "$PWD/assets/ip-intelligence-evidence.yml"
 $env:DD_DATA_FILE = "$PWD/assets/TAC-HashV41.hash"
 
+if ($IsMacOS) {
+    # go-junit-report seems to count the harmless warning about -lm being
+    # provided multiple times as an error
+    $env:CGO_LDFLAGS = '-Wl,-no_warn_duplicate_libraries'
+}
+
 Push-Location "$PSScriptRoot/.."
 try {
     go test -v ./examples/... 2>&1 | go-junit-report -set-exit-code -iocopy -out "$results/results.xml"
