@@ -36,3 +36,7 @@ func TestReloadFromFile(t *testing.T) {
 func TestStronglyTyped(t *testing.T) {
 	test(t, "update_polling_interval")
 }
+
+func TestMixedGettingStartedConsole(t *testing.T) {
+	test(t, "mixed/getting_started_console")
+}
