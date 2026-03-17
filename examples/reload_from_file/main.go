@@ -141,12 +141,21 @@ func executeTest(engine *ipi_onpremise.Engine, wg *sync.WaitGroup, report *commo
 
 	var actual bytes.Buffer
 	for _, property := range common.Properties {
-		value, weight, found := res.GetValueWeightByProperty(property)
-		if !found {
-			continue
+		if property == "Mcc" {
+			// Only Mcc property has weight
+			value, weight, found := res.GetValueWeightByProperty(property)
+			if !found {
+				log.Printf("Not found values for the next property %s for address %s", property, ipAddress)
+			}
+			fmt.Fprintf(&actual, "%s: %+v:%.2f\n", property, value, weight)
+		} else {
+			// All other properties are non-weighted
+			value, found := res.GetValueByProperty(property)
+			if !found {
+				log.Printf("Not found values for the next property %s for address %s", property, ipAddress)
+			}
+			fmt.Fprintf(&actual, "%s: %+v\n", property, value)
 		}
-
-		fmt.Fprintf(&actual, "%s: %+v:%.2f\n", property, value, weight)
 	}
 
 	hash := common.GenerateHash(actual.String())

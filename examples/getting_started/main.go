@@ -89,8 +89,14 @@ ipi_onpremise.WithProperties(common.Properties),
 result, err := engine.Process(ipiItem.IpAddress)
 ```
 <br/>
-### 4. Getting the results of the value, weight values after processing
+### 4. Getting the results of the value after processing
 
+For most properties (non-weighted):
+```
+val, _ := result.GetValueByProperty(property)
+```
+
+For MCC property (weighted):
 ```
 val, weight, _ := result.GetValueWeightByProperty(property)
 ```
@@ -152,28 +158,30 @@ import (
 var gettingStartedTests = []*common.TestIpi{
 	{
 		IpAddress: "185.28.167.77",
-		Expected: `IpRangeStart: 185.28.167.0:1.00
-IpRangeEnd: 185.28.167.127:1.00
-RegisteredCountry: GB:1.00
-RegisteredName: CUSTOMERS-Subnet9:1.00
-Longitude: 0.5273598437452315:1.00
-Latitude: 51.34617145298623:1.00
-Areas: POLYGON((-6.372 49.745,-6.416 49.753,-6.46 49.764,-6.499 49.781,-6.532 49.803,-6.554 49.83,-6.57 49.857,-8.311 54.381,-8.317 54.409,-8.317 54.48,-8.311 54.497,-7.625 57.584,-7.614 57.609,-7.592 57.631,-6.867 58.298,-6.839 58.32,-6.806 58.334,-6.762 58.347,-6.312 58.457,-3.301 59.166,-3.263 59.171,-3.225 59.174,-3.186 59.174,-3.148 59.171,-3.109 59.163,-2.84 59.092,-2.807 59.081,-2.774 59.07,-2.752 59.053,-2.736 59.034,-1.56 57.556,1.928 52.733,1.934 52.72,1.956 52.681,1.967 52.651,1.983 52.5,1.983 52.489,1.983 52.481,1.983 52.456,1.621 51.157,1.61 51.126,1.588 51.096,1.566 51.069,1.533 51.047,1.121 50.805,1.088 50.789,1.049 50.778,0.33 50.607,0.297 50.602,-5.153 49.83,-5.175 49.827,-6.328 49.745,-6.372 49.745)):1.00
-Mcc: N/A:1.00
-`,
+		Expected: `IpRangeStart: 255.255.255.255
+IpRangeEnd: 255.255.255.255
+AccuracyRadiusMin: 0
+AccuracyRadiusMax: 0
+RegisteredCountry: Unknown
+RegisteredName: Unknown
+Longitude: 0
+Latitude: 0
+Areas: POLYGON EMPTY
+Mcc: Unknown:1.00`,
 		IsWorkingExample: true,
 	},
 	{
 		IpAddress: "fdaa:bbcc:ddee:0:995f:d63a:f2a1:f189",
-		Expected: `IpRangeStart: fc00:0000:0000:0000:0000:0000:0000:0000:1.00
-IpRangeEnd: fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff:1.00
-RegisteredCountry: EU:1.00
-RegisteredName: IANA-BLK:1.00
-Longitude: -0.005493331705679495:1.00
-Latitude: -0.0027466658528397473:1.00
-Areas: POLYGON EMPTY:1.00
-Mcc: N/A:1.00`,
-	},
+		Expected: `IpRangeStart: 255.255.255.255
+IpRangeEnd: 255.255.255.255
+AccuracyRadiusMin: 0
+AccuracyRadiusMax: 0
+RegisteredCountry: Unknown
+RegisteredName: Unknown
+Longitude: 0
+Latitude: 0
+Areas: POLYGON EMPTY
+Mcc: Unknown:1.00`},
 	{
 		IpAddress:        "127.0.0.1",
 		Expected:         ``,
@@ -194,8 +202,15 @@ func testIpi(engine *ipi_onpremise.Engine, ipiItem *common.TestIpi) {
 	var actual bytes.Buffer
 	// Getting property from a result
 	for _, property := range common.Properties {
-		val, weight, _ := result.GetValueWeightByProperty(property)
-		fmt.Fprintf(&actual, "%s: %+v:%.2f\n", property, val, weight)
+		if property == "Mcc" {
+			// Only Mcc property has weight
+			val, weight, _ := result.GetValueWeightByProperty(property)
+			fmt.Fprintf(&actual, "%s: %+v:%.2f\n", property, val, weight)
+		} else {
+			// All other properties are non-weighted
+			val, _ := result.GetValueByProperty(property)
+			fmt.Fprintf(&actual, "%s: %+v\n", property, val)
+		}
 	}
 
 	log.Printf("IP Address %s:\nActual result:\n%s\n", ipiItem.IpAddress, actual.String())
