@@ -176,11 +176,21 @@ func buildResponse(clientIP string, results *dd.ResultsHash, values ipi_interop.
 
 	ipiMap := make(map[string]string)
 	for prop := range values {
-		val, weight, found := values.GetValueWeightByProperty(prop)
-		if !found {
-			continue
+		if prop == "Mcc" {
+			// Only Mcc property has weight
+			val, weight, found := values.GetValueWeightByProperty(prop)
+			if !found {
+				continue
+			}
+			ipiMap[prop] = fmt.Sprintf("%v (weight: %.2f)", val, weight)
+		} else {
+			// All other properties are non-weighted
+			val, found := values.GetValueByProperty(prop)
+			if !found {
+				continue
+			}
+			ipiMap[prop] = fmt.Sprintf("%v", val)
 		}
-		ipiMap[prop] = fmt.Sprintf("%v (weight: %.2f)", val, weight)
 	}
 
 	return MixedResponse{
@@ -194,11 +204,12 @@ func main() {
 	ipiDataFile := os.Getenv("DATA_FILE")
 	ddDataFile := os.Getenv("DD_DATA_FILE")
 
-	ddConfig := dd.NewConfigHash(dd.InMemory)
+	ddConfig := dd.NewConfigHash(dd.LowMemory)
 	ddEngine, err := ddOnpremise.New(
 		ddOnpremise.WithConfigHash(ddConfig),
 		ddOnpremise.WithDataFile(ddDataFile),
 		ddOnpremise.WithAutoUpdate(false),
+		ddOnpremise.WithTempDataCopy(false),
 		ddOnpremise.WithProperties(ddResponseProperties),
 	)
 	if err != nil {
@@ -211,6 +222,7 @@ func main() {
 		ipi_onpremise.WithConfigIpi(ipiConfig),
 		ipi_onpremise.WithDataFile(ipiDataFile),
 		ipi_onpremise.WithAutoUpdate(false),
+		ipi_onpremise.WithTempDataCopy(false),
 	)
 	if err != nil {
 		log.Fatalf("Failed to create IP Intelligence engine: %v", err)

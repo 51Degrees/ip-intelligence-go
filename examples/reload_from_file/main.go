@@ -141,12 +141,21 @@ func executeTest(engine *ipi_onpremise.Engine, wg *sync.WaitGroup, report *commo
 
 	var actual bytes.Buffer
 	for _, property := range common.Properties {
-		value, weight, found := res.GetValueWeightByProperty(property)
-		if !found {
-			continue
+		if property == "Mcc" {
+			// Only Mcc property has weight
+			value, weight, found := res.GetValueWeightByProperty(property)
+			if !found {
+				continue
+			}
+			fmt.Fprintf(&actual, "%s: %+v:%.2f\n", property, value, weight)
+		} else {
+			// All other properties are non-weighted
+			value, found := res.GetValueByProperty(property)
+			if !found {
+				continue
+			}
+			fmt.Fprintf(&actual, "%s: %+v\n", property, value)
 		}
-
-		fmt.Fprintf(&actual, "%s: %+v:%.2f\n", property, value, weight)
 	}
 
 	hash := common.GenerateHash(actual.String())
@@ -320,6 +329,7 @@ func main() {
 				ipi_onpremise.WithDataFile(params.DataFile),
 				// Enable automatic updates.
 				ipi_onpremise.WithAutoUpdate(false),
+				ipi_onpremise.WithTempDataCopy(false),
 				// File System Watcher is by default enabled
 				ipi_onpremise.WithFileWatch(true),
 				// Defined list of properties

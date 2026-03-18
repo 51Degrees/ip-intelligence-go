@@ -144,11 +144,21 @@ func printIPIResults(values ipi_interop.Values) {
 	}
 	sort.Strings(keys)
 	for _, prop := range keys {
-		val, weight, found := values.GetValueWeightByProperty(prop)
-		if !found {
-			continue
+		if prop == "Mcc" {
+			// Only Mcc property has weight
+			val, weight, found := values.GetValueWeightByProperty(prop)
+			if !found {
+				continue
+			}
+			fmt.Printf("  %-20s %v (weight: %.2f)\n", prop+":", val, weight)
+		} else {
+			// All other properties are non-weighted
+			val, found := values.GetValueByProperty(prop)
+			if !found {
+				continue
+			}
+			fmt.Printf("  %-20s %v\n", prop+":", val)
 		}
-		fmt.Printf("  %-20s %v (weight: %.2f)\n", prop+":", val, weight)
 	}
 }
 
@@ -206,6 +216,7 @@ func main() {
 		ddOnpremise.WithConfigHash(ddConfig),
 		ddOnpremise.WithDataFile(ddDataFile),
 		ddOnpremise.WithAutoUpdate(false),
+		ddOnpremise.WithTempDataCopy(false),
 		ddOnpremise.WithProperties(ddProperties),
 	)
 	if err != nil {
@@ -218,6 +229,7 @@ func main() {
 		ipi_onpremise.WithConfigIpi(ipiConfig),
 		ipi_onpremise.WithDataFile(ipiDataFile),
 		ipi_onpremise.WithAutoUpdate(false),
+		ipi_onpremise.WithTempDataCopy(false),
 	)
 	if err != nil {
 		log.Fatalf("Failed to create IP Intelligence engine: %v", err)

@@ -34,13 +34,15 @@ go env -w CGO_ENABLED=1
 
 Below is a table that describes the examples:
 
-| Example                                                          | Description                                                                                                                               |
-|------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
-| ipi_onpremise/getting_started/getting_sarted.go                  | An example showing how to initialize the IPI engine, minimum required parameters, calling the engine and printing the result              |
-| ipi_onpremise/offline_processing/offline_processing.go           | Example showing how to get values from the engine in weighted value format; writing the obtained values to a yaml file                    |
-| ipi_onpremise/performance/performance.go                         | A benchmarking example to measure the speed of data processing in single and multi-threaded modes                                         |
-| ipi_onpremise/reload_from_file/reload_from_file.go               | An example that demonstrates how a data file can be reloaded while serving IP Intelligence requests                                       |
-| ipi_onpremise/update_polling_interval/update_polling_interval.go | An example doing periodic polling for the updated data file                                                                               |
+| Example                       | Description                                                                                                               |
+|-------------------------------|---------------------------------------------------------------------------------------------------------------------------|
+| getting_started               | An example showing how to initialize the IPI engine, minimum required parameters, calling the engine and printing the result |
+| offline_processing            | Example showing how to get values from the engine in weighted value format; writing the obtained values to a yaml file    |
+| performance                   | A benchmarking example to measure the speed of data processing in single and multi-threaded modes                         |
+| reload_from_file              | An example that demonstrates how a data file can be reloaded while serving IP Intelligence requests                       |
+| update_polling_interval       | An example doing periodic polling for the updated data file                                                               |
+| mixed/getting_started_console | A command line example featuring both device detection and IP intelligence                                                |
+| mixed/getting_started_web     | A web example featuring both device detection and IP intelligence                                                |
 
 ## Run examples
 

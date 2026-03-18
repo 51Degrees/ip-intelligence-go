@@ -134,10 +134,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"github.com/51Degrees/ip-intelligence-go/v4/examples/common"
-	"github.com/51Degrees/ip-intelligence-go/v4/ipi_interop"
-	"github.com/51Degrees/ip-intelligence-go/v4/ipi_onpremise"
-	"github.com/goccy/go-yaml"
 	"log"
 	"os"
 	"runtime"
@@ -145,6 +141,11 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/51Degrees/ip-intelligence-go/v4/examples/common"
+	"github.com/51Degrees/ip-intelligence-go/v4/ipi_interop"
+	"github.com/51Degrees/ip-intelligence-go/v4/ipi_onpremise"
+	"github.com/goccy/go-yaml"
 )
 
 // reportFile defines the default path and filename for storing performance test results.
@@ -213,7 +214,7 @@ func processEvidenceBatch(engine *ipi_onpremise.Engine, wg *sync.WaitGroup, evid
 
 			for _, property := range []string{"RegisteredName"} {
 				// don't use the property in the current step, only processing data
-				if _, _, found := result.GetValueWeightByProperty(property); !found {
+				if _, found := result.GetValueByProperty(property); !found {
 					log.Printf("Not found values for the next property %s for address %s", property, ipAddress)
 				}
 			}
@@ -275,7 +276,7 @@ func runPerformance(engine *ipi_onpremise.Engine, params *common.ExampleParams, 
 			}
 
 			// Access property to ensure full processing
-			if _, _, found := result.GetValueWeightByProperty("RegisteredName"); !found {
+			if _, found := result.GetValueByProperty("RegisteredName"); !found {
 				log.Printf("RegisteredName not found for IP %s", ip)
 			}
 		}
@@ -314,7 +315,7 @@ func runPerformance(engine *ipi_onpremise.Engine, params *common.ExampleParams, 
 					}
 
 					// Access property to ensure full processing
-					if _, _, found := result.GetValueWeightByProperty("RegisteredName"); !found {
+					if _, found := result.GetValueByProperty("RegisteredName"); !found {
 						log.Printf("Thread %d: RegisteredName not found for IP %s", threadID, ip)
 					}
 				}
@@ -379,6 +380,7 @@ func main() {
 				ipi_onpremise.WithDataFile(params.DataFile),
 				// Enable automatic updates.
 				ipi_onpremise.WithAutoUpdate(false),
+				ipi_onpremise.WithTempDataCopy(false),
 				// Set only 1 parameter for getting data
 				ipi_onpremise.WithProperties([]string{"RegisteredName"}),
 			)

@@ -122,6 +122,10 @@ defer func() {
 ### 6. Get values by property
 
 ```
+// For most properties (non-weighted):
+value, found := result.GetValueByProperty(property)
+
+// For MCC property (weighted):
 value, weight, found := result.GetValueWeightByProperty(property)
 ```
 */
@@ -146,6 +150,8 @@ import (
 type PropertiesData struct {
 	IpRangeStart      any `yaml:"ip-range-start"`
 	IpRangeEnd        any `yaml:"ip-range-end"`
+	AccuracyRadiusMin any `yaml:"accuracy-radius-min"`
+	AccuracyRadiusMax any `yaml:"accuracy-radius-max"`
 	RegisteredCountry any `yaml:"registered-country"`
 	RegisteredName    any `yaml:"registered-name"`
 	Longitude         any `yaml:"longitude"`
@@ -168,7 +174,17 @@ func getIpi(engine *ipi_onpremise.Engine, IpAddress string) (*PropertiesData, ya
 	comments := yaml.CommentMap{}
 
 	for _, property := range common.Properties {
-		value, weight, found := result.GetValueWeightByProperty(property)
+		var value any
+		var weight float64
+		var found bool
+
+		// Only Mcc property has weight
+		if property == "Mcc" {
+			value, weight, found = result.GetValueWeightByProperty(property)
+		} else {
+			value, found = result.GetValueByProperty(property)
+		}
+
 		if !found {
 			continue
 		}
@@ -176,41 +192,34 @@ func getIpi(engine *ipi_onpremise.Engine, IpAddress string) (*PropertiesData, ya
 		switch property {
 		case "IpRangeStart":
 			data.IpRangeStart = value
-			comments["$.ip-range-start"] = []*yaml.Comment{
-				yaml.LineComment(fmt.Sprintf("Weight: %.1f", weight)),
-			}
+			// No weight comment for non-weighted properties
 		case "IpRangeEnd":
 			data.IpRangeEnd = value
-			comments["$.ip-range-end"] = []*yaml.Comment{
-				yaml.LineComment(fmt.Sprintf("Weight: %.1f", weight)),
-			}
+			// No weight comment for non-weighted properties
+		case "AccuracyRadiusMin":
+			data.AccuracyRadiusMin = value
+			// No weight comment for non-weighted properties
+		case "AccuracyRadiusMax":
+			data.AccuracyRadiusMax = value
+			// No weight comment for non-weighted properties
 		case "RegisteredCountry":
 			data.RegisteredCountry = value
-			comments["$.registered-country"] = []*yaml.Comment{
-				yaml.LineComment(fmt.Sprintf("Weight: %.1f", weight)),
-			}
+			// No weight comment for non-weighted properties
 		case "RegisteredName":
 			data.RegisteredName = value
-			comments["$.registered-name"] = []*yaml.Comment{
-				yaml.LineComment(fmt.Sprintf("Weight: %.1f", weight)),
-			}
+			// No weight comment for non-weighted properties
 		case "Longitude":
 			data.Longitude = value
-			comments["$.longitude"] = []*yaml.Comment{
-				yaml.LineComment(fmt.Sprintf("Weight: %.1f", weight)),
-			}
+			// No weight comment for non-weighted properties
 		case "Latitude":
 			data.Latitude = value
-			comments["$.latitude"] = []*yaml.Comment{
-				yaml.LineComment(fmt.Sprintf("Weight: %.1f", weight)),
-			}
+			// No weight comment for non-weighted properties
 		case "Areas":
 			data.Areas = value
-			comments["$.areas"] = []*yaml.Comment{
-				yaml.LineComment(fmt.Sprintf("Weight: %.1f", weight)),
-			}
+			// No weight comment for non-weighted properties
 		case "Mcc":
 			data.Mcc = value
+			// Only Mcc has weight comment
 			comments["$.mcc"] = []*yaml.Comment{
 				yaml.LineComment(fmt.Sprintf("Weight: %.1f", weight)),
 			}
@@ -316,6 +325,7 @@ func main() {
 				ipi_onpremise.WithDataFile(params.DataFile),
 				// Enable automatic updates.
 				ipi_onpremise.WithAutoUpdate(false),
+				ipi_onpremise.WithTempDataCopy(false),
 				// Defined list of properties
 				ipi_onpremise.WithProperties(common.Properties),
 			)
