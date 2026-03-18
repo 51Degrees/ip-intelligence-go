@@ -368,7 +368,7 @@ func main() {
 			log.Printf("Running with %d threads", numThreads)
 
 			//Create config
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
+			config := ipi_interop.NewConfigIpi(ipi_interop.LowMemory)
 			config.SetConcurrency(uint16(numThreads))
 
 			//Create on-premise engine

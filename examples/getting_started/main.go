@@ -218,7 +218,7 @@ func main() {
 	common.RunExample(
 		func(params *common.ExampleParams) error {
 			//Create config
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
+			config := ipi_interop.NewConfigIpi(ipi_interop.LowMemory)
 
 			//Create on-premise engine
 			engine, err := ipi_onpremise.New(

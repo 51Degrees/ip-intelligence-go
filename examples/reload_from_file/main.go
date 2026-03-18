@@ -309,7 +309,7 @@ func main() {
 	common.RunExample(
 		func(params *common.ExampleParams) error {
 			//Create config
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
+			config := ipi_interop.NewConfigIpi(ipi_interop.LowMemory)
 			config.SetConcurrency(uint16(runtime.NumCPU()))
 
 			//Create on-premise engine
