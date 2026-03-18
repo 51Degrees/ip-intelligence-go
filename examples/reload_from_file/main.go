@@ -145,14 +145,14 @@ func executeTest(engine *ipi_onpremise.Engine, wg *sync.WaitGroup, report *commo
 			// Only Mcc property has weight
 			value, weight, found := res.GetValueWeightByProperty(property)
 			if !found {
-				log.Printf("Not found values for the next property %s for address %s", property, ipAddress)
+				continue
 			}
 			fmt.Fprintf(&actual, "%s: %+v:%.2f\n", property, value, weight)
 		} else {
 			// All other properties are non-weighted
 			value, found := res.GetValueByProperty(property)
 			if !found {
-				log.Printf("Not found values for the next property %s for address %s", property, ipAddress)
+				continue
 			}
 			fmt.Fprintf(&actual, "%s: %+v\n", property, value)
 		}

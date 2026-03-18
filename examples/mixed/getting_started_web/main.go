@@ -176,11 +176,21 @@ func buildResponse(clientIP string, results *dd.ResultsHash, values ipi_interop.
 
 	ipiMap := make(map[string]string)
 	for prop := range values {
-		val, weight, found := values.GetValueWeightByProperty(prop)
-		if !found {
-			continue
+		if prop == "Mcc" {
+			// Only Mcc property has weight
+			val, weight, found := values.GetValueWeightByProperty(prop)
+			if !found {
+				continue
+			}
+			ipiMap[prop] = fmt.Sprintf("%v (weight: %.2f)", val, weight)
+		} else {
+			// All other properties are non-weighted
+			val, found := values.GetValueByProperty(prop)
+			if !found {
+				continue
+			}
+			ipiMap[prop] = fmt.Sprintf("%v", val)
 		}
-		ipiMap[prop] = fmt.Sprintf("%v (weight: %.2f)", val, weight)
 	}
 
 	return MixedResponse{

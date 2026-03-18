@@ -124,15 +124,9 @@ defer func() {
 ```
 // For most properties (non-weighted):
 value, found := result.GetValueByProperty(property)
-if !found {
-	log.Printf("Not found values for the next property %s for address %s", property, IpAddress)
-}
 
 // For MCC property (weighted):
 value, weight, found := result.GetValueWeightByProperty(property)
-if !found {
-	log.Printf("Not found values for the next property %s for address %s", property, IpAddress)
-}
 ```
 */
 

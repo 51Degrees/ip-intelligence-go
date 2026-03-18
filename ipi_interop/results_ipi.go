@@ -171,12 +171,13 @@ func (r *ResultsIpi) GetWeightedValuesByIndexes(indexes []int, propertyNameResol
 		cIndexesCount,
 		nil, exception.CPtr,
 	)
-	// Release the collection
-	defer C.fiftyoneDegreesWeightedValuesCollectionRelease(&collection)
 
 	if !exception.IsOkay() {
 		return nil, fmt.Errorf(C.GoString(C.ExceptionGetMessage(exception.CPtr)))
 	}
+
+	// Release the collection
+	defer C.fiftyoneDegreesWeightedValuesCollectionRelease(&collection)
 
 	values := make(Values, collection.itemsCount)
 
