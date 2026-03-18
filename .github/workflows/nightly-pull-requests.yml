@@ -21,4 +21,4 @@ jobs:
       IpIntelligence: ${{ secrets.IP_INTELLIGENCE_KEY }}
       IpIntelligenceUrl: ${{ secrets.IPI_DATA_FILE_URL }}
       DeviceDetection: ${{ secrets.DEVICE_DETECTION_KEY }}
-      DeviceDetectionUrl: ${{ secrets.IPI_DATA_FILE_SAMPLE_URL }} # TODO: Do not merge PR untill you see this line IPI_DATA_FILE_URL
+      DeviceDetectionUrl: ${{ secrets.DEVICE_DETECTION_URL }}

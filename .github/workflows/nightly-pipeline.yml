@@ -7,7 +7,7 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: "0 2 * * *"
+    - cron: '0 2 * * *'
 
 jobs:
   PackageUpdate:
@@ -34,7 +34,7 @@ jobs:
       IpIntelligence: ${{ secrets.IP_INTELLIGENCE_KEY }}
       IpIntelligenceUrl: ${{ secrets.IPI_DATA_FILE_URL }}
       DeviceDetection: ${{ secrets.DEVICE_DETECTION_KEY }}
-      DeviceDetectionUrl: ${{ secrets.IPI_DATA_FILE_SAMPLE_URL }} # TODO: Do not merge PR untill you see this line IPI_DATA_FILE_URL
+      DeviceDetectionUrl: ${{ secrets.DEVICE_DETECTION_URL }}
 
   Publish:
     if: ${{ !cancelled() }}
@@ -51,4 +51,4 @@ jobs:
       IpIntelligence: ${{ secrets.IP_INTELLIGENCE_KEY }}
       IpIntelligenceUrl: ${{ secrets.IPI_DATA_FILE_URL }}
       DeviceDetection: ${{ secrets.DEVICE_DETECTION_KEY }}
-      DeviceDetectionUrl: ${{ secrets.IPI_DATA_FILE_SAMPLE_URL }} # TODO: Do not merge PR untill you see this line IPI_DATA_FILE_URL
+      DeviceDetectionUrl: ${{ secrets.DEVICE_DETECTION_URL }}
