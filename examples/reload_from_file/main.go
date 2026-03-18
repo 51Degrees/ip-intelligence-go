@@ -329,6 +329,7 @@ func main() {
 				ipi_onpremise.WithDataFile(params.DataFile),
 				// Enable automatic updates.
 				ipi_onpremise.WithAutoUpdate(false),
+				ipi_onpremise.WithTempDataCopy(false),
 				// File System Watcher is by default enabled
 				ipi_onpremise.WithFileWatch(true),
 				// Defined list of properties

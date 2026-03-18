@@ -325,6 +325,7 @@ func main() {
 				ipi_onpremise.WithDataFile(params.DataFile),
 				// Enable automatic updates.
 				ipi_onpremise.WithAutoUpdate(false),
+				ipi_onpremise.WithTempDataCopy(false),
 				// Defined list of properties
 				ipi_onpremise.WithProperties(common.Properties),
 			)

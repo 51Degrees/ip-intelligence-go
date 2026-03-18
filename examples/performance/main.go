@@ -134,10 +134,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"github.com/51Degrees/ip-intelligence-go/v4/examples/common"
-	"github.com/51Degrees/ip-intelligence-go/v4/ipi_interop"
-	"github.com/51Degrees/ip-intelligence-go/v4/ipi_onpremise"
-	"github.com/goccy/go-yaml"
 	"log"
 	"os"
 	"runtime"
@@ -145,6 +141,11 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/51Degrees/ip-intelligence-go/v4/examples/common"
+	"github.com/51Degrees/ip-intelligence-go/v4/ipi_interop"
+	"github.com/51Degrees/ip-intelligence-go/v4/ipi_onpremise"
+	"github.com/goccy/go-yaml"
 )
 
 // reportFile defines the default path and filename for storing performance test results.
@@ -379,6 +380,7 @@ func main() {
 				ipi_onpremise.WithDataFile(params.DataFile),
 				// Enable automatic updates.
 				ipi_onpremise.WithAutoUpdate(false),
+				ipi_onpremise.WithTempDataCopy(false),
 				// Set only 1 parameter for getting data
 				ipi_onpremise.WithProperties([]string{"RegisteredName"}),
 			)
