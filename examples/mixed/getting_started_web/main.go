@@ -204,11 +204,12 @@ func main() {
 	ipiDataFile := os.Getenv("DATA_FILE")
 	ddDataFile := os.Getenv("DD_DATA_FILE")
 
-	ddConfig := dd.NewConfigHash(dd.InMemory)
+	ddConfig := dd.NewConfigHash(dd.LowMemory)
 	ddEngine, err := ddOnpremise.New(
 		ddOnpremise.WithConfigHash(ddConfig),
 		ddOnpremise.WithDataFile(ddDataFile),
 		ddOnpremise.WithAutoUpdate(false),
+		ddOnpremise.WithTempDataCopy(false),
 		ddOnpremise.WithProperties(ddResponseProperties),
 	)
 	if err != nil {
@@ -221,6 +222,7 @@ func main() {
 		ipi_onpremise.WithConfigIpi(ipiConfig),
 		ipi_onpremise.WithDataFile(ipiDataFile),
 		ipi_onpremise.WithAutoUpdate(false),
+		ipi_onpremise.WithTempDataCopy(false),
 	)
 	if err != nil {
 		log.Fatalf("Failed to create IP Intelligence engine: %v", err)
