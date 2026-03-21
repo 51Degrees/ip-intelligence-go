@@ -89,8 +89,9 @@ type mixedHandler struct {
 // ServeHTTP extracts evidence from the request, queries both engines concurrently,
 // and writes a JSON response.
 func (h *mixedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	evidence := extractDDEvidence(r)
-	clientIP := extractClientIP(r)
+	queryParams := extractQueryParams(r)
+	evidence := extractEvidence(r, queryParams)
+	clientIP := extractClientIP(r, queryParams)
 
 	var (
 		ddResults     *dd.ResultsHash
@@ -126,9 +127,23 @@ func (h *mixedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// extractDDEvidence converts all HTTP request headers into a DD evidence slice.
-func extractDDEvidence(r *http.Request) []ddOnpremise.Evidence {
-	evidence := make([]ddOnpremise.Evidence, 0, len(r.Header))
+// extractQueryParams returns URL query parameters as a simple map (first value wins).
+func extractQueryParams(r *http.Request) map[string]string {
+	q := r.URL.Query()
+	params := make(map[string]string, len(q))
+	for key, values := range q {
+		if len(values) > 0 {
+			params[key] = values[0]
+		}
+	}
+	return params
+}
+
+// extractEvidence converts HTTP request headers and URL query parameters
+// into a DD evidence slice. Query parameters are included so that both engines
+// can recognise keys such as "client-ip" and use them for detection.
+func extractEvidence(r *http.Request, queryParams map[string]string) []ddOnpremise.Evidence {
+	evidence := make([]ddOnpremise.Evidence, 0, len(r.Header)+len(queryParams))
 	for key, values := range r.Header {
 		if len(values) > 0 {
 			evidence = append(evidence, ddOnpremise.Evidence{
@@ -138,12 +153,23 @@ func extractDDEvidence(r *http.Request) []ddOnpremise.Evidence {
 			})
 		}
 	}
+	for key, value := range queryParams {
+		evidence = append(evidence, ddOnpremise.Evidence{
+			Prefix: dd.HttpEvidenceQuery,
+			Key:    key,
+			Value:  value,
+		})
+	}
 	return evidence
 }
 
 // extractClientIP determines the client IP from the request, consulting
-// X-Forwarded-For and X-Real-Ip headers before falling back to RemoteAddr.
-func extractClientIP(r *http.Request) string {
+// query parameters, X-Forwarded-For and X-Real-Ip headers before falling
+// back to RemoteAddr.
+func extractClientIP(r *http.Request, queryParams map[string]string) string {
+	if clientIP, ok := queryParams["client-ip"]; ok && clientIP != "" {
+		return strings.TrimSpace(clientIP)
+	}
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		return strings.TrimSpace(strings.SplitN(xff, ",", 2)[0])
 	}
