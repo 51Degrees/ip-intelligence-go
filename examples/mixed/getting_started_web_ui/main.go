@@ -61,15 +61,52 @@ import (
 	"github.com/51Degrees/ip-intelligence-go/v4/ipi_onpremise"
 )
 
-// ddResponseProperties lists device detection properties included in the response.
-var ddResponseProperties = []string{
-	"HardwareName",
-	"HardwareModel",
-	"PlatformName",
-	"PlatformVersion",
-	"BrowserName",
-	"BrowserVersion",
+// propertyDef describes a single property row in a results table.
+type propertyDef struct {
+	label    string // display label
+	name     string // engine property name
+	weighted bool   // true for properties that carry a weight (e.g. Mcc)
 }
+
+// ddDisplayProperties defines the DD properties shown in the results table.
+var ddDisplayProperties = []propertyDef{
+	{label: "Hardware Name", name: "HardwareName"},
+	{label: "Hardware Model", name: "HardwareModel"},
+	{label: "Platform Name", name: "PlatformName"},
+	{label: "Platform Version", name: "PlatformVersion"},
+	{label: "Browser Name", name: "BrowserName"},
+	{label: "Browser Version", name: "BrowserVersion"},
+}
+
+// ipiDisplayProperties defines the IPI properties shown in the results table.
+var ipiDisplayProperties = []propertyDef{
+	{label: "Registered Name", name: "RegisteredName"},
+	{label: "Registered Owner", name: "RegisteredOwner"},
+	{label: "Registered Country", name: "RegisteredCountry"},
+	{label: "IP Range Start", name: "IpRangeStart"},
+	{label: "IP Range End", name: "IpRangeEnd"},
+	{label: "Country", name: "Country"},
+	{label: "Country Code", name: "CountryCode"},
+	{label: "Country Code 3", name: "CountryCode3"},
+	{label: "Region", name: "Region"},
+	{label: "State", name: "State"},
+	{label: "Town", name: "Town"},
+	{label: "Latitude", name: "Latitude"},
+	{label: "Longitude", name: "Longitude"},
+	{label: "Areas", name: "Areas"},
+	{label: "Accuracy Radius", name: "AccuracyRadiusMin"},
+	{label: "Time Zone Offset", name: "TimeZoneOffset"},
+	{label: "MCC", name: "Mcc", weighted: true},
+}
+
+// ddResponseProperties lists DD property names passed to the engine (derived from ddDisplayProperties).
+var ddResponseProperties = func() []string {
+	names := make([]string, len(ddDisplayProperties))
+	for i, p := range ddDisplayProperties {
+		names[i] = p.name
+	}
+	return names
+}()
 
 // mixedHandler holds references to both engines and implements http.Handler.
 type mixedHandler struct {
@@ -224,6 +261,18 @@ func escapeJS(s string) string {
 	return r.Replace(s)
 }
 
+// buildTableRows generates HTML table rows from a property list using the provided getter.
+func buildTableRows(props []propertyDef, getter func(propertyDef) string) string {
+	colors := [2]string{"lightyellow", "lightgreen"}
+	var sb strings.Builder
+	for i, p := range props {
+		value := escapeHTML(getter(p))
+		fmt.Fprintf(&sb, "                <tr class=\"%s\"><td><b>%s</b></td><td>%s</td></tr>\n",
+			colors[i%2], escapeHTML(p.label), value)
+	}
+	return sb.String()
+}
+
 // buildEvidenceRows builds HTML table rows for the evidence section.
 func buildEvidenceRows(r *http.Request) string {
 	var sb strings.Builder
@@ -257,33 +306,19 @@ func buildEvidenceRows(r *http.Request) string {
 
 // renderHTML builds the full HTML page from both engines' results.
 func renderHTML(clientIP string, ddResults *dd.ResultsHash, ipiValues ipi_interop.Values, r *http.Request) string {
-	// Device Detection values
-	hardwareName := ddProp(ddResults, "HardwareName")
-	hardwareModel := ddProp(ddResults, "HardwareModel")
-	platformName := ddProp(ddResults, "PlatformName")
-	platformVersion := ddProp(ddResults, "PlatformVersion")
-	browserName := ddProp(ddResults, "BrowserName")
-	browserVersion := ddProp(ddResults, "BrowserVersion")
+	ddRows := buildTableRows(ddDisplayProperties, func(p propertyDef) string {
+		return ddProp(ddResults, p.name)
+	})
+	ipiRows := buildTableRows(ipiDisplayProperties, func(p propertyDef) string {
+		if p.weighted {
+			return ipiPropWeighted(ipiValues, p.name)
+		}
+		return ipiProp(ipiValues, p.name)
+	})
 
-	// IP Intelligence values
-	registeredName := ipiProp(ipiValues, "RegisteredName")
-	registeredOwner := ipiProp(ipiValues, "RegisteredOwner")
-	registeredCountry := ipiProp(ipiValues, "RegisteredCountry")
-	ipRangeStart := ipiProp(ipiValues, "IpRangeStart")
-	ipRangeEnd := ipiProp(ipiValues, "IpRangeEnd")
-	country := ipiProp(ipiValues, "Country")
-	countryCode := ipiProp(ipiValues, "CountryCode")
-	countryCode3 := ipiProp(ipiValues, "CountryCode3")
-	region := ipiProp(ipiValues, "Region")
-	state := ipiProp(ipiValues, "State")
-	town := ipiProp(ipiValues, "Town")
 	latitude := ipiProp(ipiValues, "Latitude")
 	longitude := ipiProp(ipiValues, "Longitude")
 	areas := ipiProp(ipiValues, "Areas")
-	accuracyRadius := ipiProp(ipiValues, "AccuracyRadiusMin")
-	timeZoneOffset := ipiProp(ipiValues, "TimeZoneOffset")
-	mcc := ipiPropWeighted(ipiValues, "Mcc")
-
 	evidenceRows := buildEvidenceRows(r)
 
 	return fmt.Sprintf(`<!DOCTYPE html>
@@ -336,37 +371,14 @@ func renderHTML(clientIP string, ddResults *dd.ResultsHash, ipiValues ipi_intero
             <h3>Device Detection Results</h3>
             <table>
                 <tr><th>Property</th><th>Value</th></tr>
-                <tr class="lightyellow"><td><b>Hardware Name</b></td><td>%s</td></tr>
-                <tr class="lightgreen"><td><b>Hardware Model</b></td><td>%s</td></tr>
-                <tr class="lightyellow"><td><b>Platform Name</b></td><td>%s</td></tr>
-                <tr class="lightgreen"><td><b>Platform Version</b></td><td>%s</td></tr>
-                <tr class="lightyellow"><td><b>Browser Name</b></td><td>%s</td></tr>
-                <tr class="lightgreen"><td><b>Browser Version</b></td><td>%s</td></tr>
-            </table>
+%s            </table>
         </div>
 
         <div>
             <h3>IP Intelligence Results</h3>
             <table>
                 <tr><th>Property</th><th>Value</th></tr>
-                <tr class="lightyellow"><td><b>Registered Name</b></td><td>%s</td></tr>
-                <tr class="lightgreen"><td><b>Registered Owner</b></td><td>%s</td></tr>
-                <tr class="lightyellow"><td><b>Registered Country</b></td><td>%s</td></tr>
-                <tr class="lightgreen"><td><b>IP Range Start</b></td><td>%s</td></tr>
-                <tr class="lightyellow"><td><b>IP Range End</b></td><td>%s</td></tr>
-                <tr class="lightgreen"><td><b>Country</b></td><td>%s</td></tr>
-                <tr class="lightyellow"><td><b>Country Code</b></td><td>%s</td></tr>
-                <tr class="lightgreen"><td><b>Country Code 3</b></td><td>%s</td></tr>
-                <tr class="lightyellow"><td><b>Region</b></td><td>%s</td></tr>
-                <tr class="lightgreen"><td><b>State</b></td><td>%s</td></tr>
-                <tr class="lightyellow"><td><b>Town</b></td><td>%s</td></tr>
-                <tr class="lightgreen"><td><b>Latitude</b></td><td>%s</td></tr>
-                <tr class="lightyellow"><td><b>Longitude</b></td><td>%s</td></tr>
-                <tr class="lightgreen"><td><b>Areas</b></td><td>%s</td></tr>
-                <tr class="lightyellow"><td><b>Accuracy Radius</b></td><td>%s</td></tr>
-                <tr class="lightgreen"><td><b>Time Zone Offset</b></td><td>%s</td></tr>
-                <tr class="lightyellow"><td><b>MCC</b></td><td>%s</td></tr>
-            </table>
+%s            </table>
         </div>
     </div>
 
@@ -455,34 +467,9 @@ func renderHTML(clientIP string, ddResults *dd.ResultsHash, ipiValues ipi_intero
     </script>
 </body>
 </html>`,
-		// Form input
 		escapeHTML(clientIP),
-		// Device Detection
-		escapeHTML(hardwareName),
-		escapeHTML(hardwareModel),
-		escapeHTML(platformName),
-		escapeHTML(platformVersion),
-		escapeHTML(browserName),
-		escapeHTML(browserVersion),
-		// IP Intelligence
-		escapeHTML(registeredName),
-		escapeHTML(registeredOwner),
-		escapeHTML(registeredCountry),
-		escapeHTML(ipRangeStart),
-		escapeHTML(ipRangeEnd),
-		escapeHTML(country),
-		escapeHTML(countryCode),
-		escapeHTML(countryCode3),
-		escapeHTML(region),
-		escapeHTML(state),
-		escapeHTML(town),
-		escapeHTML(latitude),
-		escapeHTML(longitude),
-		escapeHTML(areas),
-		escapeHTML(accuracyRadius),
-		escapeHTML(timeZoneOffset),
-		escapeHTML(mcc),
-		// Evidence rows
+		ddRows,
+		ipiRows,
 		evidenceRows,
 		// JS values for map
 		escapeJS(areas),

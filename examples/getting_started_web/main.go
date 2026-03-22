@@ -53,6 +53,34 @@ import (
 	"github.com/51Degrees/ip-intelligence-go/v4/ipi_onpremise"
 )
 
+// propertyDef describes a single property row in the results table.
+type propertyDef struct {
+	label    string // display label in the HTML table
+	name     string // engine property name
+	weighted bool   // true for properties that carry a weight (e.g. Mcc)
+}
+
+// displayProperties defines the properties shown in the results table, in order.
+var displayProperties = []propertyDef{
+	{label: "Registered Name", name: "RegisteredName"},
+	{label: "Registered Owner", name: "RegisteredOwner"},
+	{label: "Registered Country", name: "RegisteredCountry"},
+	{label: "IP Range Start", name: "IpRangeStart"},
+	{label: "IP Range End", name: "IpRangeEnd"},
+	{label: "Country", name: "Country"},
+	{label: "Country Code", name: "CountryCode"},
+	{label: "Country Code 3", name: "CountryCode3"},
+	{label: "Region", name: "Region"},
+	{label: "State", name: "State"},
+	{label: "Town", name: "Town"},
+	{label: "Latitude", name: "Latitude"},
+	{label: "Longitude", name: "Longitude"},
+	{label: "Areas", name: "Areas"},
+	{label: "Accuracy Radius", name: "AccuracyRadiusMin"},
+	{label: "Time Zone Offset", name: "TimeZoneOffset"},
+	{label: "MCC", name: "Mcc", weighted: true},
+}
+
 // ipiHandler holds a reference to the IPI engine and implements http.Handler.
 type ipiHandler struct {
 	engine *ipi_onpremise.Engine
@@ -145,27 +173,31 @@ func escapeJS(s string) string {
 	return r.Replace(s)
 }
 
+// getPropertyValue retrieves a property value from the engine results as a string.
+func getPropertyValue(values ipi_interop.Values, p propertyDef) string {
+	if p.weighted {
+		return propWeighted(values, p.name)
+	}
+	return prop(values, p.name)
+}
+
+// buildTableRows generates HTML table rows for all display properties.
+func buildTableRows(values ipi_interop.Values) string {
+	colors := [2]string{"lightyellow", "lightgreen"}
+	var sb strings.Builder
+	for i, p := range displayProperties {
+		value := escapeHTML(getPropertyValue(values, p))
+		fmt.Fprintf(&sb, "        <tr class=\"%s\"><td><b>%s</b></td><td>%s</td></tr>\n",
+			colors[i%2], escapeHTML(p.label), value)
+	}
+	return sb.String()
+}
+
 // renderHTML builds the full HTML page from the IPI results.
 func renderHTML(clientIP string, values ipi_interop.Values) string {
-	get := func(name string) string { return prop(values, name) }
-
-	registeredName := get("RegisteredName")
-	registeredOwner := get("RegisteredOwner")
-	registeredCountry := get("RegisteredCountry")
-	ipRangeStart := get("IpRangeStart")
-	ipRangeEnd := get("IpRangeEnd")
-	country := get("Country")
-	countryCode := get("CountryCode")
-	countryCode3 := get("CountryCode3")
-	region := get("Region")
-	state := get("State")
-	town := get("Town")
-	latitude := get("Latitude")
-	longitude := get("Longitude")
-	areas := get("Areas")
-	accuracyRadius := get("AccuracyRadiusMin")
-	timeZoneOffset := get("TimeZoneOffset")
-	mcc := propWeighted(values, "Mcc")
+	latitude := prop(values, "Latitude")
+	longitude := prop(values, "Longitude")
+	areas := prop(values, "Areas")
 
 	return fmt.Sprintf(`<!DOCTYPE html>
 <html>
@@ -199,24 +231,7 @@ func renderHTML(clientIP string, values ipi_interop.Values) string {
     <h3>IP Intelligence Results</h3>
     <table>
         <tr><th>Property</th><th>Value</th></tr>
-        <tr class="lightyellow"><td><b>Registered Name</b></td><td>%s</td></tr>
-        <tr class="lightgreen"><td><b>Registered Owner</b></td><td>%s</td></tr>
-        <tr class="lightyellow"><td><b>Registered Country</b></td><td>%s</td></tr>
-        <tr class="lightgreen"><td><b>IP Range Start</b></td><td>%s</td></tr>
-        <tr class="lightyellow"><td><b>IP Range End</b></td><td>%s</td></tr>
-        <tr class="lightgreen"><td><b>Country</b></td><td>%s</td></tr>
-        <tr class="lightyellow"><td><b>Country Code</b></td><td>%s</td></tr>
-        <tr class="lightgreen"><td><b>Country Code 3</b></td><td>%s</td></tr>
-        <tr class="lightyellow"><td><b>Region</b></td><td>%s</td></tr>
-        <tr class="lightgreen"><td><b>State</b></td><td>%s</td></tr>
-        <tr class="lightyellow"><td><b>Town</b></td><td>%s</td></tr>
-        <tr class="lightgreen"><td><b>Latitude</b></td><td>%s</td></tr>
-        <tr class="lightyellow"><td><b>Longitude</b></td><td>%s</td></tr>
-        <tr class="lightgreen"><td><b>Areas</b></td><td>%s</td></tr>
-        <tr class="lightyellow"><td><b>Accuracy Radius</b></td><td>%s</td></tr>
-        <tr class="lightgreen"><td><b>Time Zone Offset</b></td><td>%s</td></tr>
-        <tr class="lightyellow"><td><b>MCC</b></td><td>%s</td></tr>
-    </table>
+%s    </table>
 
     <br/>
     <div id="map-section" style="display: none;">
@@ -287,23 +302,7 @@ func renderHTML(clientIP string, values ipi_interop.Values) string {
 </body>
 </html>`,
 		escapeHTML(clientIP),
-		escapeHTML(registeredName),
-		escapeHTML(registeredOwner),
-		escapeHTML(registeredCountry),
-		escapeHTML(ipRangeStart),
-		escapeHTML(ipRangeEnd),
-		escapeHTML(country),
-		escapeHTML(countryCode),
-		escapeHTML(countryCode3),
-		escapeHTML(region),
-		escapeHTML(state),
-		escapeHTML(town),
-		escapeHTML(latitude),
-		escapeHTML(longitude),
-		escapeHTML(areas),
-		escapeHTML(accuracyRadius),
-		escapeHTML(timeZoneOffset),
-		escapeHTML(mcc),
+		buildTableRows(values),
 		// JS values
 		escapeJS(areas),
 		escapeJS(latitude),
