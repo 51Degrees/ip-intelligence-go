@@ -76,6 +76,8 @@ var ddDisplayProperties = []propertyDef{
 	{label: "Platform Version", name: "PlatformVersion"},
 	{label: "Browser Name", name: "BrowserName"},
 	{label: "Browser Version", name: "BrowserVersion"},
+	{label: "Price Band", name: "PriceBand"},
+	{label: "Browser Age", name: "BrowserReleaseAge"},
 }
 
 // ipiDisplayProperties defines the IPI properties shown in the results table.
@@ -97,6 +99,12 @@ var ipiDisplayProperties = []propertyDef{
 	{label: "Accuracy Radius", name: "AccuracyRadiusMin"},
 	{label: "Time Zone Offset", name: "TimeZoneOffset"},
 	{label: "MCC", name: "Mcc", weighted: true},
+	{label: "HardwareDiversity", name: "HardwareDiversity", weighted: false},
+	{label: "PlatformDiversity", name: "PlatformDiversity", weighted: false},
+	{label: "BrowserDiversity", name: "BrowserDiversity", weighted: false},
+	{label: "HumanProbability", name: "HumanProbability", weighted: false},
+	{label: "LocationConfidence", name: "LocationConfidence", weighted: false},
+	{label: "ConnectionType", name: "ConnectionType", weighted: false},
 }
 
 // ddResponseProperties lists DD property names passed to the engine (derived from ddDisplayProperties).

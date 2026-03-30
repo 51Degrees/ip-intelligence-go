@@ -98,6 +98,7 @@ var ddProperties = []string{
 	"PlatformVersion",
 	"BrowserName",
 	"BrowserVersion",
+	"PriceBand",
 }
 
 // buildDDEvidence constructs the DD evidence slice for a test case,

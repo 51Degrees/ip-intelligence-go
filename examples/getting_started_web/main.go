@@ -79,6 +79,12 @@ var displayProperties = []propertyDef{
 	{label: "Accuracy Radius", name: "AccuracyRadiusMin"},
 	{label: "Time Zone Offset", name: "TimeZoneOffset"},
 	{label: "MCC", name: "Mcc", weighted: true},
+	{label: "HardwareDiversity", name: "HardwareDiversity", weighted: false},
+	{label: "PlatformDiversity", name: "PlatformDiversity", weighted: false},
+	{label: "BrowserDiversity", name: "BrowserDiversity", weighted: false},
+	{label: "HumanProbability", name: "HumanProbability", weighted: false},
+	{label: "LocationConfidence", name: "LocationConfidence", weighted: false},
+	{label: "ConnectionType", name: "ConnectionType", weighted: false},
 }
 
 // ipiHandler holds a reference to the IPI engine and implements http.Handler.

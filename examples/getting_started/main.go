@@ -233,7 +233,7 @@ func main() {
 	common.RunExample(
 		func(params *common.ExampleParams) error {
 			//Create config
-			config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
+			config := ipi_interop.NewConfigIpi(ipi_interop.Balanced)
 
 			//Create on-premise engine
 			engine, err := ipi_onpremise.New(
@@ -242,7 +242,8 @@ func main() {
 				// Path to your data file
 				ipi_onpremise.WithDataFile(params.DataFile),
 				// Enable automatic updates.
-				ipi_onpremise.WithAutoUpdate(false),
+				ipi_onpremise.WithAutoUpdate(true),
+
 				ipi_onpremise.WithTempDataCopy(false),
 				// Defined list of properties
 				ipi_onpremise.WithProperties(common.Properties),
