@@ -33,7 +33,7 @@ func TestReloadFromFile(t *testing.T) {
 	test(t, "reload_from_file")
 }
 
-func TestStronglyTyped(t *testing.T) {
+func TestUpdatePollingInterval(t *testing.T) {
 	test(t, "update_polling_interval")
 }
 
