@@ -237,7 +237,7 @@ func main() {
 				ipi_onpremise.WithDataUpdateUrl(params.DataFileUrl),
 
 				// By default a temp copy should be created, unless you are using InMemory performance profile
-				// ipi_onpremise.WithTempDataCopy(false),
+				ipi_onpremise.WithTempDataCopy(false),
 
 				// File System Watcher is by default enabled
 				// ipi_onpremise.WithFileWatch(false),
