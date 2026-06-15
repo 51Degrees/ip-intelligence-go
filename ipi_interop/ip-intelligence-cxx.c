@@ -9340,24 +9340,27 @@ static CacheNode *cacheGetNextFree(CacheShard *shard) {
  * free nodes
  */
 static CacheNode* cacheLoad(
-	CacheShard *shard, 
-	const void *key, 
+	CacheShard *shard,
+	const void *key,
+	int64_t keyHash,
 	Exception *exception) {
 	CacheNode *node = cacheGetNextFree(shard);
 	if (node != NULL) {
 		node->activeCount = 1;
 
-		// Load the data into then node setting the valid flag to indicate if 
+		// Load the data into then node setting the valid flag to indicate if
 		// the item was loaded correctly.
 		shard->cache->load(
-			shard->cache->loaderState, 
-			&node->data, 
-			key, 
+			shard->cache->loaderState,
+			&node->data,
+			key,
 			exception);
 
-		// If not exception then add the node to the head of the tree.
+		// If not exception then add the node to the head of the tree. The key
+		// hash was already computed by the caller, so reuse it rather than
+		// invoking the (potentially expensive) hash function a second time.
 		if (EXCEPTION_OKAY) {
-			node->tree.key = shard->cache->hash(key);
+			node->tree.key = keyHash;
 			TreeInsert(&node->tree);
 		}
 	}
@@ -9476,8 +9479,8 @@ fiftyoneDegreesCacheNode* fiftyoneDegreesCacheGet(
 	}
 	else {
 
-		// The key does not exist so load it.
-		node = cacheLoad(shard, key, exception);
+		// The key does not exist so load it, reusing the hash already computed.
+		node = cacheLoad(shard, key, keyHash, exception);
 		cache->misses++;
 	}
 
@@ -17688,7 +17691,7 @@ static StatusMessage messages[] = {
 		"pool. Another way to avoid this is by using an in-memory "
 		"configuration, which avoids using file handles completely, and "
 		"removes any limit on concurrency. For info see "
-		"https://51degrees.com/documentation/4.5/_device_detection__features__concurrent_processing.html"},
+		"https://51degrees.com/documentation/4.5/_device_detection__features__concurrent_processing.html?utm_source=code&utm_medium=comment&utm_campaign=common-cxx&utm_content=status.c&utm_term=insufficient_handles"},
 	{ COLLECTION_INDEX_OUT_OF_RANGE,
 		"Index used to retrieve an item from a collection was out of range." },
 	{ COLLECTION_OFFSET_OUT_OF_RANGE,
@@ -18031,26 +18034,41 @@ const fiftyoneDegreesString* fiftyoneDegreesStringGet(
 		exception);
 }
 
+/**
+ * Lower cases a single ASCII byte branchlessly. 'A'-'Z' are mapped to 'a'-'z';
+ * every other byte value is returned unchanged. Unlike tolower() this is
+ * locale independent, performs no table lookup, and is well defined for bytes
+ * >= 0x80 (a negative signed char passed to tolower() is undefined behaviour).
+ * The (unsigned)(c - 'A') < 26u test is true only for the 26 upper case bytes.
+ */
+static int toLowerAscii(unsigned char c) {
+	return (int)c + (((unsigned)(c - 'A') < 26u) ? 32 : 0);
+}
+
 int fiftyoneDegreesStringCompare(const char *a, const char *b) {
-	for (; *a != '\0' && *b != '\0'; a++, b++) {
-		int d = tolower(*a) - tolower(*b);
+	const unsigned char *ua = (const unsigned char*)a;
+	const unsigned char *ub = (const unsigned char*)b;
+	for (; *ua != '\0' && *ub != '\0'; ua++, ub++) {
+		int d = toLowerAscii(*ua) - toLowerAscii(*ub);
 		if (d != 0) {
 			return d;
 		}
 	}
-	if (*a == '\0' && *b != '\0') return -1;
-	if (*a != '\0' && *b == '\0') return 1;
-	assert(*a == '\0' && *b == '\0');
+	if (*ua == '\0' && *ub != '\0') return -1;
+	if (*ua != '\0' && *ub == '\0') return 1;
+	assert(*ua == '\0' && *ub == '\0');
 	return 0;
 }
 
 int fiftyoneDegreesStringCompareLength(
-	char const *a, 
-	char const *b, 
+	char const *a,
+	char const *b,
 	size_t length) {
+	const unsigned char *ua = (const unsigned char*)a;
+	const unsigned char *ub = (const unsigned char*)b;
 	size_t i;
-	for (i = 0; i < length; a++, b++, i++) {
-		int d = tolower(*a) - tolower(*b);
+	for (i = 0; i < length; ua++, ub++, i++) {
+		int d = toLowerAscii(*ua) - toLowerAscii(*ub);
 		if (d != 0) {
 			return d;
 		}
