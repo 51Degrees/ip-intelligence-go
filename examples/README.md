@@ -44,6 +44,10 @@ Below is a table that describes the examples:
 | mixed/getting_started_console | A command line example featuring both device detection and IP intelligence                                                |
 | mixed/getting_started_web     | A web example featuring both device detection and IP intelligence                                                |
 
+The `mixed` examples intentionally combine Device Detection and IP Intelligence
+and live in their own Go module — see [mixed/README.md](mixed/README.md) for how
+to run them (they cannot be run with `go run` from the repository root).
+
 ## Run examples
 
 ```

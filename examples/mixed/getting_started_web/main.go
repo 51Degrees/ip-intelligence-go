@@ -36,11 +36,12 @@
 //	DATA_FILE    Path to the IP Intelligence .ipi data file
 //	DD_DATA_FILE Path to the Device Detection .hash data file
 //
-// Run:
+// Run (from the examples/mixed directory — the mixed examples are a separate
+// Go module, so they cannot be run from the repository root):
 //
-//	DATA_FILE=./51Degrees-EnterpriseIpiV41.ipi \
-//	DD_DATA_FILE=./51Degrees-LiteV4.1.hash \
-//	go run ./examples/mixed/getting_started_web
+//	DATA_FILE=../../51Degrees-EnterpriseIpiV41.ipi \
+//	DD_DATA_FILE=../../51Degrees-LiteV4.1.hash \
+//	go run ./getting_started_web
 //
 // Then in another terminal:
 //

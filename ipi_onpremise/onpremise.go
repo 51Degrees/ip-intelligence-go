@@ -13,7 +13,7 @@ import (
 	"github.com/51Degrees/ip-intelligence-go/v4/ipi_interop"
 )
 
-// Engine is an implementation of the on-premise (based on a local data file) device detection. It encapsulates
+// Engine is an implementation of the on-premise (based on a local data file) IP intelligence. It encapsulates
 // the automatic data file updates feature - to periodically fetch and reload the new data file.
 // File system watcher feature allows to monitor for changes to the local data file and reload it when it changes.
 // Custom URL can be used to fetch data files, the polling interval is configurable
@@ -58,7 +58,7 @@ type resultsPropertyIndexer interface {
 	GetPropertyIndexByName(string) int
 }
 
-// New creates an instance of the on-premise device detection engine.  WithDataFile must be provided
+// New creates an instance of the on-premise IP intelligence engine.  WithDataFile must be provided
 // to specify the path to the data file, otherwise initialization will fail
 func New(opts ...EngineOptions) (*Engine, error) {
 	fileUpdater := common_go.NewFileUpdater(defaultDataFileUrl)

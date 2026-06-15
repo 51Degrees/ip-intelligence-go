@@ -11,6 +11,16 @@ try {
     go get -u ./...
     go mod tidy
 
+    # The mixed examples are a separate Go module (it carries the
+    # device-detection-go dependency), so update it explicitly
+    Push-Location examples/mixed
+    try {
+        go get -u ./...
+        go mod tidy
+    } finally {
+        Pop-Location
+    }
+
     Write-Output "Cloning latest ip-intelligence-cxx..."
     git clone --depth=1 --recurse-submodules --shallow-submodules "https://github.com/$OrgName/ip-intelligence-cxx.git"
 
