@@ -28,6 +28,17 @@ try {
     $src = "ip-intelligence-cxx/src"
     awk -f ci/amalgamate.awk $src/fiftyone.h $src/ip-graph-cxx/graph.h >ipi_interop/ip-intelligence-cxx.h
     awk -f ci/amalgamate.awk $src/common-cxx/*.c $src/ip-graph-cxx/*.c $src/*.c >ipi_interop/ip-intelligence-cxx.c
+
+    # The amalgamated C sources inline 51degrees.com documentation links that
+    # upstream repositories (e.g. common-cxx) tag with their own utm_campaign.
+    # The UTM lint requires every link to carry this repository's campaign, so
+    # rewrite the campaign in the generated files to match the repo name.
+    $campaign = $RepoName.ToLowerInvariant()
+    Write-Output "Setting utm_campaign=$campaign in amalgamated files..."
+    foreach ($f in "ipi_interop/ip-intelligence-cxx.h", "ipi_interop/ip-intelligence-cxx.c") {
+        $content = (Get-Content -Raw $f) -replace 'utm_campaign=[A-Za-z0-9._-]+', "utm_campaign=$campaign"
+        Set-Content -Path $f -Value $content -NoNewline
+    }
 } finally {
     Write-Output "Cleaning up..."
     Remove-Item -Recurse -Force ip-intelligence-cxx
