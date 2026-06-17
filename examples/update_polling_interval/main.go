@@ -81,7 +81,7 @@ config := ipi_interop.NewConfigIpi(ipi_interop.InMemory)
 
 		// Enable update on startup, the auto update system
 		// will be used to check for an update before the
-		// device detection engine is created.
+		// IP intelligence engine is created.
 		ipi_onpremise.WithUpdateOnStart(false),
 
 		// Optionally provide your own file URL
@@ -230,7 +230,7 @@ func main() {
 
 				// Enable update on startup, the auto update system
 				// will be used to check for an update before the
-				// device detection engine is created.
+				// IP intelligence engine is created.
 				ipi_onpremise.WithUpdateOnStart(false),
 
 				// Optionally provide your own file URL
