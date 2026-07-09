@@ -21,8 +21,10 @@
  * ********************************************************************* */
 package ipi_interop
 
-// WeightedValue represents a value that may include a weight (used for MCC property).
-// For non-weighted properties, Weight will be 0.0.
+// WeightedValue represents a returned value together with its confidence weight
+// (0.0-1.0). Unweighted properties report a weight of 1.0 (full confidence).
+// Weighted properties (whose values carry an intrinsic weight, e.g. Mcc and the
+// multi-value location lists) report each value's share of the matched IP range.
 type WeightedValue struct {
 	Value  interface{}
 	Weight float64
@@ -32,7 +34,7 @@ type WeightedValue struct {
 type Values map[string][]*WeightedValue
 
 // GetValueByProperty retrieves the first value for the specified property (ignoring weight).
-// This is the recommended method for all properties except MCC.
+// Use GetValueWeightByProperty, or range over the property's slice, when the weight is needed.
 // Returns the value and a boolean indicating success or failure.
 func (v Values) GetValueByProperty(property string) (interface{}, bool) {
 	if val, ok := v[property]; ok && len(val) > 0 {
@@ -51,7 +53,7 @@ func (v Values) GetValueWeightByProperty(property string) (interface{}, float64,
 }
 
 // Append adds a value without weight (Weight will be set to 0.0).
-// Use this for all properties except MCC.
+// Prefer AppendWithWeight so the value's confidence weight is preserved.
 func (v Values) Append(property string, value interface{}) {
 	v[property] = append(v[property], &WeightedValue{
 		Value:  value,
@@ -59,8 +61,7 @@ func (v Values) Append(property string, value interface{}) {
 	})
 }
 
-// AppendWithWeight adds a value with a specific weight.
-// This should only be used for MCC property.
+// AppendWithWeight adds a value with its confidence weight (0.0-1.0).
 func (v Values) AppendWithWeight(property string, value interface{}, weight float64) {
 	v[property] = append(v[property], &WeightedValue{
 		Value:  value,

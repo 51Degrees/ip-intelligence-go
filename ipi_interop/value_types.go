@@ -43,5 +43,20 @@ const (
 	DeclinationValueType                          // FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_DECLINATION
 	AzimuthValueType                              // FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_AZIMUTH
 	WkbRValueType                                 // FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WKB_R
-
+	WeightedStringValueType                       // FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_STRING
+	WeightedIntValueType                          // FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_INT
+	WeightedDoubleValueType                       // FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_DOUBLE
+	WeightedBoolValueType                         // FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_BOOL
+	WeightedSingleValueType                       // FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_SINGLE
+	WeightedByteValueType                         // FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_BYTE
+	WeightedIpAddressValueType                    // FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_IP_ADDRESS
+	WeightedWkbRValueType                         // FIFTYONE_DEGREES_PROPERTY_VALUE_TYPE_WEIGHTED_WKB_R
 )
+
+// IsWeighted reports whether the property value type is a weighted list type,
+// meaning its values carry an intrinsic per-value confidence weight (e.g. Mcc,
+// which is WeightedString). Non-weighted properties are single, deterministic
+// values with no meaningful per-value weight.
+func (t PropertyValueType) IsWeighted() bool {
+	return t >= WeightedStringValueType && t <= WeightedWkbRValueType
+}
