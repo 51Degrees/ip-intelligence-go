@@ -34,6 +34,11 @@ import (
 // uint16Max represents the maximum value of a uint16 converted to a float64.
 var uint16Max = float64(C.UINT16_MAX)
 
+// maxWeighting is the maximum value of a header's rawWeighting (65535*65535),
+// matching FIFTYONE_DEGREES_WEIGHTED_ITEM_MAX_WEIGHT in the C library. A raw
+// weighting is normalised against this to yield a 0.0-1.0 confidence.
+var maxWeighting = uint16Max * uint16Max
+
 // ResultsIpi represents a structure to manage IP-related results in the C library.
 // It contains a pointer to the C.ResultsIpi structure and a dynamic C result slice.
 type ResultsIpi struct {
@@ -129,11 +134,13 @@ func (r *ResultsIpi) getPropertyNameSafe(dataSet *C.DataSetIpi, requiredIndex C.
 	return ""
 }
 
-// header represents the structure holding type, required property index, and raw weighting for a weighted value.
+// header mirrors fiftyoneDegreesWeightedValueHeader from the C library. rawWeighting
+// is uint32_t in C (range 0-65535*65535); declaring it any narrower here truncates the
+// value to its low bytes and produces near-zero weights.
 type header struct {
 	valueType             C.fiftyoneDegreesPropertyValueType
 	requiredPropertyIndex C.int
-	rawWeighting          C.uint16_t
+	rawWeighting          C.uint32_t
 }
 
 // GetWeightedValuesByIndexes retrieves weighted values using pre-computed property indexes
@@ -230,14 +237,10 @@ func (r *ResultsIpi) GetWeightedValuesByIndexes(indexes []int, propertyNameResol
 			val = C.GoString(weightedString.value)
 		}
 
-		// append values to the map
-		// For MCC property, append with weight; for all others, append without weight
-		if propName == "Mcc" {
-			weight := float64(nextHeader.rawWeighting) / uint16Max
-			values.AppendWithWeight(propName, val, weight)
-		} else {
-			values.Append(propName, val)
-		}
+		// The C engine returns a confidence weighting for every value, not just Mcc.
+		// Surface it for all properties so callers can read per-value confidence.
+		weight := float64(nextHeader.rawWeighting) / maxWeighting
+		values.AppendWithWeight(propName, val, weight)
 	}
 
 	return values, nil
