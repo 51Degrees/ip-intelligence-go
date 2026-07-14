@@ -28,17 +28,25 @@ import (
 	pltranslation "github.com/51Degrees/pipeline-go/elements/translation"
 )
 
-// translationFS embeds the translation YAML shipped with the IP Intelligence
-// data. countrycodes.en_GB.yml maps ISO code -> English name; the OSM/
+// translationFS embeds the translation YAML from the ip-intelligence-data
+// submodule so the package stays a single source of truth with the data repo.
+// countrycodes.en_GB.yml maps ISO code -> English name; the OSM/
 // countries.<locale>.yml files map English name -> localized name.
 //
-//go:embed data
+// The submodule must be checked out for the build to succeed (git submodule
+// update --init translation/ip-intelligence-data).
+//
+//go:embed ip-intelligence-data/Translations
 var translationFS embed.FS
+
+// translationRoot is the embed path prefix for the Translations folder inside
+// the ip-intelligence-data submodule.
+const translationRoot = "ip-intelligence-data/Translations"
 
 // countryCodeSources returns the country-code translation source, keyed by file
 // name so the locale can be derived from it.
 func countryCodeSources() (map[string]string, error) {
-	b, err := translationFS.ReadFile("data/countrycodes.en_GB.yml")
+	b, err := translationFS.ReadFile(translationRoot + "/countrycodes.en_GB.yml")
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +56,7 @@ func countryCodeSources() (map[string]string, error) {
 // countriesSources returns the localized country-name translation sources, keyed
 // by file name so the locale can be derived from each.
 func countriesSources() (map[string]string, error) {
-	entries, err := translationFS.ReadDir("data/OSM")
+	entries, err := translationFS.ReadDir(translationRoot + "/OSM")
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +65,7 @@ func countriesSources() (map[string]string, error) {
 		if entry.IsDir() {
 			continue
 		}
-		b, err := translationFS.ReadFile("data/OSM/" + entry.Name())
+		b, err := translationFS.ReadFile(translationRoot + "/OSM/" + entry.Name())
 		if err != nil {
 			return nil, err
 		}
