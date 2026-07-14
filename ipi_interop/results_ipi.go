@@ -31,9 +31,6 @@ import (
 	"unsafe"
 )
 
-// uint16Max represents the maximum value of a uint16 converted to a float64.
-var uint16Max = float64(C.UINT16_MAX)
-
 // ResultsIpi represents a structure to manage IP-related results in the C library.
 // It contains a pointer to the C.ResultsIpi structure and a dynamic C result slice.
 type ResultsIpi struct {
@@ -230,14 +227,11 @@ func (r *ResultsIpi) GetWeightedValuesByIndexes(indexes []int, propertyNameResol
 			val = C.GoString(weightedString.value)
 		}
 
-		// append values to the map
-		// For MCC property, append with weight; for all others, append without weight
-		if propName == "Mcc" {
-			weight := float64(nextHeader.rawWeighting) / uint16Max
-			values.AppendWithWeight(propName, val, weight)
-		} else {
-			values.Append(propName, val)
-		}
+		// Append the value with its raw weighting. Weighted properties (the
+		// country-code lists, MCC) carry meaningful weightings that downstream
+		// elements sort on; single-valued properties carry whatever weighting
+		// the data file provides.
+		values.AppendWeighted(propName, val, uint16(nextHeader.rawWeighting))
 	}
 
 	return values, nil

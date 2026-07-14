@@ -21,11 +21,18 @@
  * ********************************************************************* */
 package ipi_interop
 
-// WeightedValue represents a value that may include a weight (used for MCC property).
-// For non-weighted properties, Weight will be 0.0.
+// maxRawWeighting is the maximum raw weighting a value can carry; the raw
+// weightings for a property sum to this value. It matches C.UINT16_MAX.
+const maxRawWeighting = 65535.0
+
+// WeightedValue represents a value together with its weighting. RawWeight is the
+// raw 16-bit weighting from the data file (0..65535) and Weight is the derived
+// probability RawWeight/65535 in (0, 1]. Properties whose values are not
+// weighted carry a zero weighting.
 type WeightedValue struct {
-	Value  interface{}
-	Weight float64
+	Value     interface{}
+	Weight    float64
+	RawWeight uint16
 }
 
 // Values is a map where each key is a string representing a property, and the value is a slice of WeightedValue pointers.
@@ -59,12 +66,22 @@ func (v Values) Append(property string, value interface{}) {
 	})
 }
 
-// AppendWithWeight adds a value with a specific weight.
-// This should only be used for MCC property.
+// AppendWithWeight adds a value with a specific normalized weight.
 func (v Values) AppendWithWeight(property string, value interface{}, weight float64) {
 	v[property] = append(v[property], &WeightedValue{
 		Value:  value,
 		Weight: weight,
+	})
+}
+
+// AppendWeighted adds a value with its raw weighting, deriving the normalized
+// Weight. Use this for properties whose values carry a weighting, such as the
+// weighted country-code lists and MCC.
+func (v Values) AppendWeighted(property string, value interface{}, rawWeight uint16) {
+	v[property] = append(v[property], &WeightedValue{
+		Value:     value,
+		Weight:    float64(rawWeight) / maxRawWeighting,
+		RawWeight: rawWeight,
 	})
 }
 
