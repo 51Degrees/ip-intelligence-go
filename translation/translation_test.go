@@ -336,6 +336,38 @@ func TestAllListsWithoutLanguage(t *testing.T) {
 	assertSortedTail(t, names, 1, comparerFromCulture(""))
 }
 
+// AccentedNamesSortLinguisticallyOnEnglishPath: on the English/fallback path the
+// tail must use culture-invariant linguistic collation (matching .NET's
+// InvariantCultureIgnoreCase), so an accented name like "Åland Islands" sorts
+// next to the other "A" names rather than after "Z" as a byte-ordinal sort would
+// place it.
+func TestAccentedNamesSortLinguisticallyOnEnglishPath(t *testing.T) {
+	p := fullPipeline(t, weightify("GB"), weightify("GB"))
+	defer p.Close()
+	fd := processWith(t, p, nil) // no Accept-Language -> English
+
+	data, _ := Countries(fd)
+	names := data.CountryNamesGeographicalAllTranslated()
+
+	indexOf := func(name string) int {
+		for i, n := range names {
+			if n == name {
+				return i
+			}
+		}
+		return -1
+	}
+	aland := indexOf("Åland Islands") // "Åland Islands"
+	zimbabwe := indexOf("Zimbabwe")
+	if aland < 0 || zimbabwe < 0 {
+		t.Fatalf("expected both names present (aland=%d zimbabwe=%d)", aland, zimbabwe)
+	}
+	if aland > zimbabwe {
+		t.Fatalf("accented name sorted after Zimbabwe (aland=%d zimbabwe=%d); "+
+			"expected linguistic collation to place it near the A's", aland, zimbabwe)
+	}
+}
+
 // AllListsWithNoIpData: no weighted codes, de_DE -> every country present, fully
 // alphabetical.
 func TestAllListsWithNoIpData(t *testing.T) {

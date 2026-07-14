@@ -87,7 +87,9 @@ func newCountriesTranslationEngine(
 		validCodes:   make(map[string]struct{}, len(allCountries)),
 	}
 	for _, c := range allCountries {
-		e.validCodes[c.code] = struct{}{}
+		// Key on the upper-case code so membership is case-insensitive, matching
+		// the .NET reference (OrdinalIgnoreCase).
+		e.validCodes[strings.ToUpper(c.code)] = struct{}{}
 	}
 	e.BaseElement = core.NewBaseElement(
 		CountryNamesTranslatedKey,
@@ -105,7 +107,10 @@ func newCountriesTranslationEngine(
 		translatedProp(e, PropertyCountryNamesPopulationAllTranslated),
 		translatedProp(e, PropertyCountryCodesGeographicalAll),
 		translatedProp(e, PropertyCountryCodesPopulationAll),
-		translatedProp(e, PropertySortingCultureUsed),
+		// SortingCultureUsed is deliberately NOT advertised as a Property, matching
+		// the .NET reference, which excludes it from the engine's Properties (it is
+		// diagnostic and not intended for customer use). The value is still written
+		// to the Element Data and readable via the accessor.
 	})
 	return e
 }
@@ -179,7 +184,7 @@ func (e *CountriesTranslationEngine) buildAllLists(
 	seen := make(map[string]struct{}, count)
 	for i := 0; i < count; i++ {
 		code := weightedCodes[i].Value()
-		if _, real := e.validCodes[code]; !real {
+		if _, real := e.validCodes[strings.ToUpper(code)]; !real {
 			continue
 		}
 		weighted = append(weighted, allListEntry{
@@ -249,8 +254,11 @@ func readWeighted(fd core.FlowData, dataKey, property string) []core.WeightedVal
 
 // comparerFor returns the culture tag and comparer used to sort translated
 // names. When a locale resolved it uses a locale-aware collator and reports the
-// canonical culture (e.g. "fr-FR"); otherwise it uses a case-insensitive
-// invariant comparison and reports an empty culture.
+// canonical culture (e.g. "fr-FR"); otherwise it uses a culture-invariant,
+// case-insensitive linguistic collation and reports an empty culture. The
+// invariant path uses a Unicode root collator (matching .NET's
+// InvariantCultureIgnoreCase) so accented names such as "Åland Islands" sort
+// next to "A" rather than after "Z".
 func comparerFor(locale string, ok bool) (string, func(a, b string) int) {
 	if ok {
 		if tag, err := language.Parse(strings.ReplaceAll(locale, "_", "-")); err == nil {
@@ -260,10 +268,8 @@ func comparerFor(locale string, ok bool) (string, func(a, b string) int) {
 			}
 		}
 	}
-	return "", invariantCompare
-}
-
-// invariantCompare is a case-insensitive comparison used when names stay English.
-func invariantCompare(a, b string) int {
-	return strings.Compare(strings.ToLower(a), strings.ToLower(b))
+	collator := collate.New(language.Und, collate.IgnoreCase)
+	return "", func(a, b string) int {
+		return collator.CompareString(a, b)
+	}
 }
