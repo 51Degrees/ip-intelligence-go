@@ -25,6 +25,7 @@ package translation
 import (
 	"fmt"
 	"log/slog"
+	"math"
 
 	"github.com/51Degrees/ip-intelligence-go/v4/ipi_interop"
 	"github.com/51Degrees/pipeline-go/core"
@@ -106,7 +107,10 @@ func clientIP(fd core.FlowData) string {
 }
 
 // weightedCodes converts the interop weighted values (ISO code strings) into the
-// pipeline weighted-value type, preserving each raw weighting.
+// pipeline weighted-value type. The interop layer reports a 0..1 confidence; the
+// pipeline weighted value carries a 16-bit raw weighting (matching the .NET
+// IWeightedValue), so the confidence is scaled to that range, which preserves
+// the ordering the country engines rank on.
 func weightedCodes(values []*ipi_interop.WeightedValue) []core.WeightedValue[string] {
 	out := make([]core.WeightedValue[string], 0, len(values))
 	for _, wv := range values {
@@ -114,7 +118,20 @@ func weightedCodes(values []*ipi_interop.WeightedValue) []core.WeightedValue[str
 		if !ok {
 			continue
 		}
-		out = append(out, core.NewWeightedValue(code, wv.RawWeight))
+		out = append(out, core.NewWeightedValue(code, weightToRaw(wv.Weight)))
 	}
 	return out
+}
+
+// weightToRaw maps a 0..1 confidence weight to the pipeline's 16-bit raw
+// weighting, clamping out-of-range inputs.
+func weightToRaw(weight float64) uint16 {
+	switch {
+	case weight <= 0:
+		return 0
+	case weight >= 1:
+		return math.MaxUint16
+	default:
+		return uint16(math.Round(weight * float64(math.MaxUint16)))
+	}
 }

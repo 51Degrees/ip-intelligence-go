@@ -31,6 +31,15 @@ import (
 	"unsafe"
 )
 
+// uint16Max represents the maximum value of a uint16 converted to a float64.
+var uint16Max = float64(C.UINT16_MAX)
+
+// maxWeighting is the maximum value of a header's rawWeighting (65535*65535),
+// matching FIFTYONE_DEGREES_WEIGHTED_ITEM_MAX_WEIGHT in the C library. A raw
+// weighting is normalised against this to yield a 0.0-1.0 confidence. The raw
+// value is profileGroupWeight*valueWeight, so a value that fills its matched IP
+// range reaches this maximum.
+var maxWeighting = uint16Max * uint16Max
 // ResultsIpi represents a structure to manage IP-related results in the C library.
 // It contains a pointer to the C.ResultsIpi structure and a dynamic C result slice.
 type ResultsIpi struct {
@@ -126,11 +135,35 @@ func (r *ResultsIpi) getPropertyNameSafe(dataSet *C.DataSetIpi, requiredIndex C.
 	return ""
 }
 
-// header represents the structure holding type, required property index, and raw weighting for a weighted value.
+// isPropertyWeighted reports whether the property at the given required index has
+// a weighted value type - i.e. its values carry an intrinsic per-value confidence
+// weight (Mcc and the multi-value location lists). It resolves the required index
+// to the property in the source collection and reads that property's declared
+// value type. On any failure it returns false so the value is treated as
+// unweighted rather than reporting a spurious weight.
+func (r *ResultsIpi) isPropertyWeighted(dataSet *C.DataSetIpi, requiredIndex C.int, exception *Exception) bool {
+	propertyIndex := C.fiftyoneDegreesPropertiesGetPropertyIndexFromRequiredIndex(
+		dataSet.b.b.available, requiredIndex)
+	if propertyIndex < 0 {
+		return false
+	}
+
+	valueType := C.fiftyoneDegreesPropertyGetValueType(
+		dataSet.properties, C.uint32_t(propertyIndex), exception.CPtr)
+	if !exception.IsOkay() {
+		return false
+	}
+
+	return PropertyValueType(valueType).IsWeighted()
+}
+
+// header mirrors fiftyoneDegreesWeightedValueHeader from the C library. rawWeighting
+// is uint32_t in C (range 0-65535*65535); declaring it any narrower here truncates the
+// value to its low bytes and produces near-zero weights.
 type header struct {
 	valueType             C.fiftyoneDegreesPropertyValueType
 	requiredPropertyIndex C.int
-	rawWeighting          C.uint16_t
+	rawWeighting          C.uint32_t
 }
 
 // GetWeightedValuesByIndexes retrieves weighted values using pre-computed property indexes
@@ -177,6 +210,12 @@ func (r *ResultsIpi) GetWeightedValuesByIndexes(indexes []int, propertyNameResol
 	defer C.fiftyoneDegreesWeightedValuesCollectionRelease(&collection)
 
 	values := make(Values, collection.itemsCount)
+
+	// Cache the weighted/unweighted decision per required-property index so the
+	// value-type lookup runs once per property rather than once per value.
+	weightedByReqIndex := make(map[C.int]bool)
+	typeException := NewException()
+	defer typeException.Free()
 
 	// Create a Go slice from the C array
 	headers := unsafe.Slice(collection.items, collection.itemsCount)
@@ -227,11 +266,21 @@ func (r *ResultsIpi) GetWeightedValuesByIndexes(indexes []int, propertyNameResol
 			val = C.GoString(weightedString.value)
 		}
 
-		// Append the value with its raw weighting. Weighted properties (the
-		// country-code lists, MCC) carry meaningful weightings that downstream
-		// elements sort on; single-valued properties carry whatever weighting
-		// the data file provides.
-		values.AppendWeighted(propName, val, uint16(nextHeader.rawWeighting))
+		// Weighted properties (e.g. Mcc and the multi-value location lists) carry an
+		// intrinsic per-value weight, so surface their real confidence. Every other
+		// property is unweighted: report full confidence (1.0) rather than 0.0, which
+		// reads as zero confidence.
+		weighted, seen := weightedByReqIndex[requiredPropertyIndex]
+		if !seen {
+			weighted = r.isPropertyWeighted(dataSet, requiredPropertyIndex, typeException)
+			weightedByReqIndex[requiredPropertyIndex] = weighted
+		}
+
+		weight := 1.0
+		if weighted {
+			weight = float64(nextHeader.rawWeighting) / maxWeighting
+		}
+		values.AppendWithWeight(propName, val, weight)
 	}
 
 	return values, nil

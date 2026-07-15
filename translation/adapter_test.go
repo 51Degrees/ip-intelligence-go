@@ -42,9 +42,9 @@ func (f fakeProcessor) Process(string) (ipi_interop.Values, error) {
 
 func TestIpiEngineElementStoresWeightedCodes(t *testing.T) {
 	values := ipi_interop.Values{}
-	values.AppendWeighted(PropertyCountryCodesGeographical, "FR", 30000)
-	values.AppendWeighted(PropertyCountryCodesGeographical, "DE", 20000)
-	values.AppendWeighted(PropertyCountryCodesPopulation, "US", 65535)
+	values.AppendWithWeight(PropertyCountryCodesGeographical, "FR", 0.6)
+	values.AppendWithWeight(PropertyCountryCodesGeographical, "DE", 0.4)
+	values.AppendWithWeight(PropertyCountryCodesPopulation, "US", 1.0)
 
 	p, err := core.NewPipelineBuilder().
 		AddFlowElement(NewIpiEngineElement(fakeProcessor{values: values}, nil)).
@@ -69,13 +69,15 @@ func TestIpiEngineElementStoresWeightedCodes(t *testing.T) {
 	if len(codes) != 2 {
 		t.Fatalf("expected 2 geo codes, got %d", len(codes))
 	}
-	if codes[0].Value() != "FR" || codes[0].RawWeighting() != 30000 {
-		t.Fatalf("geo[0] = (%q, %d), want (FR, 30000)",
-			codes[0].Value(), codes[0].RawWeighting())
+	// The 0..1 confidence is scaled to the pipeline's 16-bit raw weighting, so
+	// assert the values and that the ordering (weight) is carried through.
+	if codes[0].Value() != "FR" || codes[1].Value() != "DE" {
+		t.Fatalf("geo codes = (%q, %q), want (FR, DE)",
+			codes[0].Value(), codes[1].Value())
 	}
-	if codes[1].Value() != "DE" || codes[1].RawWeighting() != 20000 {
-		t.Fatalf("geo[1] = (%q, %d), want (DE, 20000)",
-			codes[1].Value(), codes[1].RawWeighting())
+	if codes[0].RawWeighting() <= codes[1].RawWeighting() {
+		t.Fatalf("geo weights not carried in order: FR=%d, DE=%d",
+			codes[0].RawWeighting(), codes[1].RawWeighting())
 	}
 }
 

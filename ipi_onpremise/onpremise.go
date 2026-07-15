@@ -270,12 +270,17 @@ func (e *Engine) processFileExternallyChanged() error {
 // this function will be called when the engine is started or the is new file available
 // it will create and initialize a new manager from the new file if it does not exist
 // if the manager exists, it will create a new manager from the new file and replace the existing manager thus freeing memory of the old manager
-func (e *Engine) reloadManager(filePath string) error {
+func (e *Engine) reloadManager(filePath string) (err error) {
 	if e.isStopped {
 		return nil
 	}
-	// if manager is nil, create a new one
+	// Log the published date only once the (re)load succeeded. On a failed load the
+	// dataset is not attached to the manager, so getPublishedDate would dereference a
+	// null dataset and segfault - the deferred log must not run on the error paths.
 	defer func() {
+		if err != nil {
+			return
+		}
 		year, month, day := e.getPublishedDate().Date()
 		e.logger.Printf("data file loaded from " + filePath + " published on: " + fmt.Sprintf("%d-%d-%d", year, month, day))
 	}()
@@ -301,7 +306,7 @@ func (e *Engine) reloadManager(filePath string) error {
 		return nil
 	}
 
-	err := e.manager.ReloadFromFile(*e.config, strings.Join(e.managerProperties, ","), filePath)
+	err = e.manager.ReloadFromFile(*e.config, strings.Join(e.managerProperties, ","), filePath)
 	if err != nil {
 		return fmt.Errorf("failed to reload manager from file: %w", err)
 	}
