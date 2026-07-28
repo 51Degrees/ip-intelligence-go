@@ -8,8 +8,8 @@ module github.com/51Degrees/ip-intelligence-go/examples/mixed
 go 1.21.0
 
 require (
-	github.com/51Degrees/device-detection-go/v4 v4.5.19
-	github.com/51Degrees/ip-intelligence-go/v4 v4.5.73
+	github.com/51Degrees/device-detection-go/v4 v4.5.20
+	github.com/51Degrees/ip-intelligence-go/v4 v4.5.74
 )
 
 require github.com/51Degrees/common-go/v4 v4.5.0 // indirect
