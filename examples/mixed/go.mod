@@ -9,7 +9,7 @@ go 1.21.0
 
 require (
 	github.com/51Degrees/device-detection-go/v4 v4.5.21
-	github.com/51Degrees/ip-intelligence-go/v4 v4.5.75
+	github.com/51Degrees/ip-intelligence-go/v4 v4.5.76
 )
 
 require github.com/51Degrees/common-go/v4 v4.5.0 // indirect
