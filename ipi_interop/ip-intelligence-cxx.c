@@ -3118,7 +3118,9 @@ if (c != NULL) { c->freeCollection(c); }
 #pragma pack(push, 1)
 typedef struct fiftyone_degrees_collection_header_t {
 	fiftyoneDegreesFileOffsetUnsigned startPosition; /**< Start position in the data file of the entities */
-	uint32_t length; /**< Length in bytes of all the entities */
+	uint32_t length; /**< Length of all the entities, in bytes, or in
+					 offset units where the collection is created with a non
+					 zero shift */
 	uint32_t count; /**< Number of entities in the collection */
 } fiftyoneDegreesCollectionHeader;
 #pragma pack(pop)
@@ -3258,7 +3260,19 @@ typedef struct fiftyone_degrees_collection_t {
 	uint32_t count; /**< The number of items, or 0 if not available */
 	uint32_t elementSize; /**< The size of each entry, or 0 if variable length */
 	uint32_t size; /**< Number of bytes in the source data structure containing
-					  the collection's data */
+					  the collection's data, or where offsetShift is non zero
+					  the number of offset units */
+#ifdef FIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT
+	byte offsetShift; /**< Number of bits to shift a stored offset, or the
+					  size field, left to convert it to bytes. Zero for all
+					  collections except variable length collections created
+					  with one of the WithOffsetShift methods, where records
+					  are aligned relative to the start of the collection so
+					  that 32 bit stored offsets can address data larger than
+					  4GB. The start of the collection itself need not be
+					  aligned. Only available when compiled with large data
+					  file support. */
+#endif
 	const char *typeName; /**< Name of collection type (vtable). */
 } fiftyoneDegreesCollection;
 
@@ -3356,6 +3370,62 @@ EXTERNAL fiftyoneDegreesCollection* fiftyoneDegreesCollectionCreateFromFile(
 EXTERNAL fiftyoneDegreesCollection* fiftyoneDegreesCollectionCreateFromMemory(
 	fiftyoneDegreesMemoryReader *reader,
 	fiftyoneDegreesCollectionHeader header);
+
+#ifdef FIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT
+
+/**
+ * Creates a collection from the file handle as
+ * #fiftyoneDegreesCollectionCreateFromFile does, but for variable length
+ * collections whose stored offsets, and header length, are recorded in units
+ * of 1 << offsetShift bytes rather than in bytes. Records in such collections
+ * are aligned by the writer to 1 << offsetShift byte boundaries relative to
+ * the start of the collection, which is what the stored offsets are relative
+ * to, so that 32 bit stored offsets can address data larger than 4GB. The
+ * start of the collection itself need not be aligned. Must not be used
+ * for fixed width collections, so NULL is returned for a non zero shift when
+ * the header declares a count, and for a shift the 64 bit conversion cannot
+ * represent. Only available when compiled with large data file support.
+ * @param file a file handle positioned at the start of the collection
+ * @param reader a pool of file handles to use operationally to retrieve data
+ * from the file after the collection has been created
+ * @param config settings for the implementation of the collection to be used
+ * @param header containing collection structure with the length in offset
+ * units
+ * @param read a pointer to a function to read an item into the collection
+ * @param offsetShift number of bits to shift a stored offset left to convert
+ * it to bytes, or zero for byte offsets
+ * @return pointer to the new collection, or NULL if something went wrong
+ */
+EXTERNAL fiftyoneDegreesCollection*
+fiftyoneDegreesCollectionCreateFromFileWithOffsetShift(
+	FILE *file,
+	fiftyoneDegreesFilePool *reader,
+	const fiftyoneDegreesCollectionConfig *config,
+	fiftyoneDegreesCollectionHeader header,
+	fiftyoneDegreesCollectionFileRead read,
+	byte offsetShift);
+
+/**
+ * Creates a collection from a memory reader as
+ * #fiftyoneDegreesCollectionCreateFromMemory does, but for variable length
+ * collections whose stored offsets, and header length, are recorded in units
+ * of 1 << offsetShift bytes rather than in bytes. See
+ * #fiftyoneDegreesCollectionCreateFromFileWithOffsetShift.
+ * @param reader with access to the allocated memory
+ * @param header containing collection structure with the length in offset
+ * units
+ * @param offsetShift number of bits to shift a stored offset left to convert
+ * it to bytes, or zero for byte offsets
+ * @return pointer to the memory collection, or NULL if the collection could
+ * not be created
+ */
+EXTERNAL fiftyoneDegreesCollection*
+fiftyoneDegreesCollectionCreateFromMemoryWithOffsetShift(
+	fiftyoneDegreesMemoryReader *reader,
+	fiftyoneDegreesCollectionHeader header,
+	byte offsetShift);
+
+#endif
 
 /**
  * Get a handle from the file pool associated with the collection and position
@@ -9727,6 +9797,65 @@ MAP_TYPE(CollectionConfig)
 #endif
 
 /**
+ * Converts a stored offset, or the stored size, of a collection to bytes.
+ * Only variable length collections created with an offset shift store these
+ * in units larger than a byte, and only when compiled with large data file
+ * support. Every other collection uses a shift of zero, and builds without
+ * large data file support compile to the value unchanged so behaviour and
+ * performance are identical to before the shift was introduced.
+ */
+#ifdef FIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT
+#define COLLECTION_UNITS_TO_BYTES(s, v) (((uint64_t)(v)) << (s))
+#define COLLECTION_OFFSET_SHIFT(c) ((c)->offsetShift)
+#else
+#define COLLECTION_UNITS_TO_BYTES(s, v) (v)
+#define COLLECTION_OFFSET_SHIFT(c) 0
+#endif
+
+/**
+ * Add the offset shift parameter to the internal creation methods, and pass
+ * it between them, only when compiled with large data file support. Without
+ * it the signatures and calls compile exactly as they did before the shift
+ * was introduced.
+ */
+#ifdef FIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT
+#define COLLECTION_SHIFT_PARAM , byte offsetShift
+#define COLLECTION_SHIFT_ARG(s) , s
+#else
+#define COLLECTION_SHIFT_PARAM
+#define COLLECTION_SHIFT_ARG(s)
+#endif
+
+static fiftyoneDegreesCollection* collectionCreateFromMemory(
+	fiftyoneDegreesMemoryReader *reader,
+	fiftyoneDegreesCollectionHeader header
+	COLLECTION_SHIFT_PARAM);
+
+#ifdef FIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT
+
+/**
+ * The largest shift that can be applied to a stored offset. A 32 bit stored
+ * value shifted by more than this cannot be represented in the 64 bit result,
+ * and a shift of 64 or more is undefined behaviour.
+ */
+#define COLLECTION_MAX_OFFSET_SHIFT 32
+
+/**
+ * @return true if the shift can be applied to the collection described by the
+ * header. A shifted collection must be variable length, as the fixed width
+ * read paths resolve an index to a byte offset before the conversion applies,
+ * and a count in the header is what makes a collection fixed width.
+ */
+static bool collectionOffsetShiftIsValid(
+	fiftyoneDegreesCollectionHeader header,
+	byte offsetShift) {
+	return offsetShift == 0 ||
+		(offsetShift <= COLLECTION_MAX_OFFSET_SHIFT && header.count == 0);
+}
+
+#endif
+
+/**
  * Used by methods which retrieve values from a collection to set an exception.
  */
 #ifndef FIFTYONE_DEGREES_EXCEPTIONS_DISABLED
@@ -9892,7 +10021,9 @@ static void* getMemoryVariable(
 	Exception *exception) {
 	CollectionMemory *memory = (CollectionMemory*)collection->state;
 	if (key->indexOrOffset.offset < collection->size) {
-		item->data.ptr = memory->firstByte + key->indexOrOffset.offset;
+		item->data.ptr = memory->firstByte + (size_t)COLLECTION_UNITS_TO_BYTES(
+			COLLECTION_OFFSET_SHIFT(collection),
+			key->indexOrOffset.offset);
 		assert(item->data.ptr < memory->lastByte);
 		item->collection = collection;
 	}
@@ -10054,7 +10185,8 @@ static void loaderCache(
 static Collection* createCollection(
 	size_t sizeOfState,
 	CollectionHeader *header,
-	const char * const typeName) {
+	const char * const typeName
+	COLLECTION_SHIFT_PARAM) {
 	Collection *collection = (Collection*)Malloc(sizeof(Collection));
 	if (collection != NULL) {
 		collection->state = Malloc(sizeOfState);
@@ -10064,6 +10196,9 @@ static Collection* createCollection(
 				0 : header->length / header->count;
 			collection->size = header->length;
 			collection->count = header->count;
+#ifdef FIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT
+			collection->offsetShift = offsetShift;
+#endif
 		}
 		else {
 			Free(collection);
@@ -10076,7 +10211,7 @@ static Collection* createCollection(
 #ifndef FIFTYONE_DEGREES_MEMORY_ONLY
 
 static CollectionFile* readFile(CollectionFile *fileCollection, FILE *file) {
-	
+
 	// Set the count of items if not already set and the elements are of a
 	// fixed size.
 	if (fileCollection->collection->count == 0 &&
@@ -10089,7 +10224,12 @@ static CollectionFile* readFile(CollectionFile *fileCollection, FILE *file) {
 	fileCollection->offset = FileTell(file);
 
 	// Move the file handle past the collection.
-	if (FileSeek(file, fileCollection->collection->size, SEEK_CUR) != 0) {
+	if (FileSeek(
+		file,
+		(FileOffset)COLLECTION_UNITS_TO_BYTES(
+			COLLECTION_OFFSET_SHIFT(fileCollection->collection),
+			fileCollection->collection->size),
+		SEEK_CUR) != 0) {
 		return NULL;
 	}
 
@@ -10100,13 +10240,15 @@ static Collection* createFromFile(
 	FILE *file,
 	FilePool *reader,
 	CollectionHeader *header,
-	CollectionFileRead read) {
+	CollectionFileRead read
+	COLLECTION_SHIFT_PARAM) {
 
 	// Allocate the memory for the collection and file implementation.
 	Collection *collection = createCollection(
 		sizeof(CollectionFile),
 		header,
-		"CollectionFile");
+		"CollectionFile"
+		COLLECTION_SHIFT_ARG(offsetShift));
 	CollectionFile *fileCollection = (CollectionFile*)collection->state;
 	fileCollection->collection = collection;
 	fileCollection->reader = reader;
@@ -10132,9 +10274,13 @@ static Collection* createFromFile(
 
 static Collection* createFromFileToMemory(
 	FILE *file,
-	CollectionHeader header) {
+	CollectionHeader header
+	COLLECTION_SHIFT_PARAM) {
 	EXCEPTION_CREATE;
-	byte * const data = (byte*)Malloc(header.length * sizeof(byte));
+	const size_t lengthInBytes = (size_t)COLLECTION_UNITS_TO_BYTES(
+		offsetShift,
+		header.length);
+	byte * const data = (byte*)Malloc(lengthInBytes * sizeof(byte));
 	MemoryReader memory;
 
 	memory.current = data;
@@ -10144,7 +10290,7 @@ static Collection* createFromFileToMemory(
 	}
 
 	memory.startByte = memory.current;
-	memory.length = (FileOffset)header.length;
+	memory.length = (FileOffset)lengthInBytes;
 	memory.lastByte = memory.current + memory.length;
 
 	// Position the file reader at the start of the collection.
@@ -10154,13 +10300,16 @@ static Collection* createFromFileToMemory(
 	}
 
 	// Read the portion of the file into memory.
-	if (fread(memory.startByte, 1, header.length, file) != header.length) {
+	if (fread(memory.startByte, 1, lengthInBytes, file) != lengthInBytes) {
 		Free(data);
 		return NULL;
 	}
 
 	header.startPosition = 0;
-	Collection * const result = CollectionCreateFromMemory(&memory, header);
+	Collection * const result = collectionCreateFromMemory(
+		&memory,
+		header
+		COLLECTION_SHIFT_ARG(offsetShift));
 
 	if (result == NULL) {
 		Free(data);
@@ -10180,18 +10329,25 @@ static Collection* createFromFileCached(
 	CollectionHeader *header,
 	uint32_t capacity,
 	uint16_t concurrency,
-	CollectionFileRead read) {
+	CollectionFileRead read
+	COLLECTION_SHIFT_PARAM) {
 
 	// Allocate the memory for the collection and implementation.
 	Collection *collection = createCollection(
 		sizeof(CollectionFile),
 		header,
-		"CollectionCache");
+		"CollectionCache"
+		COLLECTION_SHIFT_ARG(offsetShift));
 	CollectionCache *cache = (CollectionCache*)collection->state;
 	cache->cache = NULL;
 
 	// Create the file collection to be used with the cache.
-	cache->source = createFromFile(file, reader, header, read);
+	cache->source = createFromFile(
+		file,
+		reader,
+		header,
+		read
+		COLLECTION_SHIFT_ARG(offsetShift));
 	if (cache->source == NULL) {
 		freeCacheCollection(collection);
 		return NULL;
@@ -10230,7 +10386,8 @@ static Collection* createFromFileMaybeCached(
 	FilePool *reader,
 	const CollectionConfig *config,
 	CollectionHeader header,
-	CollectionFileRead read) {
+	CollectionFileRead read
+	COLLECTION_SHIFT_PARAM) {
 
 	// Return the file position to the start of the collection ready to
 	// read the next collection.
@@ -10239,7 +10396,7 @@ static Collection* createFromFileMaybeCached(
 		// Choose between the cached or file based collection.
 		if (config->capacity > 0 && config->concurrency > 0) {
 
-			// If the collection should have a cache then set the next 
+			// If the collection should have a cache then set the next
 			// collection to be cache based.
 			return createFromFileCached(
 				file,
@@ -10247,13 +10404,19 @@ static Collection* createFromFileMaybeCached(
 				&header,
 				config->capacity,
 				config->concurrency,
-				read);
+				read
+				COLLECTION_SHIFT_ARG(offsetShift));
 		}
 		else {
 
-			// If there is no cache then the entries will be fetched 
+			// If there is no cache then the entries will be fetched
 			// directly from the source file.
-			return createFromFile(file, reader, &header, read);
+			return createFromFile(
+				file,
+				reader,
+				&header,
+				read
+				COLLECTION_SHIFT_ARG(offsetShift));
 		}
 	}
 
@@ -10289,9 +10452,10 @@ fiftyoneDegreesCollectionHeader fiftyoneDegreesCollectionHeaderFromMemory(
 	return header;
 }
 
-fiftyoneDegreesCollection* fiftyoneDegreesCollectionCreateFromMemory(
+static fiftyoneDegreesCollection* collectionCreateFromMemory(
 	fiftyoneDegreesMemoryReader *reader,
-	fiftyoneDegreesCollectionHeader header) {
+	fiftyoneDegreesCollectionHeader header
+	COLLECTION_SHIFT_PARAM) {
 
 	// Validate the header and the reader are in sync at the correct position.
 	if ((FileOffsetUnsigned)(reader->current - reader->startByte) !=
@@ -10303,16 +10467,19 @@ fiftyoneDegreesCollection* fiftyoneDegreesCollectionCreateFromMemory(
 	Collection *collection = createCollection(
 		sizeof(CollectionMemory),
 		&header,
-		"CollectionMemory");
+		"CollectionMemory"
+		COLLECTION_SHIFT_ARG(offsetShift));
 	CollectionMemory *memory = (CollectionMemory*)collection->state;
 
 	// Configure the fields for the collection.
 	memory->collection = collection;
 	memory->memoryToFree = NULL;
-	memory->collection->elementSize = header.count == 0 ? 
+	memory->collection->elementSize = header.count == 0 ?
 		0 : header.length / header.count;
 	memory->firstByte = reader->current;
-	memory->lastByte = memory->firstByte + memory->collection->size;
+	memory->lastByte = memory->firstByte + (size_t)COLLECTION_UNITS_TO_BYTES(
+		offsetShift,
+		memory->collection->size);
 
 	// Assign the get and release functions for the collection.
 	if (memory->collection->elementSize != 0) {
@@ -10331,17 +10498,43 @@ fiftyoneDegreesCollection* fiftyoneDegreesCollectionCreateFromMemory(
 	}
 	collection->freeCollection = freeMemoryCollection;
 
-	// Move over the structure and the size integer checking the move 
+	// Move over the structure and the size integer checking the move
 	// operation was successful.
 	if (MemoryAdvance(
 		reader,
-		memory->collection->size) == false) {
+		(size_t)COLLECTION_UNITS_TO_BYTES(
+			offsetShift,
+			memory->collection->size)) == false) {
 		collection->freeCollection(collection);
 		collection = NULL;
 	}
 
 	return collection;
 }
+
+fiftyoneDegreesCollection* fiftyoneDegreesCollectionCreateFromMemory(
+	fiftyoneDegreesMemoryReader *reader,
+	fiftyoneDegreesCollectionHeader header) {
+	return collectionCreateFromMemory(reader, header COLLECTION_SHIFT_ARG(0));
+}
+
+#ifdef FIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT
+
+fiftyoneDegreesCollection*
+fiftyoneDegreesCollectionCreateFromMemoryWithOffsetShift(
+	fiftyoneDegreesMemoryReader *reader,
+	fiftyoneDegreesCollectionHeader header,
+	byte offsetShift) {
+	if (collectionOffsetShiftIsValid(header, offsetShift) == false) {
+		return NULL;
+	}
+	return collectionCreateFromMemory(
+		reader,
+		header
+		COLLECTION_SHIFT_ARG(offsetShift));
+}
+
+#endif
 
 fiftyoneDegreesCollectionHeader fiftyoneDegreesCollectionHeaderFromFile(
 	FILE *file,
@@ -10372,16 +10565,23 @@ fiftyoneDegreesCollectionHeader fiftyoneDegreesCollectionHeaderFromFile(
 	return header;
 }
 
-fiftyoneDegreesCollection* fiftyoneDegreesCollectionCreateFromFile(
+static fiftyoneDegreesCollection* collectionCreateFromFile(
 	FILE *file,
 	fiftyoneDegreesFilePool *reader,
 	const fiftyoneDegreesCollectionConfig *config,
 	fiftyoneDegreesCollectionHeader header,
-	fiftyoneDegreesCollectionFileRead read) {
+	fiftyoneDegreesCollectionFileRead read
+	COLLECTION_SHIFT_PARAM) {
 
 #ifndef FIFTYONE_DEGREES_MEMORY_ONLY
 	if (!config->loaded) {
-		return createFromFileMaybeCached(file, reader, config, header, read);
+		return createFromFileMaybeCached(
+			file,
+			reader,
+			config,
+			header,
+			read
+			COLLECTION_SHIFT_ARG(offsetShift));
 	}
 #else
 #	ifdef _MSC_VER
@@ -10391,8 +10591,47 @@ fiftyoneDegreesCollection* fiftyoneDegreesCollectionCreateFromFile(
 #	endif
 #endif
 
-	return createFromFileToMemory(file, header);
+	return createFromFileToMemory(file, header COLLECTION_SHIFT_ARG(offsetShift));
 }
+
+fiftyoneDegreesCollection* fiftyoneDegreesCollectionCreateFromFile(
+	FILE *file,
+	fiftyoneDegreesFilePool *reader,
+	const fiftyoneDegreesCollectionConfig *config,
+	fiftyoneDegreesCollectionHeader header,
+	fiftyoneDegreesCollectionFileRead read) {
+	return collectionCreateFromFile(
+		file,
+		reader,
+		config,
+		header,
+		read
+		COLLECTION_SHIFT_ARG(0));
+}
+
+#ifdef FIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT
+
+fiftyoneDegreesCollection*
+fiftyoneDegreesCollectionCreateFromFileWithOffsetShift(
+	FILE *file,
+	fiftyoneDegreesFilePool *reader,
+	const fiftyoneDegreesCollectionConfig *config,
+	fiftyoneDegreesCollectionHeader header,
+	fiftyoneDegreesCollectionFileRead read,
+	byte offsetShift) {
+	if (collectionOffsetShiftIsValid(header, offsetShift) == false) {
+		return NULL;
+	}
+	return collectionCreateFromFile(
+		file,
+		reader,
+		config,
+		header,
+		read
+		COLLECTION_SHIFT_ARG(offsetShift));
+}
+
+#endif
 
 fiftyoneDegreesFileHandle* fiftyoneDegreesCollectionReadFilePosition(
 	const fiftyoneDegreesCollectionFile *file,
@@ -10503,8 +10742,14 @@ static void* readFileVariable(
 	uint32_t bytesNeeded, leftToRead;
 	void *ptr = NULL;
 
-	// Set the file position to the start of the item being read.
-	if (FileSeek(handle->file, fileCollection->offset + offset, SEEK_SET) == 0) {
+	// Set the file position to the start of the item being read. The offset
+	// is converted from the collection's offset units to bytes.
+	if (FileSeek(
+		handle->file,
+		fileCollection->offset + (FileOffset)COLLECTION_UNITS_TO_BYTES(
+			COLLECTION_OFFSET_SHIFT(fileCollection->collection),
+			offset),
+		SEEK_SET) == 0) {
 
 		// Read the item header minus the last part of the structure 
 		// that may not always be included with every item.
@@ -22457,9 +22702,11 @@ typedef struct fiftyone_degrees_ipi_dataset_header_t {
 	const int32_t copyrightOffset; /**< Offset of the copyright string in the 
 								   strings collection */
 	const int16_t age; /**< Age of the data set format */
-	const int32_t reserved; /**< Reserved. Retained so this structure matches
-							the data file header layout. Not used by IP
-							Intelligence. */
+	const int32_t profilesOffsetShift; /**< Number of bits to shift a stored
+							profile offset, or the profiles collection length,
+							left to convert it to bytes. Zero where profile
+							offsets are byte positions. Occupies a previously
+							reserved field always written as zero. */
 	const int32_t nameOffset; /**< Offset of the data file name in the strings 
 							  collection */
 	const int32_t formatOffset; /**< Offset of the data file format in the 
@@ -23542,6 +23789,10 @@ static void PropValuesInit(PropValues * const values, const uint32_t count) {
     values->items = (PropValuesChunk *)values->data.ptr;
     for (uint32_t i = 0, n = values->count; i < n; i++) {
         DataReset(&values->items[i].data);
+        // A chunk might not be populated, so the count and converter must
+        // not hold uninitialized values when the items are moved.
+        values->items[i].count = 0;
+        values->items[i].converter = NULL;
     }
 }
 
@@ -23932,6 +24183,10 @@ static void PropValuesChunkPopulate(
     for (uint32_t i = 0; i < context->valuesCount; i++) {
         WeightedValueHeader * const header = (WeightedValueHeader *)(
             converter->itemSize * i + chunkDataPtr);
+        // The save loop below stops at the first exception, so the type must
+        // be set here or the items it never reaches are released as whatever
+        // type the uninitialized memory happens to hold.
+        header->valueType = converter->valueType;
         converter->itemInitFunc(header, converterState);
     }
     for (uint32_t i = 0; (i < context->valuesCount) && EXCEPTION_OKAY; i++) {
@@ -24432,9 +24687,26 @@ static const uint16_t FULL_RAW_WEIGHTING = 0xFFFFU;
  * PRESET IP INTELLIGENCE CONFIGURATIONS
  */
 
-/* The expected version of the data file */
+/**
+ * The expected version of the data file. Version 4.6 files store profile
+ * offsets, and the profiles collection length in the header, in the unit
+ * declared by the header's profilesOffsetShift field, with profile records
+ * aligned to unit boundaries relative to the start of the collection. The
+ * 32 bit stored offsets can then address profile data beyond 4GB. All
+ * property values, including IpRangeStart and IpRangeEnd, are stored in
+ * profiles exactly as in version 4.5. Version 4.6 is otherwise identical
+ * to 4.5, but the API and the data file move together as a single version
+ * transition, so earlier versions are not supported.
+ */
 #define FIFTYONE_DEGREES_IPI_TARGET_VERSION_MAJOR 4
-#define FIFTYONE_DEGREES_IPI_TARGET_VERSION_MINOR 5
+#define FIFTYONE_DEGREES_IPI_TARGET_VERSION_MINOR 6
+
+/**
+ * The largest profiles offset shift the header can declare. A shift of 8
+ * gives 256 byte units addressing 1TB, well beyond any expected file, so
+ * larger values indicate a corrupt header.
+ */
+#define FIFTYONE_DEGREES_IPI_MAX_PROFILES_OFFSET_SHIFT 8
 
 #undef FIFTYONE_DEGREES_CONFIG_ALL_IN_MEMORY
 #define FIFTYONE_DEGREES_CONFIG_ALL_IN_MEMORY true
@@ -24994,8 +25266,35 @@ static StatusCode checkVersion(DataSetIpi* dataSet) {
 		FIFTYONE_DEGREES_IPI_TARGET_VERSION_MINOR)) {
 		return INCORRECT_VERSION;
 	}
+
+	// The shift used to convert stored profile offsets to byte positions is
+	// declared in the header and validated rather than assumed.
+	if (dataSet->header.profilesOffsetShift < 0 ||
+		dataSet->header.profilesOffsetShift >
+		FIFTYONE_DEGREES_IPI_MAX_PROFILES_OFFSET_SHIFT) {
+		return CORRUPT_DATA;
+	}
+#ifndef FIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT
+	// Converting shifted offsets to byte positions requires the 64 bit
+	// arithmetic of large data file support.
+	if (dataSet->header.profilesOffsetShift != 0) {
+		return INCORRECT_VERSION;
+	}
+#endif
 	return SUCCESS;
 }
+
+/**
+ * @return the number of bits to shift a stored profile offset left to
+ * convert it to a byte position within the profiles collection. Declared by
+ * the data file in the header, and zero where profile offsets are byte
+ * positions.
+ */
+#ifdef FIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT
+static byte getProfilesOffsetShift(const DataSetIpi* dataSet) {
+	return (byte)dataSet->header.profilesOffsetShift;
+}
+#endif
 
 static void initDataSetPost(
 	DataSetIpi* dataSet,
@@ -25070,7 +25369,19 @@ static StatusCode initWithMemory(
 
 	const uint32_t profileCount = dataSet->header.profiles.count;
 	*(uint32_t*)(&dataSet->header.profiles.count) = 0;
+#ifdef FIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT
+	// The profiles collection stores offsets in the unit declared by the
+	// header. No other collection uses shifted offsets.
+	dataSet->profiles = fiftyoneDegreesCollectionCreateFromMemoryWithOffsetShift(
+		reader,
+		dataSet->header.profiles,
+		getProfilesOffsetShift(dataSet));
+	if (dataSet->profiles == NULL) {
+		return INVALID_COLLECTION_CONFIG;
+	}
+#else
 	COLLECTION_CREATE_MEMORY(profiles)
+#endif
 	*(uint32_t*)(&dataSet->header.profiles.count) = profileCount;
 
 	COLLECTION_CREATE_MEMORY(graphs);
@@ -25099,23 +25410,21 @@ static StatusCode initInMemory(
 	Exception* exception) {
 	MemoryReader reader;
 
-	// Read the data from the source file into memory using the reader to 
+	// The data set is freed by the caller on failure rather than here, so
+	// that the caller can still read the file name from it to delete a temp
+	// file, and so the file path frees it too.
+	//
+	// Read the data from the source file into memory using the reader to
 	// store the pointer to the first and last bytes.
 	StatusCode status = DataSetInitInMemory(
 		&dataSet->b.b,
 		&reader);
 	if (status != SUCCESS) {
-		freeDataSet(dataSet);
 		return status;
 	}
 
 	// Use the memory reader to initialize the IP Intelligence data set.
-	status = initWithMemory(dataSet, &reader, exception);
-	if (status != SUCCESS || EXCEPTION_FAILED) {
-		freeDataSet(dataSet);
-		return status;
-	}
-	return status;
+	return initWithMemory(dataSet, &reader, exception);
 }
 
 static void initDataSet(DataSetIpi* dataSet, ConfigIpi** config) {
@@ -25188,7 +25497,22 @@ static StatusCode readDataSetFromFile(
 
 	const uint32_t profileCount = dataSet->header.profiles.count;
 	*(uint32_t*)(&dataSet->header.profiles.count) = 0;
+#ifdef FIFTYONE_DEGREES_LARGE_DATA_FILE_SUPPORT
+	// The profiles collection stores offsets in the unit declared by the
+	// header. No other collection uses shifted offsets.
+	dataSet->profiles = fiftyoneDegreesCollectionCreateFromFileWithOffsetShift(
+		file,
+		&dataSet->b.b.filePool,
+		&dataSet->config.profiles,
+		dataSet->header.profiles,
+		fiftyoneDegreesProfileReadFromFile,
+		getProfilesOffsetShift(dataSet));
+	if (dataSet->profiles == NULL) {
+		return INVALID_COLLECTION_CONFIG;
+	}
+#else
 	COLLECTION_CREATE_FILE(profiles, fiftyoneDegreesProfileReadFromFile);
+#endif
 	*(uint32_t*)(&dataSet->header.profiles.count) = profileCount;
 
 	COLLECTION_CREATE_FILE(graphs, CollectionReadFileFixed);
@@ -25385,6 +25709,11 @@ fiftyoneDegreesStatusCode fiftyoneDegreesIpiInitManagerFromFile(
 		fileName,
 		exception);
 	if (status != SUCCESS || EXCEPTION_FAILED) {
+		// Nothing below has taken ownership of the data set, so it is freed
+		// here on every failure. Without this the file path leaks it along
+		// with the file pool's open handles, which is the path every data
+		// file of an earlier version now takes.
+		freeDataSet(dataSet);
 		return status;
 	}
 	ResourceManagerInit(manager, dataSet, &dataSet->b.b.handle, freeDataSet);
