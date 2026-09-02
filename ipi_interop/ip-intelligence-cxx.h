@@ -7844,6 +7844,10 @@ void fiftyoneDegreesDataSetFree(fiftyoneDegreesDataSetBase *dataSet);
  * data set
  * @param initDataSet init method used to initialise the new data set from the
  * memory pointer provided
+ * @param freeDataSet the engine's free method, called on the replacement
+ * data set if initialisation fails so a failed reload does not leak. Must
+ * be safe on a partially initialised data set, which every engine's free
+ * method is because its init method resets the pointers first
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h.
  * @return the status associated with the data set reload. Any value other than
@@ -7856,6 +7860,7 @@ fiftyoneDegreesStatusCode fiftyoneDegreesDataSetReloadManagerFromMemory(
 	fiftyoneDegreesFileOffset length,
 	size_t dataSetSize,
 	fiftyoneDegreesDataSetInitFromMemoryMethod initDataSet,
+	void(*freeDataSet)(void*),
 	fiftyoneDegreesException *exception);
 
 /**
@@ -7872,6 +7877,10 @@ fiftyoneDegreesStatusCode fiftyoneDegreesDataSetReloadManagerFromMemory(
  * data set
  * @param initDataSet init method used to initialise the new data set from the
  * file provided
+ * @param freeDataSet the engine's free method, called on the replacement
+ * data set if initialisation fails so a failed reload does not leak. Must
+ * be safe on a partially initialised data set, which every engine's free
+ * method is because its init method resets the pointers first
  * @param exception pointer to an exception data structure to be used if an
  * exception occurs. See exceptions.h.
  * @return the status associated with the data set reload. Any value other than
@@ -7883,6 +7892,7 @@ fiftyoneDegreesStatusCode fiftyoneDegreesDataSetReloadManagerFromFile(
 	const char *fileName,
 	size_t dataSetSize,
 	fiftyoneDegreesDataSetInitFromFileMethod initDataSet,
+	void(*freeDataSet)(void*),
 	fiftyoneDegreesException *exception);
 
 /**
@@ -7922,6 +7932,7 @@ fiftyoneDegreesException *exception) { \
 		length, \
 		sizeof(DataSet##t), \
 		initDataSetFromMemory, \
+		freeDataSet, \
 		exception); \
 } \
 /** \
@@ -7949,6 +7960,7 @@ fiftyoneDegreesException *exception) { \
 		fileName, \
 		sizeof(DataSet##t), \
 		initDataSetFromFile, \
+		freeDataSet, \
 		exception); \
 } \
 /** \
