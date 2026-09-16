@@ -4018,12 +4018,12 @@ typedef fiftyoneDegreesFloatInternal fiftyoneDegreesFloat;
  *
  * @example
  * String:
- * 			Short – length – 10
+ * 			Unsigned short – length – 10
  * 			Byte value – first character of string – '5'
  */
 #pragma pack(push, 1)
 typedef struct fiftyone_degrees_string_t {
-	int16_t size; /**< Size of the string in memory (starting from 'value') */
+	uint16_t size; /**< Size of the string in memory (starting from 'value') */
 	char value; /**< The first character of the string */
 } fiftyoneDegreesString;
 #pragma pack(pop)
@@ -6211,7 +6211,7 @@ EXTERNAL const fiftyoneDegreesProperty* fiftyoneDegreesPropertyGetByName(
  * 			Byte[] – IP – [ 1, 2, 3, 4 ]
  * @example
  * WKB (value of  POINT(2.0 4.0)):
- * 			Short – length - 21
+ * 			Unsigned short – length - 21
  * 			Byte[] – value – [
  * 				0 (endianness),
  * 				0, 0, 0, 1 (2D point),
@@ -6221,7 +6221,7 @@ EXTERNAL const fiftyoneDegreesProperty* fiftyoneDegreesPropertyGetByName(
  */
 #pragma pack(push, 1)
 typedef struct fiftyone_degrees_var_length_byte_array_t {
- int16_t size; /**< Size of the byte array in memory (starting from 'firstByte') */
+ uint16_t size; /**< Size of the byte array in memory (starting from 'firstByte') */
  unsigned char firstByte; /**< The first byte of the array */
 } fiftyoneDegreesVarLengthByteArray;
 #pragma pack(pop)
@@ -7255,9 +7255,19 @@ FIFTYONE_DEGREES_ARRAY_TYPE(
 );
 
 /**
- * An array of properties and values to use when getting override values.
+ * An array of properties and values to use when getting override values. The
+ * status member says whether every value offered to the array was stored, so
+ * that a caller which gave the array too little room can find that out
+ * without the request being worked on failing.
  */
-FIFTYONE_DEGREES_ARRAY_TYPE(fiftyoneDegreesOverrideValue,);
+FIFTYONE_DEGREES_ARRAY_TYPE(
+	fiftyoneDegreesOverrideValue,
+	fiftyoneDegreesStatusCode status; /**< Success until a value cannot be
+									  stored, then insufficient capacity
+									  where the array was full, or
+									  insufficient memory where the value
+									  could not be copied */
+);
 
 /**
  * Array of overridable properties. These are properties in a data set which
@@ -7288,7 +7298,11 @@ typedef bool(*fiftyoneDegreesOverridesFilterMethod)(
 	uint32_t requiredPropertyIndex);
 
 /**
- * Creates a fresh array of override values with the given capacity.
+ * Creates a fresh array of override values with the given capacity. The
+ * capacity is the number of properties the array can hold a value for, so a
+ * caller working from evidence needs room for the values the evidence
+ * carries and for the empty value given to each JavaScript property that
+ * measures one of them.
  * @param capacity the number of values the array can contain
  * @return a new array of override values
  */
@@ -7305,7 +7319,7 @@ EXTERNAL fiftyoneDegreesOverrideValueArray* fiftyoneDegreesOverrideValuesCreate(
  * property is eligible to be overridden
  * @return a new override properties array
  */
-fiftyoneDegreesOverridePropertyArray* 
+EXTERNAL fiftyoneDegreesOverridePropertyArray*
 fiftyoneDegreesOverridePropertiesCreate(
 	fiftyoneDegreesPropertiesAvailable *available,
 	bool prefix,
@@ -7316,17 +7330,20 @@ fiftyoneDegreesOverridePropertiesCreate(
  * Frees the resources used by the override properties.
  * @param properties pointer to the properties to free
  */
-void fiftyoneDegreesOverridePropertiesFree(
+EXTERNAL void fiftyoneDegreesOverridePropertiesFree(
 	fiftyoneDegreesOverridePropertyArray *properties);
 
 /**
- * Extracts override values from evidence.
+ * Extracts override values from evidence. Every cookie and query item is
+ * read, including those that follow an item whose value could not be stored,
+ * because a later item can still replace a value the array already holds.
+ * Where a value could not be stored the status of the values array says so.
  * @param properties which can be overridden
  * @param values array to populate with the override values
  * @param evidence to extract any overrides from
- * @return the number of override values which have been extracted
+ * @return the number of cookie and query evidence items read
  */
- uint32_t fiftyoneDegreesOverridesExtractFromEvidence(
+EXTERNAL uint32_t fiftyoneDegreesOverridesExtractFromEvidence(
 	fiftyoneDegreesOverridePropertyArray *properties,
 	fiftyoneDegreesOverrideValueArray *values,
 	fiftyoneDegreesEvidenceKeyValuePairArray *evidence);
@@ -7358,12 +7375,17 @@ uint32_t fiftyoneDegreesOverrideValuesAdd(
 	fiftyoneDegreesList *list);
 
 /**
- * Add an value override to the override values array.
+ * Add a value override to the override values array. Where the array already
+ * holds a value for the property the new value replaces it, which needs no
+ * free item and therefore works whether or not the array is full. Where the
+ * property is new to the array and the array is full nothing is stored, the
+ * values already held are left as they are, and the status of the array is
+ * set to insufficient capacity for the caller to read.
  * @param values the override values array to add the value to
  * @param requiredPropertyIndex the index in the dataset's required properties
  * of the property to override the value of
  * @param value the value string override
- * @return true if the value was added successfully
+ * @return true if the value was stored, otherwise false
  */
 EXTERNAL bool fiftyoneDegreesOverridesAdd(
 	fiftyoneDegreesOverrideValueArray *values,
@@ -7405,7 +7427,9 @@ EXTERNAL void fiftyoneDegreesOverrideValuesFree(
 
 /**
  * Reset override array. All existing item memory will not be freed by reset
- * with 0s. Remaining values will be reset to default except the allocateds size..
+ * with 0s. Remaining values will be reset to default except the allocateds size.
+ * The status is returned to success, so a caller which resets the array
+ * between requests reads a status that relates to the current request only.
  * @param values to be reset
  */
 EXTERNAL void fiftyoneDegreesOverrideValuesReset(
