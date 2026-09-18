@@ -6706,6 +6706,14 @@ EXTERNAL const fiftyoneDegreesProperty* fiftyoneDegreesPropertyGetByName(
 #endif
 
 /**
+ * Returned by fiftyoneDegreesIndicesPropertyProfileLookup, and held in every
+ * unused entry of the index, when the profile has no value for the property.
+ * This is the case for a profile id between the lowest and highest that is
+ * not in the data set, and for a property the profile has no values for.
+ */
+#define FIFTYONE_DEGREES_INDICES_NO_VALUE UINT32_MAX
+
+/**
  * Maps the profile index and the property index to the first value index of 
  * the profile for the property. Is an array of uint32_t with entries equal to 
  * the number of properties multiplied by the difference between the lowest and
@@ -6750,8 +6758,10 @@ EXTERNAL void fiftyoneDegreesIndicesPropertyProfileFree(
 	fiftyoneDegreesIndicesPropertyProfile* index);
 
 /**
- * For a given profile id and available property index returns the first value 
- * index, or null if a first index can not be determined from the index. The
+ * For a given profile id and available property index returns the first value
+ * index, or FIFTYONE_DEGREES_INDICES_NO_VALUE if the profile has no value for
+ * the property, the profile id is outside the range of the index, or the
+ * available property index is not one the index was created with. The
  * indexes relate to the collections for profiles, properties, and values 
  * provided to the fiftyoneDegreesIndicesPropertyProfileCreate method when the 
  * index was created. The availablePropertyIndex is not the index of all 
@@ -6760,8 +6770,8 @@ EXTERNAL void fiftyoneDegreesIndicesPropertyProfileFree(
  * @param index from fiftyoneDegreesIndicesPropertyProfileCreate to use
  * @param profileId the values need to relate to
  * @param availablePropertyIndex in the list of required properties
- * @return the index in the list of values for the profile for the first value 
- * associated with the property
+ * @return the index in the list of values for the profile for the first value
+ * associated with the property, or FIFTYONE_DEGREES_INDICES_NO_VALUE
  */
 EXTERNAL uint32_t fiftyoneDegreesIndicesPropertyProfileLookup(
 	fiftyoneDegreesIndicesPropertyProfile* index,
@@ -14293,7 +14303,10 @@ static map* createPropertyIndexes(
 		index[i].availableProperty = i;
 		index[i].propertyIndex = (int16_t)available->items[i].propertyIndex;
 	}
-	qsort(index, available->count, sizeof(map*), comparePropertyIndexes);
+	// The element size is that of the map structure, not of a pointer to it.
+	// The two are the same on 64 bit builds but not on 32 bit builds, where
+	// using the pointer size would sort pieces of the elements.
+	qsort(index, available->count, sizeof(map), comparePropertyIndexes);
 	return index;
 }
 
@@ -14316,6 +14329,7 @@ fiftyoneDegreesIndicesPropertyProfileCreate(
 		sizeof(IndicesPropertyProfile));
 	if (index == NULL) {
 		EXCEPTION_SET(FIFTYONE_DEGREES_STATUS_INSUFFICIENT_MEMORY);
+		Free(propertyIndexes);
 		return NULL;
 	}
 	index->filled = 0;
@@ -14336,17 +14350,43 @@ fiftyoneDegreesIndicesPropertyProfileCreate(
 		return NULL;
 	}
 	index->availablePropertyCount = available->count;
-	index->size = (index->maxProfileId - index->minProfileId + 1) * 
+
+	// Work out the number of entries in 64 bits so that a range of profile
+	// ids too large for the index is refused, rather than wrapping to a
+	// smaller number and leaving the array too short for the profiles.
+	uint64_t size =
+		((uint64_t)index->maxProfileId - index->minProfileId + 1) *
 		available->count;
-	
+	if (index->maxProfileId < index->minProfileId ||
+		size > UINT32_MAX ||
+		size > SIZE_MAX / sizeof(uint32_t)) {
+		EXCEPTION_SET(FIFTYONE_DEGREES_STATUS_INSUFFICIENT_MEMORY);
+		Free(index);
+		Free(propertyIndexes);
+		return NULL;
+	}
+	index->size = (uint32_t)size;
+
 	// Allocate memory for the values index and set the fields.
-	index->valueIndexes =(uint32_t*)Malloc(sizeof(uint32_t) * index->size);
+	index->valueIndexes = (uint32_t*)Malloc(
+		sizeof(uint32_t) * (size_t)index->size);
 	if (index->valueIndexes == NULL) {
 		EXCEPTION_SET(FIFTYONE_DEGREES_STATUS_INSUFFICIENT_MEMORY);
 		Free(index);
 		Free(propertyIndexes);
 		return NULL;
 	}
+
+	// Mark every entry as having no value. iterateProfiles only writes the
+	// entries for properties a profile has values for. The others, being
+	// profile ids that are not in the data set and properties a profile has
+	// no values for, must never be read as a position in a profile's values.
+	// Setting every byte to 0xFF sets every entry to
+	// FIFTYONE_DEGREES_INDICES_NO_VALUE.
+	memset(
+		index->valueIndexes,
+		0xFF,
+		sizeof(uint32_t) * (size_t)index->size);
 
 	// For each of the profiles in the collection call add the property value
 	// indexes to the index array.
@@ -14380,7 +14420,14 @@ uint32_t fiftyoneDegreesIndicesPropertyProfileLookup(
 	fiftyoneDegreesIndicesPropertyProfile* index,
 	uint32_t profileId,
 	uint32_t availablePropertyIndex) {
-	uint32_t valueIndex = 
+	// A profile id or property outside the index has no entry, so there is
+	// nothing to read.
+	if (profileId < index->minProfileId ||
+		profileId > index->maxProfileId ||
+		availablePropertyIndex >= index->availablePropertyCount) {
+		return FIFTYONE_DEGREES_INDICES_NO_VALUE;
+	}
+	uint32_t valueIndex =
 		(getProfileIdIndex(index, profileId) * index->availablePropertyCount) + 
 		availablePropertyIndex;
 	assert(valueIndex < index->size);
@@ -16207,9 +16254,12 @@ static uint32_t iterateValues(
         // Check the address validity, before dereferencing to prevent 
 		// potential memory fault on dereference.
         valIndexPtr < maxValIndexPtr &&
-		// Check that the value index could relate to the property. Saves 
+		// Check that the value index could relate to the property. Saves
 		// having to retrieve the value item if it will never relate to the
-		// property.
+		// property. Both ends of the property's range are checked, because a
+		// starting position that is wrong for the property would otherwise
+		// return the values of an earlier property of the profile.
+        *valIndexPtr >= property->firstValueIndex &&
         *valIndexPtr <= property->lastValueIndex &&
 		EXCEPTION_OKAY) {
 
@@ -16509,6 +16559,9 @@ uint32_t fiftyoneDegreesProfileIterateValuesForPropertyWithIndex(
 		index,
 		profile->profileId,
 		availablePropertyIndex);
+	// FIFTYONE_DEGREES_INDICES_NO_VALUE is never less than the value count,
+	// so a profile with no value for the property returns no values here.
+	// iterateValues also refuses a starting value outside the property.
 	if (i < profile->valueCount) {
 		uint32_t* firstValueIndex = (uint32_t*)(profile + 1) + i;
 		return iterateValues(
