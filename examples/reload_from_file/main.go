@@ -132,8 +132,13 @@ import (
 
 const iterationCount = 5
 
-// executeTest runs a test by processing an IP address through the engine, updating the report, and marking the work as done.
-func executeTest(engine *ipi_onpremise.Engine, wg *sync.WaitGroup, report *common.Report, ipAddress string, iteration uint32) {
+type detection struct {
+	ipAddress string
+	iteration uint32
+}
+
+// executeTest runs a test by processing an IP address through the engine and updating the report.
+func executeTest(engine *ipi_onpremise.Engine, report *common.Report, ipAddress string, iteration uint32) {
 	res, err := engine.Process(ipAddress)
 	if err != nil {
 		log.Fatalln(err)
@@ -163,16 +168,27 @@ func executeTest(engine *ipi_onpremise.Engine, wg *sync.WaitGroup, report *commo
 
 	// Increase the number of Evidence Records processed
 	atomic.AddUint64(&report.EvidenceProcessed, 1)
-
-	// Complete and mark as done
-	defer wg.Done()
 }
 
 // performDetectionIterations executes multiple iterations of detection processing using the provided engine and parameters.
-// It processes evidence records from a YAML file, performs detection in parallel goroutines, and updates the given report.
+// It processes evidence records from a YAML file on a fixed number of worker goroutines and updates the given report.
 // Accepts an ipi_onpremise.Engine instance, a WaitGroup for synchronization, a Report for tracking results, and ExampleParams as input.
 // The function manages the lifecycle of file resources and ensures completion of goroutines for concurrent processing.
 func performDetectionIterations(engine *ipi_onpremise.Engine, wg *sync.WaitGroup, report *common.Report, params *common.ExampleParams) {
+	// One worker per CPU, matching the concurrency the engine is configured with
+	workerCount := runtime.NumCPU()
+	detections := make(chan detection, workerCount*2)
+	var workers sync.WaitGroup
+	for w := 0; w < workerCount; w++ {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			for d := range detections {
+				executeTest(engine, report, d.ipAddress, d.iteration)
+			}
+		}()
+	}
+
 	for i := 0; i < report.IterationCount; i++ {
 		evidenceFilePath := common.GetFilePathByPath(params.EvidenceYaml)
 
@@ -205,13 +221,12 @@ func performDetectionIterations(engine *ipi_onpremise.Engine, wg *sync.WaitGroup
 				continue
 			}
 
-			// Increase wait group
-			wg.Add(1)
-
-			go executeTest(engine, wg, report, doc["server.client-ip"], uint32(i))
+			detections <- detection{doc["server.client-ip"], uint32(i)}
 		}
 	}
 
+	close(detections)
+	workers.Wait()
 	wg.Done()
 }
 
