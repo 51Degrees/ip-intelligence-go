@@ -5563,6 +5563,12 @@ typedef struct fiftyone_degrees_property_available_t {
                          it should be run immediately. This is always
                          initialized to false, so should be set by the calling
                          function */
+    byte componentIndex; /**< Index in the data set's component list of the
+                         component the property belongs to. Initialised to
+                         zero and set by the engine when it initialises its
+                         available components. Used to turn required
+                         property indexes into the mask of components to
+                         evaluate. */
 } fiftyoneDegreesPropertyAvailable;
 
 FIFTYONE_DEGREES_ARRAY_TYPE(fiftyoneDegreesPropertyAvailable,)
@@ -5692,6 +5698,49 @@ EXTERNAL fiftyoneDegreesString*
 	fiftyoneDegreesPropertiesGetNameFromRequiredIndex(
 		fiftyoneDegreesPropertiesAvailable *available,
 		int requiredPropertyIndex);
+
+/**
+ * Mask with every component enabled.
+ */
+#define FIFTYONE_DEGREES_COMPONENT_MASK_ALL UINT32_MAX
+
+/**
+ * Number of components the mask can address.
+ */
+#define FIFTYONE_DEGREES_COMPONENT_MASK_BITS 32
+
+/**
+ * True if component index i is enabled under the mask. Components at index
+ * 32 and above are beyond the mask and are always enabled, so a data set
+ * with more than 32 components is filtered for the first 32 only and the
+ * shift never exceeds the width of the mask.
+ * @param mask the component mask
+ * @param i component index
+ */
+#define FIFTYONE_DEGREES_COMPONENT_MASK_ENABLED(mask, i) \
+	((uint32_t)(i) >= FIFTYONE_DEGREES_COMPONENT_MASK_BITS || \
+	((mask) & (1u << (i))) != 0)
+
+/**
+ * Builds the mask of components whose graphs a detection must evaluate from
+ * the required property indexes a caller will read. Bit i means component i,
+ * using the componentIndex recorded on each available property. The engine
+ * must record that index when it initialises its available components, as
+ * the Hash and IP intelligence engines do. Under an engine that does not,
+ * every property reads as component 0.
+ * @param available the available properties of the data set
+ * @param requiredPropertyIndexes array of required property indexes, or NULL
+ * to enable every component
+ * @param requiredPropertyIndexesCount number of entries in the array. A
+ * negative count enables every component. Zero with a non NULL array enables
+ * none. Indexes outside the available properties are ignored, as are
+ * components at index 32 and above, which the mask cannot address.
+ * @return the component mask
+ */
+EXTERNAL uint32_t fiftyoneDegreesPropertiesGetComponentMask(
+	fiftyoneDegreesPropertiesAvailable *available,
+	const int *requiredPropertyIndexes,
+	int requiredPropertyIndexesCount);
 
 /**
  * Check if the 'SetHeader' properties are included in the
@@ -9036,6 +9085,7 @@ MAP_TYPE(WeightedItemList)
 #define EvidenceAddString fiftyoneDegreesEvidenceAddString /**< Synonym for #fiftyoneDegreesEvidenceAddString function. */
 #define PropertiesGetRequiredPropertyIndexFromName fiftyoneDegreesPropertiesGetRequiredPropertyIndexFromName /**< Synonym for #fiftyoneDegreesPropertiesGetRequiredPropertyIndexFromName function. */
 #define PropertiesGetNameFromRequiredIndex fiftyoneDegreesPropertiesGetNameFromRequiredIndex /**< Synonym for #fiftyoneDegreesPropertiesGetNameFromRequiredIndex function. */
+#define PropertiesGetComponentMask fiftyoneDegreesPropertiesGetComponentMask /**< Synonym for #fiftyoneDegreesPropertiesGetComponentMask function. */
 #define PropertiesIsSetHeaderAvailable fiftyoneDegreesPropertiesIsSetHeaderAvailable /**< Synonym for #fiftyoneDegreesPropertiesIsSetHeaderAvailable */
 #define CollectionHeaderFromFile fiftyoneDegreesCollectionHeaderFromFile /**< Synonym for #fiftyoneDegreesCollectionHeaderFromFile function. */
 #define CollectionCreateFromFile fiftyoneDegreesCollectionCreateFromFile /**< Synonym for #fiftyoneDegreesCollectionCreateFromFile function. */
@@ -9147,6 +9197,9 @@ MAP_TYPE(WeightedItemList)
 #define EXCEPTION_THROW FIFTYONE_DEGREES_EXCEPTION_THROW /**< Synonym for #FIFTYONE_DEGREES_EXCEPTION_THROW macro. */
 #define EXCEPTION_CHECK FIFTYONE_DEGREES_EXCEPTION_CHECK /**< Synonym for #FIFTYONE_DEGREES_EXCEPTION_CHECK macro. */
 #define STRING FIFTYONE_DEGREES_STRING /**< Synonym for #FIFTYONE_DEGREES_STRING macro. */
+#define COMPONENT_MASK_ALL FIFTYONE_DEGREES_COMPONENT_MASK_ALL /**< Synonym for #FIFTYONE_DEGREES_COMPONENT_MASK_ALL macro. */
+#define COMPONENT_MASK_BITS FIFTYONE_DEGREES_COMPONENT_MASK_BITS /**< Synonym for #FIFTYONE_DEGREES_COMPONENT_MASK_BITS macro. */
+#define COMPONENT_MASK_ENABLED FIFTYONE_DEGREES_COMPONENT_MASK_ENABLED /**< Synonym for #FIFTYONE_DEGREES_COMPONENT_MASK_ENABLED macro. */
 #define COLLECTION_RELEASE FIFTYONE_DEGREES_COLLECTION_RELEASE /**< Synonym for #FIFTYONE_DEGREES_COLLECTION_RELEASE macro. */
 #define FILE_MAX_PATH FIFTYONE_DEGREES_FILE_MAX_PATH /**< Synonym for #FIFTYONE_DEGREES_FILE_MAX_PATH macro. */
 #define THREAD_CREATE FIFTYONE_DEGREES_THREAD_CREATE /**< Synonym for #FIFTYONE_DEGREES_THREAD_CREATE macro. */
@@ -16849,6 +16902,9 @@ static PropertiesAvailable* initRequiredPropertiesMemory(uint32_t count) {
 			available->items[i].evidenceProperties = NULL;
 			// Initialize the delay execution.
 			available->items[i].delayExecution = false;
+			// Initialize the component index. The engine sets the real value
+			// once it knows which component each property belongs to.
+			available->items[i].componentIndex = 0;
 		}
 	}
 	return available;
@@ -17303,6 +17359,29 @@ void fiftyoneDegreesPropertiesFree(
 		}
 		Free(available);
 	}
+}
+
+uint32_t fiftyoneDegreesPropertiesGetComponentMask(
+	fiftyoneDegreesPropertiesAvailable *available,
+	const int *requiredPropertyIndexes,
+	int requiredPropertyIndexesCount) {
+	uint32_t mask = 0;
+	int i;
+	int count;
+	if (requiredPropertyIndexes == NULL || requiredPropertyIndexesCount < 0) {
+		return FIFTYONE_DEGREES_COMPONENT_MASK_ALL;
+	}
+	count = available == NULL ? 0 : (int)available->count;
+	for (i = 0; i < requiredPropertyIndexesCount; i++) {
+		int index = requiredPropertyIndexes[i];
+		if (index >= 0 && index < count) {
+			byte componentIndex = available->items[index].componentIndex;
+			if (componentIndex < FIFTYONE_DEGREES_COMPONENT_MASK_BITS) {
+				mask |= 1u << componentIndex;
+			}
+		}
+	}
+	return mask;
 }
 /* *********************************************************************
  * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
@@ -23382,6 +23461,94 @@ EXTERNAL void fiftyoneDegreesResultsIpiFromEvidence(
 	fiftyoneDegreesException* exception);
 
 /**
+ * Processes the IP address exactly as #fiftyoneDegreesResultsIpiFromIpAddress,
+ * but evaluates only the graphs needed by the required properties whose
+ * indexes are supplied. It is meant for a service that knows, for every
+ * request, which properties it will read. Other callers should use
+ * #fiftyoneDegreesResultsIpiFromIpAddress.
+ *
+ * The result shape is unchanged, one item per available component in
+ * component order. A component whose graph was not evaluated keeps a null
+ * profile offset, so its properties report no value with the NULL_PROFILE
+ * reason. A property that is mandatory with a default value reads as that
+ * default instead, as it does for a component that produced no profile.
+ *
+ * The indexes are turned into a 32 bit mask, bit i meaning the graph for
+ * component i in componentsList. Components at index 32 and above are beyond
+ * the mask and are always evaluated, so a data file with more than 32
+ * components is filtered for the first 32 only.
+ *
+ * An index is a position in the required properties of the data set the
+ * results use, which are sorted by name. A reloaded data file that gains or
+ * loses a required property moves the indexes of the properties after it, so
+ * look them up again after a reload, for example with
+ * #fiftyoneDegreesPropertiesGetRequiredPropertyIndexFromName.
+ * @param results preallocated results structure to populate
+ * @param ipAddress byte array to process
+ * @param ipAddressLength of the IP address byte array
+ * @param type of the ip
+ * @param requiredPropertyIndexes array of required property indexes the
+ * caller will read, or NULL to evaluate every graph
+ * @param requiredPropertyIndexesCount number of entries in the array. A
+ * negative count evaluates every graph. A count of zero with a non NULL array
+ * evaluates no graph. Indexes outside the required properties are ignored.
+ * @param exception pointer to an exception data structure to be used if an
+ * exception occurs. See exceptions.h.
+ */
+EXTERNAL void fiftyoneDegreesResultsIpiFromIpAddressForProperties(
+	fiftyoneDegreesResultsIpi* results,
+	const unsigned char* ipAddress,
+	size_t ipAddressLength,
+	fiftyoneDegreesIpType type,
+	const int *requiredPropertyIndexes,
+	int requiredPropertyIndexesCount,
+	fiftyoneDegreesException* exception);
+
+/**
+ * Processes the IP address string exactly as
+ * #fiftyoneDegreesResultsIpiFromIpAddressString, but evaluates only the
+ * graphs needed by the required properties whose indexes are supplied. See
+ * #fiftyoneDegreesResultsIpiFromIpAddressForProperties for the rules that
+ * apply to the indexes.
+ * @param results preallocated results structure to populate
+ * @param ipAddress string to process
+ * @param ipAddressLength of the ipAddress string
+ * @param requiredPropertyIndexes array of required property indexes the
+ * caller will read, or NULL to evaluate every graph
+ * @param requiredPropertyIndexesCount number of entries in the array
+ * @param exception pointer to an exception data structure to be used if an
+ * exception occurs. See exceptions.h.
+ */
+EXTERNAL void fiftyoneDegreesResultsIpiFromIpAddressStringForProperties(
+	fiftyoneDegreesResultsIpi* results,
+	const char* ipAddress,
+	size_t ipAddressLength,
+	const int *requiredPropertyIndexes,
+	int requiredPropertyIndexesCount,
+	fiftyoneDegreesException* exception);
+
+/**
+ * Processes the evidence exactly as #fiftyoneDegreesResultsIpiFromEvidence,
+ * but evaluates only the graphs needed by the required properties whose
+ * indexes are supplied. See #fiftyoneDegreesResultsIpiFromIpAddressForProperties
+ * for the rules that apply to the indexes.
+ * @param results preallocated results structure to populate containing a
+ *                pointer to an initialised resource manager
+ * @param evidence to process containing parsed or unparsed values
+ * @param requiredPropertyIndexes array of required property indexes the
+ * caller will read, or NULL to evaluate every graph
+ * @param requiredPropertyIndexesCount number of entries in the array
+ * @param exception pointer to an exception data structure to be used if an
+ * exception occurs. See exceptions.h.
+ */
+EXTERNAL void fiftyoneDegreesResultsIpiFromEvidenceForProperties(
+	fiftyoneDegreesResultsIpi* results,
+	fiftyoneDegreesEvidenceKeyValuePairArray* evidence,
+	const int *requiredPropertyIndexes,
+	int requiredPropertyIndexesCount,
+	fiftyoneDegreesException* exception);
+
+/**
  * Gets whether or not the results provided contain valid values for the
  * property index provided.
  * @param results pointer to the results to check
@@ -23812,6 +23979,9 @@ MAP_TYPE(WeightedValuesCollection)
 #define ResultsIpiFromIpAddress fiftyoneDegreesResultsIpiFromIpAddress /**< Synonym for #fiftyoneDegreesResultsIpiFromIpAddress function. */
 #define ResultsIpiFromIpAddressString fiftyoneDegreesResultsIpiFromIpAddressString /**< Synonym for #fiftyoneDegreesResultsIpiFromIpAddressString function. */
 #define ResultsIpiFromEvidence fiftyoneDegreesResultsIpiFromEvidence /**< Synonym for #fiftyoneDegreesResultsIpiFromEvidence function. */
+#define ResultsIpiFromIpAddressForProperties fiftyoneDegreesResultsIpiFromIpAddressForProperties /**< Synonym for #fiftyoneDegreesResultsIpiFromIpAddressForProperties function. */
+#define ResultsIpiFromIpAddressStringForProperties fiftyoneDegreesResultsIpiFromIpAddressStringForProperties /**< Synonym for #fiftyoneDegreesResultsIpiFromIpAddressStringForProperties function. */
+#define ResultsIpiFromEvidenceForProperties fiftyoneDegreesResultsIpiFromEvidenceForProperties /**< Synonym for #fiftyoneDegreesResultsIpiFromEvidenceForProperties function. */
 #define ResultsIpiGetValues fiftyoneDegreesResultsIpiGetValues /**< Synonym for #fiftyoneDegreesResultsIpiGetValues function. */
 #define ResultsIpiAddValuesString fiftyoneDegreesResultsIpiAddValuesString /**< Synonym for #fiftyoneDegreesResultsIpiAddValuesString function. */
 #define ResultsIpiGetValuesString fiftyoneDegreesResultsIpiGetValuesString /**< Synonym for #fiftyoneDegreesResultsIpiGetValuesString function. */
@@ -24809,6 +24979,15 @@ typedef struct state_with_unique_header_index_t {
 } stateWithUniqueHeaderIndex;
 
 /**
+ * Used to pass the results being populated together with the mask of
+ * components whose graphs are evaluated. See COMPONENT_MASK_ENABLED.
+ */
+typedef struct results_with_component_mask_t {
+	ResultsIpi* results; /* Results being populated */
+	uint32_t componentMask; /* Components whose graphs are evaluated */
+} resultsWithComponentMask;
+
+/**
  * Used to represent the structure within a profile groups item
  */
 #pragma pack(push, 2)
@@ -25231,6 +25410,10 @@ static StatusCode initComponentsAvailable(
 			return COLLECTION_FAILURE;
 		}
 		dataSet->componentsAvailable[property->componentIndex] = true;
+		// Record the component so required property indexes can be turned
+		// into a component mask without reading the property again.
+		dataSet->b.b.available->items[i].componentIndex =
+			property->componentIndex;
 		COLLECTION_RELEASE(dataSet->properties, &item);
 	}
 
@@ -26147,6 +26330,7 @@ static bool addResultsFromIpAddressNoChecks(
 	ResultsIpi* results,
 	const unsigned char* ipAddress,
 	fiftyoneDegreesIpType type,
+	uint32_t componentMask,
 	fiftyoneDegreesException* exception) {
 	const DataSetIpi * const dataSet = (DataSetIpi*)results->b.dataSet;
 	for (uint32_t componentIndex = 0;
@@ -26178,23 +26362,30 @@ static bool addResultsFromIpAddressNoChecks(
 			memcpy(nextResult->targetIpAddress.value, ipAddress, IPV6_LENGTH);
 		}
 
-		setResultFromIpAddress(
-			nextResult,
-			dataSet,
-			component->componentId,
-			exception);
-		if (EXCEPTION_FAILED) {
-			return false;
+		// Only evaluate the graph for a component the caller will read. The
+		// result slot is kept so the positional mapping to components is
+		// unchanged, and the slot reads as a null profile.
+		if (COMPONENT_MASK_ENABLED(componentMask, componentIndex)) {
+			setResultFromIpAddress(
+				nextResult,
+				dataSet,
+				component->componentId,
+				exception);
+			if (EXCEPTION_FAILED) {
+				return false;
+			}
 		}
 	}
 	return true;
 }
 
-void fiftyoneDegreesResultsIpiFromIpAddress(
+void fiftyoneDegreesResultsIpiFromIpAddressForProperties(
 	fiftyoneDegreesResultsIpi* results,
 	const unsigned char* ipAddress,
 	size_t ipAddressLength,
 	fiftyoneDegreesIpType type,
+	const int *requiredPropertyIndexes,
+	int requiredPropertyIndexesCount,
 	fiftyoneDegreesException* exception) {
 
 	// Make sure the input is always in the correct format
@@ -26214,13 +26405,35 @@ void fiftyoneDegreesResultsIpiFromIpAddress(
 		results,
 		ipAddress,
 		type,
+		PropertiesGetComponentMask(
+			((DataSetIpi*)results->b.dataSet)->b.b.available,
+			requiredPropertyIndexes,
+			requiredPropertyIndexesCount),
 		exception);
 }
 
-void fiftyoneDegreesResultsIpiFromIpAddressString(
+void fiftyoneDegreesResultsIpiFromIpAddress(
+	fiftyoneDegreesResultsIpi* results,
+	const unsigned char* ipAddress,
+	size_t ipAddressLength,
+	fiftyoneDegreesIpType type,
+	fiftyoneDegreesException* exception) {
+	fiftyoneDegreesResultsIpiFromIpAddressForProperties(
+		results,
+		ipAddress,
+		ipAddressLength,
+		type,
+		NULL,
+		-1,
+		exception);
+}
+
+void fiftyoneDegreesResultsIpiFromIpAddressStringForProperties(
 	fiftyoneDegreesResultsIpi* results,
 	const char* ipAddress,
 	size_t ipLength,
+	const int *requiredPropertyIndexes,
+	int requiredPropertyIndexesCount,
 	fiftyoneDegreesException* exception) {
 	IpAddress ip;
 	const bool parsed =
@@ -26234,19 +26447,23 @@ void fiftyoneDegreesResultsIpiFromIpAddressString(
 	// Perform the search on the IP address byte array
 	switch(ip.type) {
 	case IP_TYPE_IPV4:
-		fiftyoneDegreesResultsIpiFromIpAddress(
+		fiftyoneDegreesResultsIpiFromIpAddressForProperties(
 			results,
 			ip.value,
 			IPV4_LENGTH,
 			IP_TYPE_IPV4,
+			requiredPropertyIndexes,
+			requiredPropertyIndexesCount,
 			exception);
 		break;
 	case IP_TYPE_IPV6:
-		fiftyoneDegreesResultsIpiFromIpAddress(
+		fiftyoneDegreesResultsIpiFromIpAddressForProperties(
 			results,
 			ip.value,
 			IPV6_LENGTH,
 			IP_TYPE_IPV6,
+			requiredPropertyIndexes,
+			requiredPropertyIndexesCount,
 			exception);
 		break;
 	case IP_TYPE_INVALID:
@@ -26256,12 +26473,28 @@ void fiftyoneDegreesResultsIpiFromIpAddressString(
 	}
 }
 
+void fiftyoneDegreesResultsIpiFromIpAddressString(
+	fiftyoneDegreesResultsIpi* results,
+	const char* ipAddress,
+	size_t ipLength,
+	fiftyoneDegreesException* exception) {
+	fiftyoneDegreesResultsIpiFromIpAddressStringForProperties(
+		results,
+		ipAddress,
+		ipLength,
+		NULL,
+		-1,
+		exception);
+}
+
 static bool setResultsFromEvidence(
 	void* state,
 	EvidenceKeyValuePair* pair) {
 	const stateWithUniqueHeaderIndex* indexState = (stateWithUniqueHeaderIndex*)state;
 	const stateWithException* exceptionState = (stateWithException*)indexState->subState;
-	ResultsIpi* results = (ResultsIpi*)exceptionState->state;
+	const resultsWithComponentMask* masked =
+		(resultsWithComponentMask*)exceptionState->state;
+	ResultsIpi* results = masked->results;
 	Exception* exception = exceptionState->exception;
 	// We should not look further if a 
 	// result has already been found
@@ -26291,6 +26524,7 @@ static bool setResultsFromEvidence(
 				results,
 				ipAddress.value,
 				ipAddress.type,
+				masked->componentMask,
 				exception);
 		}
 	}
@@ -26322,13 +26556,21 @@ static void fiftyoneDegreesIterateHeadersWithEvidence(
 	}
 }
 
-void fiftyoneDegreesResultsIpiFromEvidence(
+void fiftyoneDegreesResultsIpiFromEvidenceForProperties(
 	fiftyoneDegreesResultsIpi* results,
 	fiftyoneDegreesEvidenceKeyValuePairArray* evidence,
+	const int *requiredPropertyIndexes,
+	int requiredPropertyIndexesCount,
 	fiftyoneDegreesException* exception) {
 	stateWithException subState;
 	stateWithUniqueHeaderIndex state;
-	subState.state = results;
+	resultsWithComponentMask masked;
+	masked.results = results;
+	masked.componentMask = PropertiesGetComponentMask(
+		((DataSetIpi*)results->b.dataSet)->b.b.available,
+		requiredPropertyIndexes,
+		requiredPropertyIndexesCount);
+	subState.state = &masked;
 	subState.exception = exception;
 	state.subState = &subState;
 
@@ -26358,6 +26600,18 @@ void fiftyoneDegreesResultsIpiFromEvidence(
 			}
 		}
 	}
+}
+
+void fiftyoneDegreesResultsIpiFromEvidence(
+	fiftyoneDegreesResultsIpi* results,
+	fiftyoneDegreesEvidenceKeyValuePairArray* evidence,
+	fiftyoneDegreesException* exception) {
+	fiftyoneDegreesResultsIpiFromEvidenceForProperties(
+		results,
+		evidence,
+		NULL,
+		-1,
+		exception);
 }
 
 static bool addWeightedValue(
