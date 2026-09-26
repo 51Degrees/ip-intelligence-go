@@ -1,0 +1,3 @@
+[submodule "translation/ip-intelligence-data"]
+	path = translation/ip-intelligence-data
+	url = https://github.com/51Degrees/ip-intelligence-data.git
